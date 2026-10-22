@@ -1,12 +1,27 @@
 import { validateModSpec } from '../core/mod-spec.mjs';
 import { AppError } from '../core/errors.mjs';
 import { identifyTarget } from '../core/targets.ts';
+import { generateForge } from './adapters/forge.mjs';
+import forge from '../../templates/forge-1.20.1/manifest.json' with { type: 'json' };
+import neoforge from '../../templates/neoforge-1.21.1/manifest.json' with { type: 'json' };
 import { generateBedrock } from './adapters/bedrock.mjs';
 import { generateFabric } from './adapters/fabric.mjs';
 import fabric1211 from '../../templates/fabric-1.21.1/manifest.json' with { type: 'json' };
 import fabric1201 from '../../templates/fabric-1.20.1/manifest.json' with { type: 'json' };
 export const TEMPLATE = Object.freeze(fabric1211);
+export function builderTemplate(targetId = 'fabric-1.21.1') {
+  const template = {
+    'fabric-1.21.1': fabric1211,
+    'fabric-1.20.1': fabric1201,
+    'forge-1.20.1': forge,
+    'neoforge-1.21.1': neoforge,
+  }[targetId];
+  if (!template) throw new AppError(422, 'TARGET_UNAVAILABLE', '此目标不使用 Java 构建器。');
+  return structuredClone(template);
+}
 const adapters = new Map([
+  ['forge-1.20.1', (s) => generateForge(s.input, s.assets, forge)],
+  ['neoforge-1.21.1', (s) => generateForge(s.input, s.assets, neoforge)],
   ['bedrock-1.21.60', (spec) => generateBedrock(spec.input, spec.assets)],
   ['fabric-1.21.1', (spec) => generateFabric(spec.input, spec.assets, fabric1211)],
   ['fabric-1.20.1', (spec) => generateFabric(spec.input, spec.assets, fabric1201)],

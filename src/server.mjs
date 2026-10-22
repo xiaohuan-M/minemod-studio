@@ -7,6 +7,7 @@ import { mockProvider } from './providers/mock.mjs';
 import { capabilities } from './core/capabilities.mjs';
 import { AppError } from './core/errors.mjs';
 import { modSpecSchema } from './core/mod-spec.mjs';
+import { vanillaItems } from './core/registries.mjs';
 import { TARGET } from './core/project.mjs';
 import { TARGETS, getTarget } from './core/targets.ts';
 import { workshopServices } from './workshop-routes.mjs';
@@ -184,6 +185,13 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           json(response, 200, { ok: true, version: pkg.version, stage: capabilities().stage });
         } else if (request.method === 'GET' && pathname === '/api/targets') {
           json(response, 200, { targets: TARGETS });
+        } else if (request.method === 'GET' && pathname === '/api/registries/items') {
+          const target = getTarget(url.searchParams.get('target') ?? 'fabric-1.21.1');
+          if (!target) throw new AppError(404, 'TARGET_UNAVAILABLE', '目标不存在。');
+          json(response, 200, {
+            targetId: target.id,
+            items: vanillaItems(target.target).map((id) => 'minecraft:' + id),
+          });
         } else if (request.method === 'GET' && pathname === '/api/capabilities') {
           json(response, 200, capabilities());
         } else if (request.method === 'GET' && pathname === '/api/examples/full-workshop') {

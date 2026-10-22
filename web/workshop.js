@@ -41,6 +41,7 @@ export function initWorkshop({
   refresh,
   feedback,
 }) {
+  let vanillaIds = [];
   let editing = null,
     assets = [],
     snapshot = null,
@@ -200,16 +201,9 @@ export function initWorkshop({
       if ([...$('recipe-result').options].some((o) => o.value === previous))
         $('recipe-result').value = previous;
       $('ingredients').replaceChildren(
-        ...[
-          ...entries.map(({ item }) => spec.modId + ':' + item.id),
-          'minecraft:diamond',
-          'minecraft:stick',
-          'minecraft:iron_ingot',
-          'minecraft:gold_ingot',
-          'minecraft:redstone',
-          'minecraft:glowstone_dust',
-          'minecraft:crafting_table',
-        ].map((v) => option(v, v)),
+        ...[...entries.map(({ item }) => spec.modId + ':' + item.id), ...vanillaIds].map((v) =>
+          option(v, v),
+        ),
       );
       $('recipe-list').replaceChildren(
         ...spec.recipes.map((recipe, index) => {
@@ -718,7 +712,13 @@ export function initWorkshop({
   });
   $('prepare-builder').onclick = run(async () => {
     if (!$('prepare-consent').checked) throw new Error('请勾选允许下载固定镜像。');
-    const record = await request('/api/builder/prepare', 'POST', { allowNetwork: true });
+    const record = await request('/api/builder/prepare', 'POST', {
+      allowNetwork: true,
+      targetId:
+        getProject().target.edition === 'java'
+          ? getProject().target.loader + '-' + getProject().target.minecraft
+          : undefined,
+    });
     $('prepare-consent').checked = false;
     watch(record.id);
   });
@@ -861,6 +861,15 @@ export function initWorkshop({
     $('build-downloads').replaceChildren();
     $('source-panel').hidden = true;
     $('workshop').hidden = false;
+    const target = event.detail.target;
+    api('/api/registries/items?target=' + target.loader + '-' + target.minecraft)
+      .then((result) => {
+        if (epoch === requestEpoch) {
+          vanillaIds = result.items;
+          renderContent();
+        }
+      })
+      .catch((e) => feedback(e.message, true));
     resetContent();
     renderContent();
     controls();

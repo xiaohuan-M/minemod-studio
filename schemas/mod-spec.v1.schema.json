@@ -42,7 +42,9 @@
         "loader": {
           "enum": [
             "fabric",
-            "bedrock"
+            "bedrock",
+            "forge",
+            "neoforge"
           ]
         },
         "minecraft": {

@@ -1,0 +1,15 @@
+{
+  "minecraft": "1.20.1",
+  "gradle": "8.10.2",
+  "java": 17,
+  "gradleDistributionSha256": "31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26",
+  "wrapperSha256": "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046",
+  "builderImage": "gradle:8.10.2-jdk17@sha256:c2900027f3f0681c2cbfb09d527813851ad67aeafbb409997297efa2df20e748",
+  "id": "forge-1.20.1-v1",
+  "loader": "forge",
+  "loaderVersion": "47.4.28",
+  "pluginVersion": "6.0.42",
+  "reference": "https://github.com/MinecraftForge/MinecraftForge",
+  "referenceCommit": null,
+  "note": "Independently generated source; pinned toolchain. See actual validation records."
+}

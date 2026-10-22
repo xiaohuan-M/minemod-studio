@@ -22,3 +22,6 @@
 Bedrock 适配以 v1.21.60.10（43ca2795c201b6fff53f38597c4d01f6c4593e1a）为格式参考；其 LICENSE.md 为 Mojang EULA，未复制或再分发其资产或代码。生成器和默认程序贴图独立编写。
 
 pngjs 已用于有尺寸/文件上限的 PNG 解码、CRC 检查、重新编码与本地像素转换；接口不接受远程图片 URL。
+
+- PrismarineJS/minecraft-data 固定提交 1df9432c07c81b47326e4fb1e06d3c8d723bf4aa：依据 dataPaths.json 提取所需版本的事实物品 ID，用于原版配方引用验证；无运行依赖、无图片或游戏代码。上游 README 标注 MIT 并有来源备注，保存在 data/registries/README.md。
+- ForgeGradle 6.0.42 / Forge 47.4.28、ModDevGradle 2.0.148 / NeoForge 21.1.264：只在生成工程的构建阶段下载；独立生成注册与元数据代码。原版游戏与加载器的许可仍属于各自项目，非本站 MIT 许可重新授权。

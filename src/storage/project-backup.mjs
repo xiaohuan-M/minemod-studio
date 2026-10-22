@@ -228,8 +228,15 @@ export class ProjectBackup {
           const format = r.artifact.format ?? 'jar',
             w = stagedWorkspaces.get(project.id, r.snapshotHash);
           if (format === 'jar') {
-            const m = JSON.parse(readZipEntry(bytes, 'fabric.mod.json'));
-            if (m.id !== w.modId) fail('JAR 与工程不匹配。');
+            const m = JSON.parse(
+              readZipEntry(
+                bytes,
+                w.targetId?.startsWith('forge-') || w.targetId?.startsWith('neoforge-')
+                  ? 'minemod-target.json'
+                  : 'fabric.mod.json',
+              ),
+            );
+            if ((m.modId ?? m.id) !== w.modId) fail('JAR 与工程不匹配。');
           } else if (format === 'mcaddon') {
             readZipEntry(readZipEntry(bytes, 'behavior_pack.mcpack'), 'manifest.json');
             readZipEntry(readZipEntry(bytes, 'resource_pack.mcpack'), 'manifest.json');

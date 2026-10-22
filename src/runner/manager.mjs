@@ -5,7 +5,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { JsonDirectory } from '../storage/json-directory.mjs';
-import { TEMPLATE, workspaceFiles } from '../engineering/generator.mjs';
+import { TEMPLATE, workspaceFiles, builderTemplate } from '../engineering/generator.mjs';
 import { sha256, readZipEntry } from '../core/archive.mjs';
 import { packageBedrock } from '../engineering/adapters/bedrock.mjs';
 import { AppError } from '../core/errors.mjs';
@@ -43,7 +43,8 @@ async function executeDocker(args, options = {}) {
     ...options,
   });
 }
-export async function builderStatus() {
+export async function builderStatus(targetId) {
+  const template = builderTemplate(targetId);
   let dockerVersion = null,
     imageReady = false;
   try {
@@ -54,19 +55,19 @@ export async function builderStatus() {
     return {
       available: false,
       imageReady: false,
-      image: TEMPLATE.builderImage,
+      image: template.builderImage,
       reason: 'Docker 未运行或本机守护进程不可访问。请安装并启动 Docker；源码导出仍可使用。',
     };
   }
   try {
-    await executeDocker(['image', 'inspect', TEMPLATE.builderImage, '--format', '{{.Id}}']);
+    await executeDocker(['image', 'inspect', template.builderImage, '--format', '{{.Id}}']);
     imageReady = true;
   } catch {}
   return {
     available: true,
     dockerVersion,
     imageReady,
-    image: TEMPLATE.builderImage,
+    image: template.builderImage,
     limits: { cpus: 2, memoryGiB: 4, timeoutSeconds: 600 },
     reason: imageReady ? null : '请先准备固定版本的构建镜像。',
   };
@@ -96,8 +97,8 @@ export class BuildManager {
   async docker(args, options = {}) {
     return executeDocker(args, options);
   }
-  async status() {
-    return builderStatus();
+  async status(targetId) {
+    return builderStatus(targetId);
   }
   get(id) {
     const record = this.records.read(id);
@@ -128,18 +129,28 @@ export class BuildManager {
       throw new AppError(400, 'INVALID_INPUT', '联网选项必须为布尔值。');
     return this.launch({ type: 'build', projectId, snapshotHash, allowNetwork, snapshot });
   }
-  async prepare(approved) {
+  async prepare(approved, targetId) {
     if (approved !== true)
       throw new AppError(400, 'BUILD_APPROVAL_REQUIRED', '下载构建镜像需要明确确认联网。');
     if (this.active.size) throw new AppError(409, 'BUILD_ACTIVE', '已有任务运行。');
     return this.launch({
       type: 'prepare',
+      selectedTemplate: builderTemplate(targetId),
+      targetId,
       projectId: null,
       snapshotHash: null,
       allowNetwork: true,
     });
   }
-  launch({ type, projectId, snapshotHash, allowNetwork, snapshot }) {
+  launch({
+    type,
+    projectId,
+    snapshotHash,
+    allowNetwork,
+    snapshot,
+    selectedTemplate = TEMPLATE,
+    targetId = null,
+  }) {
     const id = randomUUID();
     const record = {
       id,
@@ -151,11 +162,11 @@ export class BuildManager {
       startedAt: null,
       finishedAt: null,
       allowNetwork,
-      template: snapshot?.template ?? TEMPLATE,
-      targetId: snapshot?.targetId ?? null,
+      template: snapshot?.template ?? selectedTemplate,
+      targetId: snapshot?.targetId ?? targetId,
       image: snapshot?.targetId?.startsWith('bedrock-')
         ? null
-        : (snapshot?.template?.builderImage ?? TEMPLATE.builderImage),
+        : (snapshot?.template?.builderImage ?? selectedTemplate.builderImage),
       runnerSha256: sha256(readFileSync(script)),
       log: '',
       artifact: null,
@@ -207,7 +218,7 @@ export class BuildManager {
       );
       return;
     }
-    const status = await this.status();
+    const status = await this.status(record.targetId ?? undefined);
     if (job.cancelReason) {
       this.finish(job, job.cancelReason);
       return;
@@ -217,7 +228,7 @@ export class BuildManager {
       return;
     }
     let args;
-    if (record.type === 'prepare') args = ['pull', TEMPLATE.builderImage];
+    if (record.type === 'prepare') args = ['pull', record.image];
     else {
       const work = join(this.root, 'runs', id, 'workspace'),
         cache = join(this.root, 'cache');
@@ -310,9 +321,25 @@ export class BuildManager {
         const stat = lstatSync(file);
         if (!stat.isFile() || stat.size > 32 * 1024 * 1024) throw new Error('artifact');
         const jar = readFileSync(file);
-        const mod = JSON.parse(readZipEntry(jar, 'fabric.mod.json').toString());
-        if (mod.id !== snapshot.modId || mod.depends?.minecraft !== snapshot.template.minecraft)
-          throw new Error('manifest');
+        if (snapshot.targetId?.startsWith('forge-') || snapshot.targetId?.startsWith('neoforge-')) {
+          const meta = JSON.parse(readZipEntry(jar, 'minemod-target.json'));
+          if (
+            meta.modId !== snapshot.modId ||
+            meta.target.minecraft !== snapshot.template.minecraft ||
+            meta.target.loader !== snapshot.template.loader
+          )
+            throw new Error('manifest');
+          const toml = readZipEntry(
+            jar,
+            'META-INF/' +
+              (snapshot.template.loader === 'neoforge' ? 'neoforge.mods.toml' : 'mods.toml'),
+          ).toString();
+          if (!toml.includes('modId = "' + snapshot.modId + '"')) throw new Error('manifest');
+        } else {
+          const mod = JSON.parse(readZipEntry(jar, 'fabric.mod.json').toString());
+          if (mod.id !== snapshot.modId || mod.depends?.minecraft !== snapshot.template.minecraft)
+            throw new Error('manifest');
+        }
         readZipEntry(jar, 'studio/minemod/generated/m_' + snapshot.modId + '/GeneratedMod.class');
         const artifactDir = join(this.root, 'artifacts', id);
         mkdirSync(artifactDir, { recursive: true, mode: 0o700 });

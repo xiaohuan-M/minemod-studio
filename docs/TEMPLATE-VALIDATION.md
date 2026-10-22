@@ -62,3 +62,16 @@ Independent generator emits behavior/resource packs with stable namespace-derive
 | Fabric 1.20.1 | `6b6f27672acc98f1ad896a57b2cb9bdd6c2327767b667820280ff1837fabdc02` | `a030a5dc9e15bb1e98e198841d338a3104b29bac2de824be0466f5cb3409261c` | 23184 bytes |
 
 JAR 包含独立 GeneratedClient 渲染入口、实体贴图和刷怪蛋模型；服务端入口不引用客户端类。1.20.1 使用旧版 setDimensions，1.21.1 使用 dimensions。保留原版实体动画/行为并不代表支持自定义骨骼动画。未启动 Minecraft 游戏客户端验证行为、纹理或多人世界。
+
+## Forge / NeoForge · 2026-10-22
+
+| 目标 | 锁定版本与工具链 | 工程 SHA-256 | JAR SHA-256 |
+| --- | --- | --- | --- |
+| Forge 1.20.1 | Forge 47.4.28 / ForgeGradle 6.0.42 / Gradle 8.10.2 / JDK 17 | `052718dc025019fb96838a8f05daec4c16c1f9a6cadb27f1b38361b6b3fac179` | `578f7178e1d19addcacf94c8ec7ad4c7f1b989a843fe0802530237699ca77bd3` |
+| NeoForge 1.21.1 | NeoForge 21.1.264 / ModDevGradle 2.0.148 / Gradle 8.10.2 / JDK 21 | `80e828d6bcc36596c122d929de60636b834bfcb6785d8eb056113612fd58fa81` | `1b31e1f9313af04b88d7526c001a683f75c7b839f97c0bf83b6fbc8c26133175` |
+
+Forge JAR 25151 bytes；NeoForge JAR 23874 bytes。均真实完成完整内容、素材与实体样例编译、JAR 主类/客户端类/实体纹理/刷怪蛋检查、交付包哈希、取消与旧产物保留。编译不等于游戏实测。
+
+Forge 使用独立官方 Gradle/JDK17 多架构镜像：`gradle:8.10.2-jdk17@sha256:c2900027f3f0681c2cbfb09d527813851ad67aeafbb409997297efa2df20e748`。NeoForge 沿用固定 JDK21 镜像，并显式采用 ModDevGradle 的 `disableRecompilation=true` 官方管线，避免在 4 GiB runner 中反编译整个 Minecraft 源码。该选项仍真实编译生成的模组 Java，不伪造或绕过模组编译。依据 ModDevGradle 文档提交 e9c127db51cd59d8d19e238af6a01e071d769661。
+
+源码使用官方映射的独立注册代码和各加载器元数据；共同 Minecraft JSON/贴图由共享资源生成过程产生，不把 Fabric Java 直接替换包名后交付。

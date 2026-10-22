@@ -6,7 +6,7 @@ import { setTimeout } from 'node:timers/promises';
 // Invoking this dedicated command explicitly authorizes the documented image download.
 const dir = mkdtempSync(join(tmpdir(), 'minemod-image-'));
 const manager = new BuildManager(dir, null);
-const record = await manager.prepare(true);
+const record = await manager.prepare(true, process.env.MINEMOD_BUILD_TARGET);
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => manager.close());
 let offset = 0;
 for (;;) {

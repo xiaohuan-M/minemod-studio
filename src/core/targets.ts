@@ -13,6 +13,25 @@ const features = [
 ];
 const descriptors: readonly TargetDescriptor[] = [
   {
+    id: 'forge-1.20.1',
+    label: 'Forge · 1.20.1 · Java 17',
+    target: { edition: 'java', loader: 'forge', minecraft: '1.20.1', java: 17 },
+    artifact: 'jar',
+    validation: 'compiled',
+    enabled: true,
+    features,
+  },
+  {
+    id: 'neoforge-1.21.1',
+    label: 'NeoForge · 1.21.1 · Java 21',
+    target: { edition: 'java', loader: 'neoforge', minecraft: '1.21.1', java: 21 },
+    artifact: 'jar',
+    validation: 'compiled',
+    enabled: true,
+    features,
+  },
+
+  {
     id: 'bedrock-1.21.60',
     label: 'Bedrock · 1.21.60 · 附加包',
     target: { edition: 'bedrock', loader: 'bedrock', minecraft: '1.21.60', java: 0 },
@@ -54,6 +73,7 @@ export function getTarget(id: string): TargetDescriptor | undefined {
   return TARGETS.find((target) => target.id === id);
 }
 export function identifyTarget(value: GameTarget): TargetDescriptor | undefined {
+  if (!value || typeof value !== 'object') return undefined;
   return TARGETS.find(
     ({ target }) =>
       target.edition === value.edition &&

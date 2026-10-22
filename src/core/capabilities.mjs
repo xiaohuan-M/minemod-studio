@@ -27,8 +27,8 @@ export function capabilities() {
       buildCancellation: true,
       buildRepairPlanning: true,
       gamePlaytested: false,
-      forge: false,
-      neoForge: false,
+      forge: true,
+      neoForge: true,
       bedrock: true,
     },
   };

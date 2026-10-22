@@ -168,3 +168,5 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 `GET /api/asset-packages` 导出整个资源库；`GET /api/assets/:id/package` 导出单项资源。`POST /api/asset-packages` 导入版本化 JSON，验证所有记录与 checksum 后创建新资源 ID；保留来源/许可，不覆盖本机素材。
 
 `POST /api/blockbench/export` 接受 `{model,texture?,name}`，返回含嵌入 PNG 的 bbmodel。`POST /api/blockbench/import` 接受 `{model,name,source,license}`，在同一操作中验证并导入静态立方体与嵌入 PNG；拒绝外部纹理路径，纹理限 16/32/64 方形。模型组、网格、骨骼动画不在该接口范围内。
+
+目标新增 `forge-1.20.1` 与 `neoforge-1.21.1`，均通过完整内容样例编译。`GET /api/builder?target=<id>` 检查该目标的固定镜像；准备镜像 POST 可传 `targetId`。Forge 使用 JDK17，其他当前 Java 目标使用 JDK21 编译器。`GET /api/registries/items?target=<id>` 返回该游戏版本的原版物品 ID；保存/生成时拒绝未知原料。旧项目仍可打开并修正旧引用，不因为新增规则丢失历史。

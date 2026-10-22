@@ -47,7 +47,9 @@ async function wait(id) {
   }
 }
 try {
-  const status = await json('/api/builder');
+  const status = await json(
+    '/api/builder?target=' + (process.env.MINEMOD_TEST_TARGET ?? 'fabric-1.21.1'),
+  );
   assert.ok(status.available && status.imageReady, 'Run npm run setup:builder first');
   const texture = await json('/api/assets', 'POST', {
     kind: 'texture',
@@ -65,7 +67,9 @@ try {
   });
   const spec = structuredClone(example);
   const targetId = process.env.MINEMOD_TEST_TARGET ?? 'fabric-1.21.1';
-  assert.ok(['fabric-1.21.1', 'fabric-1.20.1'].includes(targetId));
+  assert.ok(
+    ['fabric-1.21.1', 'fabric-1.20.1', 'forge-1.20.1', 'neoforge-1.21.1'].includes(targetId),
+  );
   spec.target = { ...getTarget(targetId).target };
   spec.items[0].textureAsset = texture.id;
   spec.items[0].modelAsset = model.id;
@@ -89,11 +93,18 @@ try {
   assert.equal(passed.status, 'passed', passed.log);
   const jar = Buffer.from(await (await call('/api/builds/' + passed.id + '/jar')).arrayBuffer());
   assert.equal(sha256(jar), passed.artifact.sha256);
-  assert.equal(JSON.parse(readZipEntry(jar, 'fabric.mod.json')).id, spec.modId);
-  assert.equal(
-    JSON.parse(readZipEntry(jar, 'fabric.mod.json')).depends.minecraft,
-    spec.target.minecraft,
-  );
+  if (spec.target.loader === 'fabric') {
+    assert.equal(JSON.parse(readZipEntry(jar, 'fabric.mod.json')).id, spec.modId);
+    assert.equal(
+      JSON.parse(readZipEntry(jar, 'fabric.mod.json')).depends.minecraft,
+      spec.target.minecraft,
+    );
+  } else {
+    const meta = JSON.parse(readZipEntry(jar, 'minemod-target.json'));
+    assert.equal(meta.modId, spec.modId);
+    assert.deepEqual(meta.target, spec.target);
+  }
+
   readZipEntry(jar, 'studio/minemod/generated/m_full_workshop/GeneratedClient.class');
   readZipEntry(jar, 'assets/full_workshop/textures/entity/crystal_guard.png');
   readZipEntry(jar, 'assets/full_workshop/models/item/moss_cow_spawn_egg.json');

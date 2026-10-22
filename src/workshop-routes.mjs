@@ -38,12 +38,12 @@ export function workshopServices(dataDir, store) {
     }
     if (await assetRoutes({ request, response, url, json, body, fields, send })) return true;
     if (path === '/api/builder' && method === 'GET') {
-      json(response, 200, await builds.status());
+      json(response, 200, await builds.status(url.searchParams.get('target') ?? undefined));
       return true;
     }
     if (path === '/api/builder/prepare' && method === 'POST') {
-      const input = fields(await body(request), ['allowNetwork']);
-      json(response, 202, await builds.prepare(input.allowNetwork));
+      const input = fields(await body(request), ['allowNetwork', 'targetId']);
+      json(response, 202, await builds.prepare(input.allowNetwork, input.targetId));
       return true;
     }
     let match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle))?$/);
@@ -77,7 +77,7 @@ export function workshopServices(dataDir, store) {
         bundle['INSTALL.md'] = Buffer.from(
           artifact.record.artifact.format === 'mcaddon'
             ? '用 Minecraft Bedrock 1.21.60 打开 .mcaddon，在独立测试世界启用行为包和资源包。包校验通过不等于游戏实测通过。\n'
-            : `安装匹配的 Fabric Loader ${record.template.minecraft} 和 Fabric API。把同目录的模组 JAR 放入独立测试实例 mods 目录。\n使用创造模式中的自定义标签页检查物品、工具、方块、合成、掉落和右键行为。编译通过不等于游戏实测通过。\n`,
+            : `安装匹配的 ${record.targetId?.startsWith('forge-') ? 'Forge ' + record.template.loaderVersion : record.targetId?.startsWith('neoforge-') ? 'NeoForge ' + record.template.loaderVersion : 'Fabric Loader ' + record.template.minecraft + ' 和 Fabric API'}。把同目录的模组 JAR 放入独立测试实例 mods 目录。\n使用创造模式中的自定义标签页检查物品、工具、方块、合成、掉落和右键行为。编译通过不等于游戏实测通过。\n`,
         );
         send(zipFiles(bundle), 'application/zip', 'delivery-' + record.id + '.zip');
       } else return false;

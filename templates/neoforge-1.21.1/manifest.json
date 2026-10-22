@@ -1,0 +1,15 @@
+{
+  "minecraft": "1.21.1",
+  "gradle": "8.10.2",
+  "java": 21,
+  "gradleDistributionSha256": "31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26",
+  "wrapperSha256": "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046",
+  "builderImage": "gradle:8.10.2-jdk21@sha256:963d59f7f22767da4efbcf46b661361b61af5fb88b0309da1071c4234c647eba",
+  "id": "neoforge-1.21.1-v1",
+  "loader": "neoforge",
+  "loaderVersion": "21.1.264",
+  "pluginVersion": "2.0.148",
+  "reference": "https://github.com/NeoForgeMDKs/MDK-1.21.1-ModDevGradle",
+  "referenceCommit": "f7002b1b6011723c7b12fde95147689491a6ddab",
+  "note": "Independently generated source; pinned toolchain. See actual validation records."
+}

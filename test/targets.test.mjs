@@ -99,3 +99,39 @@ test('Bedrock HTTP lifecycle produces valid nested packs without invoking Docker
   invalid.items.push(example.items.find((i) => i.kind === 'sword'));
   assert.throws(() => validateModSpec(invalid), /Bedrock/);
 });
+
+test('Forge and NeoForge emit official-mapping Java, loader-specific metadata and pinned independent builders', async () => {
+  const { builderTemplate } = await import('../src/engineering/generator.mjs');
+  for (const [loader, minecraft, java] of [
+    ['forge', '1.20.1', 17],
+    ['neoforge', '1.21.1', 21],
+  ]) {
+    const input = {
+      ...structuredClone(example),
+      target: { edition: 'java', loader, minecraft, java },
+    };
+    const snapshot = generateWorkspace(input),
+      files = workspaceFiles(snapshot);
+    assert.equal(snapshot.targetId, loader + '-' + minecraft);
+    assert.ok(!files['src/main/resources/fabric.mod.json']);
+    assert.equal(JSON.parse(files['src/main/resources/minemod-target.json']).target.loader, loader);
+    assert.match(
+      files['src/main/java/studio/minemod/generated/m_full_workshop/GeneratedMod.java'].toString(),
+      /DeferredRegister/,
+    );
+    assert.doesNotMatch(
+      files['src/main/java/studio/minemod/generated/m_full_workshop/GeneratedMod.java'].toString(),
+      /net.fabricmc|net.minecraft.item/,
+    );
+    if (loader === 'forge')
+      assert.match(builderTemplate(snapshot.targetId).builderImage, /jdk17@sha256:/);
+    else assert.match(files['build.gradle'].toString(), /disableRecompilation = true/);
+  }
+});
+test('vanilla references follow the selected version, while legacy saved hashes remain inspectable', async () => {
+  const { specHash } = await import('../src/core/mod-spec.mjs');
+  const spec = structuredClone(example);
+  spec.recipes[0].key[Object.keys(spec.recipes[0].key)[0]] = 'minecraft:misspelled_diamnd';
+  assert.throws(() => validateModSpec(spec), /原版物品注册表/);
+  assert.equal(specHash(spec).length, 64, 'old invalid references can be opened for correction');
+});

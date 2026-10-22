@@ -1,3 +1,4 @@
+import { hasVanillaItem } from './registries.mjs';
 import { createHash } from 'node:crypto';
 import { identifyTarget } from './targets.ts';
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -16,7 +17,7 @@ const validateStructure = new Ajv2020({
   ownProperties: true,
 }).compile(schema);
 
-export function validateModSpec(value) {
+export function validateModSpec(value, { checkVanilla = true } = {}) {
   if (!validateStructure(value)) {
     const error = validateStructure.errors[0];
     invalid('spec' + error.instancePath.replaceAll('/', '.'), '结构不符合规格：' + error.message);
@@ -75,7 +76,11 @@ export function validateModSpec(value) {
   function reference(ref, path, localOnly = false) {
     const [namespace, id] = ref.split(':');
     if (namespace === value.modId && itemIds.has(id)) return;
-    if (!localOnly && namespace === 'minecraft') return;
+    if (!localOnly && namespace === 'minecraft') {
+      if (checkVanilla && !hasVanillaItem(value.target, id))
+        invalid(path, '当前游戏版本的原版物品注册表中没有 ' + ref + '。');
+      return;
+    }
     invalid(path, '只能引用已声明的本模组物品或 minecraft 物品；产物必须属于本模组。');
   }
   for (const [index, recipe] of value.recipes.entries()) {
@@ -117,6 +122,6 @@ export function specHash(spec) {
           )
         : value;
   return createHash('sha256')
-    .update(JSON.stringify(canonical(validateModSpec(spec))))
+    .update(JSON.stringify(canonical(validateModSpec(spec, { checkVanilla: false }))))
     .digest('hex');
 }
