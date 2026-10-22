@@ -160,3 +160,11 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 `GET /api/image-provider` 仅返回公开配置；`POST /api/image-provider/generate` 接受 `{consent,prompt,view,referenceId?}`，view 为 concept/three_view/detail/texture。只会发送选中的本地图片作为参考，使用 Images generations 或 multipart edits。返回经过 PNG 尺寸/CRC 校验的图片；响应 URL 不自动访问。不与文本 LLM 共用或隐式推断凭据。
 
 资源新增 kind=image，data={png:base64}，要求 16–2048 像素且原 PNG 不超过 6 MiB。图片请求体上限 9 MiB，其他素材仍为 1 MiB。`GET /api/assets/:id/png` 下载；`POST /api/assets/:id/pixelize` 接受 `{size:16|32|64,colors:4|8|16|32|64}`，在本地缩放、量化调色板并创建可继续编辑的贴图，沿用原来源和许可。
+
+## 共享素材与开放目录
+
+`GET /api/catalog` 提供随源码分发的原创素材目录，`POST /api/catalog/:id/import` 接受空对象并导入整组素材。目录来源、许可与贡献流程见 community/README.md。
+
+`GET /api/asset-packages` 导出整个资源库；`GET /api/assets/:id/package` 导出单项资源。`POST /api/asset-packages` 导入版本化 JSON，验证所有记录与 checksum 后创建新资源 ID；保留来源/许可，不覆盖本机素材。
+
+`POST /api/blockbench/export` 接受 `{model,texture?,name}`，返回含嵌入 PNG 的 bbmodel。`POST /api/blockbench/import` 接受 `{model,name,source,license}`，在同一操作中验证并导入静态立方体与嵌入 PNG；拒绝外部纹理路径，纹理限 16/32/64 方形。模型组、网格、骨骼动画不在该接口范围内。

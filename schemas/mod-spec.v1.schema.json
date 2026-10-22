@@ -329,6 +329,71 @@
           "luminance"
         ]
       }
+    },
+    "entities": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "displayName",
+          "archetype",
+          "health",
+          "movementSpeed",
+          "attackDamage"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "displayName": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "zh_cn",
+              "en_us"
+            ],
+            "properties": {
+              "zh_cn": {
+                "$ref": "#/$defs/name"
+              },
+              "en_us": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          "archetype": {
+            "enum": [
+              "zombie",
+              "cow"
+            ]
+          },
+          "health": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "movementSpeed": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1
+          },
+          "attackDamage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "textureColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "textureAsset": {
+            "$ref": "#/$defs/uuid"
+          }
+        }
+      }
     }
   },
   "$defs": {

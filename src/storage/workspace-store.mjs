@@ -17,7 +17,7 @@ export class WorkspaceStore {
     if (!project.spec || project.confirmedSpecHash !== project.specHash)
       throw new AppError(409, 'SPEC_UNCONFIRMED', '请先审查并确认当前规格。');
     const refs = new Set(
-      [...project.spec.items, ...(project.spec.blocks ?? [])]
+      [...project.spec.items, ...(project.spec.blocks ?? []), ...(project.spec.entities ?? [])]
         .flatMap((item) => [item.textureAsset, item.modelAsset])
         .filter(Boolean),
     );

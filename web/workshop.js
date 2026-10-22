@@ -1,3 +1,4 @@
+import { initEntityEditor } from './studio/entity-editor.js';
 import { initImageStudio } from './studio/image-studio.js';
 import { initModelEditor } from './studio/model-editor.js';
 const $ = (id) => document.getElementById(id);
@@ -554,7 +555,14 @@ export function initWorkshop({
     }
     $('asset-library').replaceChildren(
       ...assets
-        .filter((asset) => asset.kind !== 'image')
+        .filter(
+          (asset) =>
+            asset.kind !== 'image' &&
+            [asset.name, asset.source, asset.license]
+              .join(' ')
+              .toLowerCase()
+              .includes($('asset-search').value.toLowerCase()),
+        )
         .map((asset) => {
           const card = el('div', undefined, 'card');
           if (asset.kind === 'texture') {
@@ -602,6 +610,43 @@ export function initWorkshop({
         }),
     );
   }
+  let searchTimer;
+  $('asset-search').oninput = () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => refreshAssets().catch((e) => feedback(e.message, true)), 200);
+  };
+  $('asset-package-import').onchange = run(async () => {
+    const file = $('asset-package-import').files[0];
+    if (!file) return;
+    if (file.size > 32 * 1024 * 1024) throw new Error('资源包最多 32 MiB。');
+    await request('/api/asset-packages', 'POST', JSON.parse(await file.text()));
+    await refreshAssets();
+    $('asset-package-import').value = '';
+    feedback('资源包已校验并导入，保留来源和许可，创建了新的资源 ID。');
+  });
+  api('/api/catalog')
+    .then(({ entries }) => {
+      $('catalog-list').replaceChildren(
+        ...entries.map((entry) => {
+          const card = el('article', undefined, 'card');
+          card.append(
+            el('strong', entry.title),
+            el('p', entry.description),
+            el('small', entry.author + ' · ' + entry.license),
+          );
+          const button = el('button', '导入此素材组', 'secondary');
+          button.onclick = run(async () => {
+            await request('/api/catalog/' + entry.id + '/import');
+            await refreshAssets();
+            feedback('素材组已加入资源库，可继续编辑并绑定内容。');
+          });
+          card.append(button);
+          return card;
+        }),
+      );
+    })
+    .catch((e) => feedback(e.message, true));
+  initEntityEditor({ readSpec, stage, run, getProject });
   // Immutable source snapshots and explicit build permission.
   async function loadWorkspace(hash, epoch = requestEpoch) {
     const id = getProject()?.id;

@@ -25,6 +25,7 @@ export function validateModSpec(value) {
     value.displayName,
     ...value.items.flatMap((item) => Object.values(item.displayName)),
     ...(value.blocks ?? []).flatMap((block) => Object.values(block.displayName)),
+    ...(value.entities ?? []).flatMap((entity) => Object.values(entity.displayName)),
     ...value.assumptions,
   ]) {
     if (!name.trim()) invalid('spec', '名称和假设不能只包含空白。');
@@ -59,6 +60,16 @@ export function validateModSpec(value) {
     if (itemIds.has(block.id))
       invalid('spec.blocks[' + index + '].id', '物品与方块 ID 必须全局唯一。');
     itemIds.add(block.id);
+  }
+  const entityIds = new Set();
+  if (value.target.edition === 'bedrock' && value.entities?.length)
+    invalid('spec.entities', '此 Bedrock 适配器尚不支持实体，请使用 Fabric。');
+  for (const entity of value.entities ?? []) {
+    if (entityIds.has(entity.id) || itemIds.has(entity.id + '_spawn_egg'))
+      invalid('spec.entities', '实体 ID 重复或刷怪蛋 ID 与物品冲突。');
+    if (entity.archetype === 'cow' && entity.attackDamage !== 0)
+      invalid('spec.entities', '牛是被动生物，攻击伤害必须为 0。');
+    entityIds.add(entity.id);
   }
   const recipeIds = new Set();
   function reference(ref, path, localOnly = false) {

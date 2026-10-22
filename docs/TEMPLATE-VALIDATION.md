@@ -51,3 +51,14 @@ gradle:8.10.2-jdk21@sha256:963d59f7f22767da4efbcf46b661361b61af5fb88b0309da1071c
 ## Bedrock 1.21.60
 
 Independent generator emits behavior/resource packs with stable namespace-derived UUIDs, bilingual text, original procedural or user textures, items, food, solid blocks, loot and recipes. The API integration test packages nested `.mcpack` archives into `.mcaddon`, verifies manifests/dependencies/PNG references and SHA-256, then verifies source delivery. No Docker, Java compiler or game client is involved. Tools, wand scripts and Java item models are explicitly rejected for this target. Package validation is not gameplay validation.
+
+## 实体模板与素材集成 · 2026-10-22
+
+两套目标都使用扩充后的 `examples/full-workshop.json`：原有物品/工具/方块/配方，加晶体守卫（僵尸原型）和苔原牛（牛原型）；还绑定自定义贴图和立方体模型。通过完整 HTTP 生成、批准、Docker 编译、JAR 内容检查、交付包校验、取消与旧产物保留测试。
+
+| 目标 | 工程 SHA-256 | JAR SHA-256 | 大小 |
+| --- | --- | --- | --- |
+| Fabric 1.21.1 | `138a16707f1434a66f5ccd0e12d92034786bc9d09adf8a5a54ca28b522670af7` | `9f3b3a0fa97ae259e34fab7073031856cce73461c99986a621b023e2d0190623` | 23299 bytes |
+| Fabric 1.20.1 | `6b6f27672acc98f1ad896a57b2cb9bdd6c2327767b667820280ff1837fabdc02` | `a030a5dc9e15bb1e98e198841d338a3104b29bac2de824be0466f5cb3409261c` | 23184 bytes |
+
+JAR 包含独立 GeneratedClient 渲染入口、实体贴图和刷怪蛋模型；服务端入口不引用客户端类。1.20.1 使用旧版 setDimensions，1.21.1 使用 dimensions。保留原版实体动画/行为并不代表支持自定义骨骼动画。未启动 Minecraft 游戏客户端验证行为、纹理或多人世界。

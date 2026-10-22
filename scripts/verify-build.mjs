@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { makeServer } from '../src/server.mjs';
 import { readZipEntry, sha256 } from '../src/core/archive.mjs';
 import { placeholderTexture } from '../src/core/assets.mjs';
+import { getTarget } from '../src/core/targets.ts';
 import example from '../examples/full-workshop.json' with { type: 'json' };
 const parent = resolve('.minemod');
 mkdirSync(parent, { recursive: true });
@@ -63,6 +64,9 @@ try {
     data: { elements: [{ from: [5, 0, 5], to: [11, 14, 11] }] },
   });
   const spec = structuredClone(example);
+  const targetId = process.env.MINEMOD_TEST_TARGET ?? 'fabric-1.21.1';
+  assert.ok(['fabric-1.21.1', 'fabric-1.20.1'].includes(targetId));
+  spec.target = { ...getTarget(targetId).target };
   spec.items[0].textureAsset = texture.id;
   spec.items[0].modelAsset = model.id;
   let p = await json('/api/projects', 'POST', {
@@ -86,6 +90,13 @@ try {
   const jar = Buffer.from(await (await call('/api/builds/' + passed.id + '/jar')).arrayBuffer());
   assert.equal(sha256(jar), passed.artifact.sha256);
   assert.equal(JSON.parse(readZipEntry(jar, 'fabric.mod.json')).id, spec.modId);
+  assert.equal(
+    JSON.parse(readZipEntry(jar, 'fabric.mod.json')).depends.minecraft,
+    spec.target.minecraft,
+  );
+  readZipEntry(jar, 'studio/minemod/generated/m_full_workshop/GeneratedClient.class');
+  readZipEntry(jar, 'assets/full_workshop/textures/entity/crystal_guard.png');
+  readZipEntry(jar, 'assets/full_workshop/models/item/moss_cow_spawn_egg.json');
   assert.deepEqual(
     readZipEntry(jar, 'assets/full_workshop/textures/item/crystal.png'),
     Buffer.from(await (await call('/api/assets/' + texture.id + '/png')).arrayBuffer()),

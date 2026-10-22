@@ -1,17 +1,17 @@
+import { createAssetRoutes } from './asset-routes.mjs';
 import { ProjectBackup } from './storage/project-backup.mjs';
-import { pixelizeImage } from './core/images.mjs';
 import { identifyTarget } from './core/targets.ts';
 import { AssetStore } from './storage/asset-store.mjs';
 import { WorkspaceStore } from './storage/workspace-store.mjs';
 import { BuildManager } from './runner/manager.mjs';
 import { AppError } from './core/errors.mjs';
 import { zipFiles } from './core/archive.mjs';
-import { pngTexture, exportBlockbench } from './core/assets.mjs';
 
 export function workshopServices(dataDir, store) {
   const assets = new AssetStore(dataDir),
     workspaces = new WorkspaceStore(dataDir, assets),
     builds = new BuildManager(dataDir, workspaces);
+  const assetRoutes = createAssetRoutes(assets);
   const backup = new ProjectBackup(dataDir, store, { assets, workspaces, builds });
   async function route({ request, response, url, json, body, fields, publicProject }) {
     const path = url.pathname,
@@ -36,52 +36,7 @@ export function workshopServices(dataDir, store) {
       );
       return true;
     }
-    if (path === '/api/assets') {
-      if (method === 'GET') json(response, 200, { assets: assets.list() });
-      else if (method === 'POST') {
-        const input = await body(request, 9 * 1024 * 1024);
-        if (input?.kind !== 'image' && Buffer.byteLength(JSON.stringify(input)) > 1024 * 1024)
-          throw new AppError(413, 'BODY_TOO_LARGE', '贴图或模型请求不能超过 1 MiB。');
-        json(response, 201, assets.create(input));
-      } else return false;
-      return true;
-    }
-    let match = path.match(/^\/api\/assets\/([^/]+)(?:\/(png|bbmodel|pixelize))?$/);
-    if (match && method === 'POST' && match[2] === 'pixelize') {
-      const asset = assets.get(match[1]);
-      if (asset.kind !== 'image') throw new AppError(422, 'ASSET_TYPE', '请选择图片资源。');
-      const input = fields(await body(request), ['size', 'colors']);
-      json(
-        response,
-        201,
-        assets.create({
-          kind: 'texture',
-          name: asset.name.slice(0, 70) + ' 像素贴图',
-          source: asset.source,
-          license: asset.license,
-          data: pixelizeImage(asset.data, input.size, input.colors),
-        }),
-      );
-      return true;
-    }
-    if (match && method === 'GET') {
-      const asset = assets.get(match[1]);
-      if (!match[2]) json(response, 200, asset);
-      else if (match[2] === 'png' && ['texture', 'image'].includes(asset.kind))
-        send(
-          asset.kind === 'image' ? Buffer.from(asset.data.png, 'base64') : pngTexture(asset.data),
-          'image/png',
-          'texture-' + asset.id + '.png',
-        );
-      else if (match[2] === 'bbmodel' && asset.kind === 'model')
-        send(
-          JSON.stringify(exportBlockbench(asset.data, asset.name), null, 2),
-          'application/json',
-          'model-' + asset.id + '.bbmodel',
-        );
-      else throw new AppError(400, 'ASSET_TYPE', '资源类型不匹配。');
-      return true;
-    }
+    if (await assetRoutes({ request, response, url, json, body, fields, send })) return true;
     if (path === '/api/builder' && method === 'GET') {
       json(response, 200, await builds.status());
       return true;
@@ -91,7 +46,7 @@ export function workshopServices(dataDir, store) {
       json(response, 202, await builds.prepare(input.allowNetwork));
       return true;
     }
-    match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle))?$/);
+    let match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle))?$/);
     if (match) {
       const record = builds.get(match[1]);
       if (!match[2] && method === 'GET') json(response, 200, record);

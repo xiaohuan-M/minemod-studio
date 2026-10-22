@@ -16,6 +16,7 @@ export function initModelEditor({
   getPixels,
 }) {
   // Static cube models can be exchanged with Blockbench; unsupported features fail validation.
+  let previewTexture = null;
   let model = { elements: [{ from: [4, 0, 4], to: [12, 16, 12] }] };
   const preview = modelPreview($('model-canvas'), (index) => {
     $('cube-select').value = String(index);
@@ -101,15 +102,33 @@ export function initModelEditor({
     if (!file) return;
     if (file.size > 800 * 1024) throw new Error('模型文件最多 800 KiB。');
     const data = JSON.parse(await file.text());
-    const saved = await request('/api/assets', 'POST', {
-      ...assetPayload('model', file.name.slice(0, 80), data),
-      ...(data.meta || file.name.endsWith('.bbmodel') ? { format: 'bbmodel' } : {}),
-    });
-    model = saved.data;
-    $('model-name').value = saved.name;
+    if (data.meta || file.name.endsWith('.bbmodel')) {
+      const result = await request('/api/blockbench/import', 'POST', {
+        model: data,
+        name: file.name.slice(0, 80),
+        source: $('asset-source').value,
+        license: $('asset-license').value,
+      });
+      const saved = result.assets.find((a) => a.kind === 'model'),
+        texture = result.assets.find((a) => a.kind === 'texture');
+      model = saved.data;
+      $('model-name').value = saved.name;
+      if (texture) {
+        previewTexture = texture.data;
+        preview.texture(previewTexture);
+      }
+    } else {
+      const saved = await request(
+        '/api/assets',
+        'POST',
+        assetPayload('model', file.name.slice(0, 80), data),
+      );
+      model = saved.data;
+      $('model-name').value = saved.name;
+    }
     renderCubes();
     await refreshAssets();
-    feedback('静态模型已校验并导入资源库。贴图请单独导入和绑定。');
+    feedback('模型与嵌入贴图已校验并导入资源库；可分别绑定物品。');
   });
 
   function loadFace() {
@@ -163,9 +182,25 @@ export function initModelEditor({
     feedback('显示姿态已更新；保存模型后会写入导出的游戏模型。');
   });
   $('model-texture-pixels').onclick = () => {
-    preview.texture(getPixels());
+    previewTexture = structuredClone(getPixels());
+    preview.texture(previewTexture);
     feedback('已使用当前像素画布预览；在内容编辑器中选择相同贴图即可用于游戏。');
   };
+  $('model-export').onclick = run(async () => {
+    const bb = await request('/api/blockbench/export', 'POST', {
+      model,
+      name: $('model-name').value,
+      ...(previewTexture ? { texture: previewTexture } : {}),
+    });
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(bb, null, 2)], { type: 'application/json' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'model.bbmodel';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   $('model-screenshot').onclick = run(() => {
     const a = document.createElement('a');
     a.href = preview.capture();

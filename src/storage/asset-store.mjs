@@ -1,3 +1,4 @@
+import { unlinkSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { JsonDirectory } from './json-directory.mjs';
@@ -9,7 +10,7 @@ export class AssetStore {
   constructor(dataDir) {
     this.records = new JsonDirectory(join(dataDir, 'assets'));
   }
-  create(input) {
+  prepare(input) {
     if (
       !input ||
       typeof input !== 'object' ||
@@ -28,8 +29,7 @@ export class AssetStore {
         throw new AppError(422, 'INVALID_ASSET', '请填写资源名称、来源和许可说明。');
     if (!['texture', 'model', 'image'].includes(input.kind))
       throw new AppError(422, 'INVALID_ASSET', '请选择贴图、模型或图片。');
-    if (this.records.ids().length >= 500)
-      throw new AppError(409, 'ASSET_LIMIT', '资源库达到 500 项，请备份并整理资源。');
+
     const data =
       input.kind === 'image'
         ? validateImage(input.data)
@@ -48,7 +48,49 @@ export class AssetStore {
       createdAt: new Date().toISOString(),
       sha256: sha256(JSON.stringify(data)),
     };
+    return record;
+  }
+  create(input) {
+    if (this.records.ids().length >= 500)
+      throw new AppError(409, 'ASSET_LIMIT', '资源库达到 500 项，请备份并整理资源。');
+    const record = this.prepare(input);
     return this.records.write(record.id, record);
+  }
+  exportPackage(ids = this.records.ids()) {
+    const assets = ids.map((id) => {
+      const { name, kind, data, source, license } = this.get(id);
+      return { name, kind, data, source, license };
+    });
+    const payload = { format: 'minemod-assets', version: 1, assets };
+    if (Buffer.byteLength(JSON.stringify(payload)) > 32 * 1024 * 1024)
+      throw new AppError(422, 'ASSET_LIMIT', '资源包超过 32 MiB，请单独导出资源。');
+    return { ...payload, checksum: sha256(JSON.stringify(payload)) };
+  }
+  importPackage(input) {
+    const { checksum, ...payload } = input ?? {};
+    if (
+      payload.format !== 'minemod-assets' ||
+      payload.version !== 1 ||
+      !Array.isArray(payload.assets) ||
+      !payload.assets.length ||
+      payload.assets.length > 500 ||
+      sha256(JSON.stringify(payload)) !== checksum
+    )
+      throw new AppError(422, 'INVALID_ASSET_PACKAGE', '资源包格式或校验失败。');
+    if (this.records.ids().length + payload.assets.length > 500)
+      throw new AppError(409, 'ASSET_LIMIT', '导入会超出 500 项资源限制。');
+    const prepared = payload.assets.map((asset) => this.prepare(asset)),
+      written = [];
+    try {
+      for (const record of prepared) {
+        this.records.write(record.id, record);
+        written.push(record.id);
+      }
+      return prepared;
+    } catch (error) {
+      for (const id of written) unlinkSync(this.records.path(id));
+      throw error;
+    }
   }
   get(id) {
     const record = this.records.read(id);

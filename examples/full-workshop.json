@@ -155,5 +155,31 @@
       "resistance": 6,
       "luminance": 15
     }
+  ],
+  "entities": [
+    {
+      "id": "crystal_guard",
+      "displayName": {
+        "zh_cn": "晶体守卫",
+        "en_us": "Crystal Guard"
+      },
+      "archetype": "zombie",
+      "health": 40,
+      "movementSpeed": 0.23,
+      "attackDamage": 5,
+      "textureColor": "#9564c8"
+    },
+    {
+      "id": "moss_cow",
+      "displayName": {
+        "zh_cn": "苔原牛",
+        "en_us": "Moss Cow"
+      },
+      "archetype": "cow",
+      "health": 20,
+      "movementSpeed": 0.2,
+      "attackDamage": 0,
+      "textureColor": "#65875b"
+    }
   ]
 }

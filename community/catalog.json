@@ -1,0 +1,1476 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "crystal-wand",
+      "title": "晶体法杖",
+      "description": "长柄与晶体头部，可作为物品模型起点。",
+      "author": "MineMod Studio contributors",
+      "license": "CC0-1.0",
+      "assets": [
+        {
+          "kind": "model",
+          "name": "晶体法杖",
+          "data": {
+            "elements": [
+              {
+                "from": [
+                  7,
+                  0,
+                  7
+                ],
+                "to": [
+                  9,
+                  13,
+                  9
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              },
+              {
+                "from": [
+                  5,
+                  12,
+                  5
+                ],
+                "to": [
+                  11,
+                  18,
+                  11
+                ],
+                "rotation": {
+                  "origin": [
+                    8,
+                    15,
+                    8
+                  ],
+                  "axis": "y",
+                  "angle": 45
+                },
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              }
+            ],
+            "display": {
+              "thirdperson_righthand": {
+                "rotation": [
+                  0,
+                  0,
+                  -20
+                ],
+                "translation": [
+                  0,
+                  1,
+                  0
+                ],
+                "scale": [
+                  0.6,
+                  0.6,
+                  0.6
+                ]
+              }
+            }
+          },
+          "source": "MineMod Studio original catalog: crystal-wand",
+          "license": "CC0-1.0"
+        },
+        {
+          "kind": "texture",
+          "name": "晶体法杖 调色贴图",
+          "data": {
+            "width": 16,
+            "height": 16,
+            "pixels": [
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff",
+              "#a681dfff",
+              "#6c5491ff",
+              "#a681dfff",
+              "#a681dfff"
+            ]
+          },
+          "source": "MineMod Studio original procedural texture: crystal-wand",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "field-hammer",
+      "title": "勘探锤",
+      "description": "手柄与宽锤头，适合工具造型练习。",
+      "author": "MineMod Studio contributors",
+      "license": "CC0-1.0",
+      "assets": [
+        {
+          "kind": "model",
+          "name": "勘探锤",
+          "data": {
+            "elements": [
+              {
+                "from": [
+                  7,
+                  0,
+                  7
+                ],
+                "to": [
+                  9,
+                  13,
+                  9
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              },
+              {
+                "from": [
+                  2,
+                  12,
+                  5
+                ],
+                "to": [
+                  14,
+                  17,
+                  11
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              }
+            ],
+            "display": {
+              "thirdperson_righthand": {
+                "rotation": [
+                  0,
+                  0,
+                  -20
+                ],
+                "translation": [
+                  0,
+                  1,
+                  0
+                ],
+                "scale": [
+                  0.6,
+                  0.6,
+                  0.6
+                ]
+              }
+            }
+          },
+          "source": "MineMod Studio original catalog: field-hammer",
+          "license": "CC0-1.0"
+        },
+        {
+          "kind": "texture",
+          "name": "勘探锤 调色贴图",
+          "data": {
+            "width": 16,
+            "height": 16,
+            "pixels": [
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#b69b6bff",
+              "#766546ff",
+              "#b69b6bff",
+              "#b69b6bff"
+            ]
+          },
+          "source": "MineMod Studio original procedural texture: field-hammer",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "forest-lantern",
+      "title": "森林提灯",
+      "description": "灯体、底座和提手，适合装饰物品。",
+      "author": "MineMod Studio contributors",
+      "license": "CC0-1.0",
+      "assets": [
+        {
+          "kind": "model",
+          "name": "森林提灯",
+          "data": {
+            "elements": [
+              {
+                "from": [
+                  4,
+                  2,
+                  4
+                ],
+                "to": [
+                  12,
+                  12,
+                  12
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              },
+              {
+                "from": [
+                  3,
+                  0,
+                  3
+                ],
+                "to": [
+                  13,
+                  2,
+                  13
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              },
+              {
+                "from": [
+                  3,
+                  12,
+                  3
+                ],
+                "to": [
+                  13,
+                  14,
+                  13
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              },
+              {
+                "from": [
+                  7,
+                  14,
+                  6
+                ],
+                "to": [
+                  9,
+                  18,
+                  10
+                ],
+                "faces": {
+                  "north": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "south": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "east": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "west": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "up": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  },
+                  "down": {
+                    "uv": [
+                      0,
+                      0,
+                      16,
+                      16
+                    ],
+                    "texture": "#0"
+                  }
+                }
+              }
+            ],
+            "display": {
+              "thirdperson_righthand": {
+                "rotation": [
+                  0,
+                  0,
+                  -20
+                ],
+                "translation": [
+                  0,
+                  1,
+                  0
+                ],
+                "scale": [
+                  0.6,
+                  0.6,
+                  0.6
+                ]
+              }
+            }
+          },
+          "source": "MineMod Studio original catalog: forest-lantern",
+          "license": "CC0-1.0"
+        },
+        {
+          "kind": "texture",
+          "name": "森林提灯 调色贴图",
+          "data": {
+            "width": 16,
+            "height": 16,
+            "pixels": [
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff",
+              "#92b27cff",
+              "#5f7451ff",
+              "#92b27cff",
+              "#92b27cff"
+            ]
+          },
+          "source": "MineMod Studio original procedural texture: forest-lantern",
+          "license": "CC0-1.0"
+        }
+      ]
+    }
+  ]
+}

@@ -21,6 +21,7 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/entity-editor.js', ['studio/entity-editor.js', 'text/javascript; charset=utf-8']],
   ['/studio/image-studio.js', ['studio/image-studio.js', 'text/javascript; charset=utf-8']],
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
@@ -191,6 +192,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           const example = structuredClone(fullExample);
           example.target = { ...target.target };
           if (target.target.edition === 'bedrock') {
+            delete example.entities;
             example.items = example.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
             const ids = new Set(
               [...example.items, ...example.blocks].map((i) => example.modId + ':' + i.id),

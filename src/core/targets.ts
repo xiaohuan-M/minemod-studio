@@ -9,6 +9,7 @@ const features = [
   'recipes',
   'textures',
   'static_models',
+  'vanilla_entity_archetypes',
 ];
 const descriptors: readonly TargetDescriptor[] = [
   {

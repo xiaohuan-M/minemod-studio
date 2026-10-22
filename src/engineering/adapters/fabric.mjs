@@ -1,3 +1,4 @@
+import { generateEntities } from './fabric-entities.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -94,7 +95,10 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
     authors: ['MineMod Studio user'],
     license: 'MIT',
     environment: '*',
-    entrypoints: { main: [packageName + '.GeneratedMod'] },
+    entrypoints: {
+      main: [packageName + '.GeneratedMod'],
+      ...(spec.entities?.length ? { client: [packageName + '.GeneratedClient'] } : {}),
+    },
     depends: {
       fabricloader: '>=' + template.loader,
       minecraft: template.minecraft,
@@ -197,6 +201,8 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
       ],
     });
   }
+  const entities = generateEntities(spec, { add, resource, getAsset, packageName, zh, en, legacy });
+  statements.push(...entities.statements);
   resource(`assets/${ns}/lang/zh_cn.json`, zh);
   resource(`assets/${ns}/lang/en_us.json`, en);
   for (const recipe of spec.recipes) {
@@ -248,6 +254,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 public final class GeneratedMod implements ModInitializer {
   public static final String MOD_ID = ${literal(ns)};
+  ${entities.declarations.join('\n  ')}
   @Override public void onInitialize() {
     final ArrayList<Item> all = new ArrayList<>();
     ${statements.join('\n    ')}

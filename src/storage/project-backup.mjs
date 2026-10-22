@@ -34,7 +34,7 @@ export class ProjectBackup {
       workspaces = this.workspaces.list(id).map((w) => this.workspaces.get(id, w.hash));
     const refs = new Set(workspaces.flatMap((w) => w.assetIds));
     for (const spec of [project.spec, ...project.specHistory.map((h) => h.spec)].filter(Boolean))
-      for (const item of [...spec.items, ...(spec.blocks ?? [])])
+      for (const item of [...spec.items, ...(spec.blocks ?? []), ...(spec.entities ?? [])])
         for (const key of ['textureAsset', 'modelAsset']) if (item[key]) refs.add(item[key]);
     const assets = [...refs].map((id) => this.assets.get(id));
     const builds = this.builds.list(id).map((summary) => {
@@ -155,7 +155,7 @@ export class ProjectBackup {
       stagedProjects.save(project);
       stagedProjects.get(project.id);
       for (const spec of [project.spec, ...project.specHistory.map((h) => h.spec)].filter(Boolean))
-        for (const item of [...spec.items, ...(spec.blocks ?? [])])
+        for (const item of [...spec.items, ...(spec.blocks ?? []), ...(spec.entities ?? [])])
           for (const key of ['textureAsset', 'modelAsset'])
             if (item[key] && !assetIds.has(item[key])) fail('备份缺少规格引用的资源。');
       const hashes = new Set();

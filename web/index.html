@@ -432,6 +432,59 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
             </div>
             <div id="image-library" class="inventory"></div>
           </details>
+          <details id="entity-editor">
+            <summary>实体工坊 · 原版行为模板</summary>
+            <p id="entity-limit" class="target"></p>
+            <div id="entity-list" class="inventory"></div>
+            <form id="entity-form">
+              <div class="form-grid">
+                <label
+                  >实体 ID<input id="entity-id" pattern="[a-z][a-z0-9_]{0,63}" required /></label
+                ><label>中文名称<input id="entity-zh" maxlength="80" required /></label
+                ><label>英文名称<input id="entity-en" maxlength="80" required /></label
+                ><label
+                  >行为模板<select id="entity-archetype">
+                    <option value="zombie">僵尸 · 敌对与日晒燃烧</option>
+                    <option value="cow">牛 · 被动与繁殖</option>
+                  </select></label
+                ><label
+                  >生命值<input
+                    id="entity-health"
+                    type="number"
+                    min="1"
+                    max="200"
+                    value="20"
+                    required /></label
+                ><label
+                  >移动速度<input
+                    id="entity-speed"
+                    type="number"
+                    min="0.01"
+                    max="1"
+                    step="0.01"
+                    value="0.23"
+                    required /></label
+                ><label
+                  >攻击伤害（牛为 0）<input
+                    id="entity-damage"
+                    type="number"
+                    min="0"
+                    max="30"
+                    value="3"
+                    required /></label
+                ><label>占位颜色<input id="entity-color" type="color" value="#8e62cf" /></label
+                ><label
+                  >实体贴图<select id="entity-texture">
+                    <option value="">程序占位贴图</option>
+                  </select></label
+                >
+              </div>
+              <div class="actions">
+                <button id="entity-save" type="submit">写入实体草稿</button
+                ><button id="entity-reset" type="button" class="secondary">清空实体表单</button>
+              </div>
+            </form>
+          </details>
           <div class="workshop-columns">
             <details open>
               <summary>像素贴图</summary>
@@ -550,6 +603,7 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
               </details>
               <div class="actions">
                 <button id="model-texture-pixels" class="secondary">使用当前像素画布预览</button
+                ><button id="model-export" class="secondary">导出模型与预览贴图 bbmodel</button
                 ><button id="model-screenshot" class="secondary">导出预览 PNG</button>
               </div>
               <label>模型名称<input id="model-name" value="我的模型" maxlength="80" /></label
@@ -560,6 +614,28 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
             <label>资源来源<input id="asset-source" value="本人原创" maxlength="200" /></label
             ><label>许可说明<input id="asset-license" value="CC0-1.0" maxlength="200" /></label>
           </div>
+          <div class="actions">
+            <a href="/api/asset-packages" download>导出整个资源库</a
+            ><label class="file-button"
+              >导入分享资源包<input id="asset-package-import" type="file" accept=".json"
+            /></label>
+          </div>
+          <label
+            >搜索资源<input id="asset-search" type="search" placeholder="名称、来源或许可"
+          /></label>
+          <details id="community-catalog">
+            <summary>开放素材目录 · 离线可用</summary>
+            <p class="target">
+              原创样例随开源仓库分发。可编辑、导出、分享资源包，也可通过 GitHub Pull Request 贡献。
+            </p>
+            <a
+              href="https://github.com/xiaohuan-M/minemod-studio/tree/main/community"
+              target="_blank"
+              rel="noopener noreferrer"
+              >查看目录与贡献规则</a
+            >
+            <div id="catalog-list" class="inventory"></div>
+          </details>
           <div id="asset-library" class="inventory"></div>
         </section>
         <section id="engineering">
