@@ -147,6 +147,7 @@ export class ProjectStore {
     return this.save({
       ...project,
       spec,
+      target: spec.target,
       specHash: specHash(spec),
       specSource: source,
       confirmedSpecHash: null,

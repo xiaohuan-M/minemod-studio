@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { identifyTarget } from './targets.ts';
 import Ajv2020 from 'ajv/dist/2020.js';
 import schema from '../../schemas/mod-spec.v1.schema.json' with { type: 'json' };
 import { AppError } from './errors.mjs';
@@ -28,6 +29,16 @@ export function validateModSpec(value) {
   ]) {
     if (!name.trim()) invalid('spec', '名称和假设不能只包含空白。');
   }
+  if (!identifyTarget(value.target)?.enabled)
+    invalid('spec.target', '没有匹配的版本、加载器和 Java 组合。');
+  if (
+    value.target.edition === 'bedrock' &&
+    value.items.some((item) => !['basic_item', 'food'].includes(item.kind) || item.modelAsset)
+  )
+    invalid(
+      'spec.items',
+      '此 Bedrock 适配器支持普通物品、食物、方块、贴图和配方；工具、法杖与 Java 物品模型请使用 Fabric。',
+    );
   if (['minecraft', 'fabric', 'java'].includes(value.modId))
     invalid('spec.modId', '请使用自己的命名空间。');
   const itemIds = new Set();

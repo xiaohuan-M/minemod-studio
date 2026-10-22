@@ -12,6 +12,24 @@ const features = [
 ];
 const descriptors: readonly TargetDescriptor[] = [
   {
+    id: 'bedrock-1.21.60',
+    label: 'Bedrock · 1.21.60 · 附加包',
+    target: { edition: 'bedrock', loader: 'bedrock', minecraft: '1.21.60', java: 0 },
+    artifact: 'mcaddon',
+    validation: 'package-checked',
+    enabled: true,
+    features: ['items', 'food', 'blocks', 'recipes', 'textures'],
+  },
+  {
+    id: 'fabric-1.20.1',
+    label: 'Fabric · 1.20.1 · Java 17',
+    target: { edition: 'java', loader: 'fabric', minecraft: '1.20.1', java: 17 },
+    artifact: 'jar',
+    validation: 'compiled',
+    enabled: true,
+    features,
+  },
+  {
     id: 'fabric-1.21.1',
     label: 'Fabric · 1.21.1 · Java 21',
     target: { edition: 'java', loader: 'fabric', minecraft: '1.21.1', java: 21 },

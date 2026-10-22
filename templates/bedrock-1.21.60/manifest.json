@@ -1,0 +1,9 @@
+{
+  "id": "bedrock-1.21.60-v1",
+  "minecraft": "1.21.60",
+  "edition": "bedrock",
+  "formatVersion": "1.21.60",
+  "reference": "https://github.com/Mojang/bedrock-samples/tree/43ca2795c201b6fff53f38597c4d01f6c4593e1a",
+  "referenceNote": "Independent generator; upstream samples used as format documentation only. No Mojang textures or source redistributed.",
+  "validation": "Structural package validation only; in-game verification pending."
+}

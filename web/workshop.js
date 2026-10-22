@@ -351,7 +351,8 @@ export function initWorkshop({
   );
   $('load-full-example').onclick = run(async () => {
     if (isDirty() && !window.confirm('载入示例会替换未保存的规格草稿。继续吗？')) return;
-    stage(await api('/api/examples/full-workshop'));
+    const t = getProject().target;
+    stage(await api('/api/examples/full-workshop?target=' + t.loader + '-' + t.minecraft));
     resetContent();
   });
   $('clone-project').onclick = run(async () => {
@@ -745,7 +746,11 @@ export function initWorkshop({
     });
     $('build-network').checked = false;
     watch(record.id);
-    feedback('构建任务已启动。日志来自真实 Docker / Gradle。');
+    feedback(
+      p.target.edition === 'bedrock'
+        ? 'Bedrock 本地打包任务已启动。'
+        : '构建任务已启动。日志来自真实 Docker / Gradle。',
+    );
   });
   $('cancel-build').onclick = run(async () => {
     if (activeBuild) await request('/api/builds/' + activeBuild + '/cancel');
@@ -768,15 +773,18 @@ export function initWorkshop({
       (statusName[record.status] ?? record.status) +
       ' · ' +
       (record.snapshotHash?.slice(0, 12) ?? '') +
-      (record.artifact ? ' · JAR SHA-256 ' + record.artifact.sha256 + ' · 未做游戏实测' : '');
+      (record.artifact ? ' · 产物 SHA-256 ' + record.artifact.sha256 + ' · 未做游戏实测' : '');
     $('build-log').textContent = record.log || '等待构建日志……';
     $('build-downloads').replaceChildren(
       download('/api/builds/' + record.id + '/report', '下载构建报告'),
     );
     if (record.artifact && record.status === 'passed')
       $('build-downloads').append(
-        download('/api/builds/' + record.id + '/jar', '下载 JAR'),
-        download('/api/builds/' + record.id + '/bundle', '下载交付包（源码 + JAR + 报告）'),
+        download(
+          '/api/builds/' + record.id + '/artifact',
+          record.artifact.format === 'mcaddon' ? '下载 MCADDON' : '下载 JAR',
+        ),
+        download('/api/builds/' + record.id + '/bundle', '下载交付包（源码 + 产物 + 报告）'),
       );
   }
   function watch(id) {

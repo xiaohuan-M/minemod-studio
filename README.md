@@ -2,7 +2,7 @@
 
 **完全开源、本地优先、自带 LLM API 的 Minecraft 创作工具。** 从自然语言与可视化内容编辑，到贴图、立方体模型、源码审查、真实 Gradle 编译和 JAR 交付，代码采用 MIT 许可，无平台账号、积分或订阅依赖。
 
-当前版本 **0.2.0**，已打通 **Java / Fabric / Minecraft 1.21.1** 创作流程。模板和完整内容样例经过真实 Docker 构建；编译成功不代表游戏实测。Forge、NeoForge、Bedrock、其他 Minecraft 版本、任意 Java 行为、实体和动画尚未实现，不能把它称作这些平台的完整支持。
+当前版本 **0.2.0**，已打通 **Java / Fabric / Minecraft 1.20.1、1.21.1** 创作流程，并提供 **Bedrock 1.21.60** 普通物品、食物、方块、贴图与配方附加包生成。两个 Fabric 目标的完整内容样例经过真实 Docker 构建；Bedrock 只经过包结构验证，工具、法杖和 Java 模型不支持；编译成功不代表游戏实测。Forge、NeoForge、其他 Minecraft 版本、任意 Java 行为、实体和动画尚未实现，不能把它称作这些平台的完整支持。
 
 参考 [AutoMods 公开产品流程](https://automods.cn/#faq)，独立实现。不是其源码或官方客户端，与 Mojang、Microsoft 无关联。具体能力和证据见 [功能清单](docs/FEATURES.md) 与 [编译记录](docs/TEMPLATE-VALIDATION.md)。
 
@@ -50,7 +50,7 @@ MINEMOD_LLM_API_KEY=your-key
 
 ## 制作第一个模组
 
-1. 新建项目，载入完整功能示例或使用自己的模型生成规格。
+1. 新建项目时选择目标，载入对应功能示例或使用自己的模型生成规格。
 2. 用内容表单和 3×3 配方编辑器修改；制作或导入贴图/模型，并绑定到内容。
 3. 点击“校验并保存修改”，核对后“确认当前规格”。
 4. 点击“从已确认规格生成工程”，检查差异和源码。此时可直接下载源码 ZIP。
@@ -88,3 +88,5 @@ Linux 的实际构建已验证；Windows/macOS 的应用测试与 Docker Desktop
 代码 [MIT](LICENSE)，第三方模板与 Gradle wrapper 保留各自许可证。Minecraft 依赖需要从其合法来源下载，项目许可证不覆盖 Minecraft 代码/资产。素材来源与许可随工程写入 `ASSETS.json`。
 
 备份整个 `.minemod/` 可保留项目、资源、工程和构建记录；`.env` 另行安全保管。没有遥测或自动上传。安全边界见 [SECURITY.md](SECURITY.md)。
+
+Bedrock 目标无需 Docker：确认规格、生成并批准工程后，点击构建即可本地打包，下载 MCADDON；在 Minecraft 1.21.60 的独立测试世界同时启用行为包与资源包。尚未进行游戏实测。

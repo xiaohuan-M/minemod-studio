@@ -172,7 +172,11 @@ $('create-form').addEventListener('submit', async (event) => {
   try {
     const project = await api('/api/projects', {
       method: 'POST',
-      body: JSON.stringify({ name: $('name').value, prompt: $('prompt').value }),
+      body: JSON.stringify({
+        name: $('name').value,
+        prompt: $('prompt').value,
+        targetId: $('target-select').value,
+      }),
     });
     show(project);
     $('create-form').reset();
@@ -426,3 +430,34 @@ initWorkshop({
   refresh,
   feedback,
 });
+
+api('/api/targets')
+  .then(({ targets }) => {
+    const labels = {
+      compiled: '真实编译通过，未游戏实测',
+      'package-checked': '包结构验证，未游戏实测',
+      unverified: '尚未验证',
+    };
+    $('target-select').replaceChildren(
+      ...targets
+        .filter((t) => t.enabled)
+        .map((t) => {
+          const option = document.createElement('option');
+          option.value = t.id;
+          option.textContent = t.label;
+          return option;
+        }),
+    );
+    $('target-select').value = 'fabric-1.21.1';
+    const describe = () => {
+      const target = targets.find((t) => t.id === $('target-select').value);
+      $('target-features').textContent =
+        labels[target.validation] +
+        (target.target.edition === 'bedrock'
+          ? ' · 普通物品、食物、方块、配方、贴图'
+          : ' · 物品、食物、工具、法杖、方块、配方、贴图、静态模型');
+    };
+    $('target-select').onchange = describe;
+    describe();
+  })
+  .catch((error) => feedback(error.message, true));

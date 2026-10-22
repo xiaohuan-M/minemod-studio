@@ -2,7 +2,7 @@ import { TARGET } from './project.mjs';
 
 export function capabilities() {
   return {
-    stage: 'Fabric-workshop-preview',
+    stage: 'multi-target-workshop-preview',
     target: { ...TARGET },
     provider: { id: 'mock', externalRequests: false, label: '离线演示规划器' },
     features: {
@@ -29,7 +29,7 @@ export function capabilities() {
       gamePlaytested: false,
       forge: false,
       neoForge: false,
-      bedrock: false,
+      bedrock: true,
     },
   };
 }

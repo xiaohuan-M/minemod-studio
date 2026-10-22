@@ -1,3 +1,4 @@
+import { identifyTarget } from './core/targets.ts';
 import { AssetStore } from './storage/asset-store.mjs';
 import { WorkspaceStore } from './storage/workspace-store.mjs';
 import { BuildManager } from './runner/manager.mjs';
@@ -50,16 +51,24 @@ export function workshopServices(dataDir, store) {
       json(response, 202, await builds.prepare(input.allowNetwork));
       return true;
     }
-    match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|report|bundle))?$/);
+    match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle))?$/);
     if (match) {
       const record = builds.get(match[1]);
       if (!match[2] && method === 'GET') json(response, 200, record);
       else if (match[2] === 'cancel' && method === 'POST') {
         fields(await body(request), []);
         json(response, 200, await builds.cancel(record.id));
-      } else if (match[2] === 'jar' && method === 'GET') {
+      } else if (['jar', 'artifact'].includes(match[2]) && method === 'GET') {
         const artifact = builds.artifact(record.id);
-        send(artifact.bytes, 'application/java-archive', artifact.record.artifact.name);
+        if (match[2] === 'jar' && artifact.record.artifact.format === 'mcaddon')
+          throw new AppError(409, 'NOT_JAR', '这是 Bedrock 附加包，请通过 artifact 接口下载。');
+        send(
+          artifact.bytes,
+          artifact.record.artifact.format === 'mcaddon'
+            ? 'application/octet-stream'
+            : 'application/java-archive',
+          artifact.record.artifact.name,
+        );
       } else if (match[2] === 'report' && method === 'GET')
         send(JSON.stringify(record, null, 2), 'application/json', 'build-' + record.id + '.json');
       else if (match[2] === 'bundle' && method === 'GET') {
@@ -71,7 +80,9 @@ export function workshopServices(dataDir, store) {
         bundle[artifact.record.artifact.name] = artifact.bytes;
         bundle['BUILD-REPORT.json'] = Buffer.from(JSON.stringify(record, null, 2));
         bundle['INSTALL.md'] = Buffer.from(
-          '安装匹配的 Fabric Loader 1.21.1 和 Fabric API。把同目录的模组 JAR 放入独立测试实例 mods 目录。\n使用创造模式中的自定义标签页检查物品、工具、方块、合成、掉落和右键行为。编译通过不等于游戏实测通过。\n',
+          artifact.record.artifact.format === 'mcaddon'
+            ? '用 Minecraft Bedrock 1.21.60 打开 .mcaddon，在独立测试世界启用行为包和资源包。包校验通过不等于游戏实测通过。\n'
+            : `安装匹配的 Fabric Loader ${record.template.minecraft} 和 Fabric API。把同目录的模组 JAR 放入独立测试实例 mods 目录。\n使用创造模式中的自定义标签页检查物品、工具、方块、合成、掉落和右键行为。编译通过不等于游戏实测通过。\n`,
         );
         send(zipFiles(bundle), 'application/zip', 'delivery-' + record.id + '.zip');
       } else return false;
@@ -88,6 +99,7 @@ export function workshopServices(dataDir, store) {
       let copy = store.create({
         name: project.name.slice(0, 75) + ' 副本',
         prompt: project.prompt,
+        targetId: identifyTarget(project.target)?.id,
       });
       if (project.spec)
         copy = store.setSpec(copy.id, project.spec, copy.revision, {

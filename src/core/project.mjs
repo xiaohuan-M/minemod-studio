@@ -15,15 +15,18 @@ export function createProject(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new AppError(400, 'INVALID_INPUT', '请提交项目对象。');
   }
-  const unknown = Object.keys(input).filter((key) => !['name', 'prompt'].includes(key));
-  if (unknown.length) throw new AppError(400, 'INVALID_INPUT', '当前只接受 name 和 prompt。');
+  const unknown = Object.keys(input).filter((key) => !['name', 'prompt', 'targetId'].includes(key));
+  if (unknown.length)
+    throw new AppError(400, 'INVALID_INPUT', '当前只接受 name、prompt 和 targetId。');
+  const descriptor = getTarget(input.targetId ?? DEFAULT_TARGET_ID);
+  if (!descriptor?.enabled) throw new AppError(422, 'TARGET_UNAVAILABLE', '请选择可用的目标版本。');
   const now = new Date().toISOString();
   return {
     schemaVersion: 1,
     id: randomUUID(),
     name: text(input.name, '项目名称', 80),
     prompt: text(input.prompt, '模组想法', 4000),
-    target: { ...TARGET },
+    target: { ...descriptor.target },
     status: 'draft',
     revision: 0,
     spec: null,

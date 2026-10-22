@@ -88,7 +88,7 @@ test('serves a static shell with a restrictive content security policy', async (
   const response = await fetch(base);
   assert.equal(response.status, 200);
   assert.ok(response.headers.get('content-security-policy').includes("frame-ancestors 'none'"));
-  assert.match(await response.text(), /Fabric 1.21.1 创作工坊/);
+  assert.match(await response.text(), /多目标本地创作工坊/);
   assert.equal((await fetch(`${base}/app.js`)).status, 200);
   assert.equal((await fetch(`${base}/style.css`)).status, 200);
 });

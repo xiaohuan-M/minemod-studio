@@ -134,3 +134,9 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 构建状态：queued / running / passed / failed / cancelled / timed_out / interrupted。全局最多一项镜像准备或构建任务。日志上限 256 KiB；passed 构建仍 `gameTested:false`。未通过的任务不能下载 JAR；旧通过任务仍可下载。
 
 常见错误：409 SPEC_UNCONFIRMED / WORKSPACE_CHANGED / BUILD_APPROVAL_REQUIRED / BUILD_ACTIVE / ARTIFACT_UNAVAILABLE，422 INVALID_ASSET / ASSET_MISSING / UNSAFE_PATH，500 WORKSPACE_CORRUPT / ASSET_CORRUPT。能力接口声明实现情况，环境是否就绪需查询 `/api/builder`，不能把 gradleBuild=true 当作 Docker 已安装。
+
+## 多目标适配
+
+`GET /api/targets` 返回 `id/label/target/artifact/features/validation/enabled`。新建项目可传 `targetId`；省略时保持 `fabric-1.21.1`。可用目标：`fabric-1.21.1`、`fabric-1.20.1`、`bedrock-1.21.60`（java=0 表示不适用）。版本、加载器与 Java 必须成套匹配。`GET /api/examples/full-workshop?target=<id>` 返回该目标的内置示例。
+
+构建接口沿用快照批准流程。Bedrock 在本机打包，无需 Docker、镜像或联网。`GET /api/builds/:id/artifact` 下载该任务的 JAR 或 MCADDON；旧 `/jar` 保留，仅接受 JAR。报告的 `artifact.format` 明确类型，`gameTested` 保持 false。`bundle` 包含目标对应安装说明。

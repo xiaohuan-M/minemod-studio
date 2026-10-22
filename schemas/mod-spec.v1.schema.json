@@ -34,16 +34,30 @@
       ],
       "properties": {
         "edition": {
-          "const": "java"
+          "enum": [
+            "java",
+            "bedrock"
+          ]
         },
         "loader": {
-          "const": "fabric"
+          "enum": [
+            "fabric",
+            "bedrock"
+          ]
         },
         "minecraft": {
-          "const": "1.21.1"
+          "enum": [
+            "1.20.1",
+            "1.21.1",
+            "1.21.60"
+          ]
         },
         "java": {
-          "const": 21
+          "enum": [
+            17,
+            21,
+            0
+          ]
         }
       }
     },

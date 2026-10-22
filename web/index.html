@@ -18,9 +18,9 @@
         <h1>从想法到模组，<br />在自己的工坊完成。</h1>
         <p>自带模型 API，本地保存工程。设计内容、制作素材、审查源码，真实编译并下载。</p>
         <aside>
-          <strong>Fabric 1.21.1 创作工坊</strong
+          <strong>多目标本地创作工坊</strong
           ><br />支持物品、食物、工具、方块与闪电法杖，配方、贴图和静态立方体模型。构建需要
-          Docker；也可导出完整源码自行构建。编译结果与游戏实测分别记录。
+          Docker（Bedrock 打包无需 Docker）；也可导出完整源码自行构建。编译结果与游戏实测分别记录。
         </aside>
       </section>
       <div class="workspace">
@@ -38,7 +38,11 @@
               rows="5"
               required
             ></textarea>
-            <p class="target">当前构建目标 · Fabric / Minecraft 1.21.1 / Java 21</p>
+            <label for="target-select">游戏目标</label
+            ><select id="target-select">
+              <option value="fabric-1.21.1">Fabric · 1.21.1 · Java 21</option>
+            </select>
+            <p id="target-features" class="target"></p>
             <button type="submit" id="create-button">保存到本地</button>
           </form>
         </section>

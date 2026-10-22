@@ -7,7 +7,7 @@ import { capabilities } from './core/capabilities.mjs';
 import { AppError } from './core/errors.mjs';
 import { modSpecSchema } from './core/mod-spec.mjs';
 import { TARGET } from './core/project.mjs';
-import { TARGETS } from './core/targets.ts';
+import { TARGETS, getTarget } from './core/targets.ts';
 import { workshopServices } from './workshop-routes.mjs';
 import fullExample from '../examples/full-workshop.json' with { type: 'json' };
 import pkg from '../package.json' with { type: 'json' };
@@ -128,7 +128,27 @@ export function makeServer({ dataDir, llmProvider = null }) {
         } else if (request.method === 'GET' && pathname === '/api/capabilities') {
           json(response, 200, capabilities());
         } else if (request.method === 'GET' && pathname === '/api/examples/full-workshop') {
-          json(response, 200, fullExample);
+          const target = getTarget(url.searchParams.get('target') ?? 'fabric-1.21.1');
+          if (!target?.enabled) throw new AppError(422, 'TARGET_UNAVAILABLE', '请选择可用目标。');
+          const example = structuredClone(fullExample);
+          example.target = { ...target.target };
+          if (target.target.edition === 'bedrock') {
+            example.items = example.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
+            const ids = new Set(
+              [...example.items, ...example.blocks].map((i) => example.modId + ':' + i.id),
+            );
+            example.recipes = example.recipes.filter(
+              (r) =>
+                ids.has(r.result.item) &&
+                [...Object.values(r.key ?? {}), ...(r.ingredients ?? [])].every(
+                  (id) => id.startsWith('minecraft:') || ids.has(id),
+                ),
+            );
+            example.assumptions.push(
+              'Bedrock 样例仅包含此适配器支持的普通物品、食物、方块和配方；尚未游戏实测。',
+            );
+          }
+          json(response, 200, example);
         } else if (request.method === 'GET' && pathname === '/api/schema/mod-spec') {
           json(response, 200, modSpecSchema);
         } else if (request.method === 'GET' && pathname === '/api/providers') {

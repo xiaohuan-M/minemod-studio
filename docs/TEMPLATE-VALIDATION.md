@@ -38,3 +38,16 @@ gradle:8.10.2-jdk21@sha256:963d59f7f22767da4efbcf46b661361b61af5fb88b0309da1071c
 - 分别验证排队取消和运行中容器取消；cancelled 任务不提供产物，之前成功 JAR 仍可下载且哈希不变。
 
 `npm run test:build` 可重跑这一应用级验证。它显式使用 Docker 与网络，不包含在 `npm run verify` 中。真实 LLM 和游戏测试仍未执行。
+
+## Fabric 1.20.1 · 2026-10-22
+
+- Template `fabric-1.20.1-v1`: Minecraft 1.20.1, Yarn 1.20.1+build.10, Loader 0.16.10, Fabric API 0.92.2+1.20.1, Loom 1.8.13, Gradle 8.10.2.
+- JDK 21 builder emits Java 17 bytecode (`options.release = 17`); same pinned builder image as 1.21.1.
+- Generated `examples/full-workshop.json` with target changed to 1.20.1 / Java 17. Real Docker Gradle `build` succeeded, 7 tasks executed. Food API, tool constructors, Identifier and resource directories adapted separately.
+- Snapshot SHA-256: `dff407f7ab92f94a39f402968bef7f0a410dac548f0e2e2add05a88979eae3f2`.
+- Verified JAR manifest and main class: 17008 bytes, SHA-256 `7cc90327660d568fb47dbcd08c76fe5055494140c70761356d2dbc50945244ed`.
+- This is compilation and artifact evidence; Minecraft client/server gameplay remains untested.
+
+## Bedrock 1.21.60
+
+Independent generator emits behavior/resource packs with stable namespace-derived UUIDs, bilingual text, original procedural or user textures, items, food, solid blocks, loot and recipes. The API integration test packages nested `.mcpack` archives into `.mcaddon`, verifies manifests/dependencies/PNG references and SHA-256, then verifies source delivery. No Docker, Java compiler or game client is involved. Tools, wand scripts and Java item models are explicitly rejected for this target. Package validation is not gameplay validation.

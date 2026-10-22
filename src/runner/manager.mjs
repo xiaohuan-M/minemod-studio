@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { JsonDirectory } from '../storage/json-directory.mjs';
 import { TEMPLATE, workspaceFiles } from '../engineering/generator.mjs';
 import { sha256, readZipEntry } from '../core/archive.mjs';
+import { packageBedrock } from '../engineering/adapters/bedrock.mjs';
 import { AppError } from '../core/errors.mjs';
 const execute = promisify(execFile);
 const TERMINAL = new Set(['passed', 'failed', 'cancelled', 'timed_out', 'interrupted']);
@@ -144,8 +145,11 @@ export class BuildManager {
       startedAt: null,
       finishedAt: null,
       allowNetwork,
-      template: TEMPLATE,
-      image: TEMPLATE.builderImage,
+      template: snapshot?.template ?? TEMPLATE,
+      targetId: snapshot?.targetId ?? null,
+      image: snapshot?.targetId?.startsWith('bedrock-')
+        ? null
+        : (snapshot?.template?.builderImage ?? TEMPLATE.builderImage),
       runnerSha256: sha256(readFileSync(script)),
       log: '',
       artifact: null,
@@ -177,6 +181,26 @@ export class BuildManager {
   async run(job, snapshot) {
     const record = job.record,
       id = record.id;
+    if (snapshot?.targetId === 'bedrock-1.21.60') {
+      record.status = 'running';
+      record.startedAt = new Date().toISOString();
+      const bytes = packageBedrock(snapshot);
+      const artifactDir = join(this.root, 'artifacts', id);
+      mkdirSync(artifactDir, { recursive: true, mode: 0o700 });
+      writeFileSync(join(artifactDir, 'mod.mcaddon'), bytes, { flag: 'wx', mode: 0o600 });
+      record.artifact = {
+        name: snapshot.modId + '-1.0.0.mcaddon',
+        format: 'mcaddon',
+        size: bytes.length,
+        sha256: sha256(bytes),
+      };
+      this.finish(
+        job,
+        'passed',
+        '行为包、资源包 JSON、依赖关系和 ZIP 完整性校验通过；没有执行 Gradle 或游戏实测。',
+      );
+      return;
+    }
     const status = await this.status();
     if (job.cancelReason) {
       this.finish(job, job.cancelReason);
@@ -232,7 +256,7 @@ export class BuildManager {
           'type=bind,src=' + resolve(cert) + ',dst=/run/minemod-proxy-ca.pem,readonly',
         );
       args.push(
-        TEMPLATE.builderImage,
+        record.image,
         'bash',
         '/run/minemod-build.sh',
         record.allowNetwork ? 'online' : 'offline',
@@ -281,7 +305,7 @@ export class BuildManager {
         if (!stat.isFile() || stat.size > 32 * 1024 * 1024) throw new Error('artifact');
         const jar = readFileSync(file);
         const mod = JSON.parse(readZipEntry(jar, 'fabric.mod.json').toString());
-        if (mod.id !== snapshot.modId || mod.depends?.minecraft !== TEMPLATE.minecraft)
+        if (mod.id !== snapshot.modId || mod.depends?.minecraft !== snapshot.template.minecraft)
           throw new Error('manifest');
         readZipEntry(jar, 'studio/minemod/generated/m_' + snapshot.modId + '/GeneratedMod.class');
         const artifactDir = join(this.root, 'artifacts', id);
@@ -289,6 +313,7 @@ export class BuildManager {
         writeFileSync(join(artifactDir, 'mod.jar'), jar, { flag: 'wx', mode: 0o600 });
         record.artifact = {
           name: snapshot.modId + '-1.0.0.jar',
+          format: 'jar',
           size: jar.length,
           sha256: sha256(jar),
         };
@@ -326,7 +351,12 @@ export class BuildManager {
     const record = this.get(id);
     if (record.status !== 'passed' || !record.artifact)
       throw new AppError(409, 'ARTIFACT_UNAVAILABLE', '此任务没有经过验证的构建产物。');
-    const path = join(this.root, 'artifacts', id, 'mod.jar');
+    const path = join(
+      this.root,
+      'artifacts',
+      id,
+      record.artifact.format === 'mcaddon' ? 'mod.mcaddon' : 'mod.jar',
+    );
     if (!lstatSync(path).isFile()) throw new AppError(409, 'ARTIFACT_CORRUPT', '产物文件无效。');
     const bytes = readFileSync(path);
     if (bytes.length !== record.artifact.size || sha256(bytes) !== record.artifact.sha256)
