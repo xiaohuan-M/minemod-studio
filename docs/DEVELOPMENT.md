@@ -9,9 +9,9 @@
 
 没有 npm 前端构建步骤、云账号、数据库服务或 API Key 要求。当前实现仅离线演示规划，不需要 JDK。`.env` 仅被 CLI 读取，测试通过参数传入临时目录；不要把个人密钥用于测试。
 
-## 第一项开发任务：ModSpec v1
+## 已实现：ModSpec v1
 
-目标：将自由文本逐步转为可验证、可审查的模组规格。参考 `examples/project-spec.json`，将设计草案转成明确 schema；草案不是当前 API 支持的数据格式。
+已提供 `schemas/mod-spec.v1.schema.json`、语义校验、离线示例、编辑预览、确认和导出。`examples/project-spec.json` 是 API 可接受的规格。详见 `docs/MODSPEC.md`。以下约束已纳入测试。
 
 - 文件建议：`src/core/mod-spec.mjs`、`schemas/mod-spec.v1.schema.json` 与 `test/mod-spec.test.mjs`。
 - 首先支持普通物品、中文名称、基础属性及 shaped / shapeless 配方；对命名空间、注册 ID、路径和配方数量设限。
@@ -19,7 +19,7 @@
 - 覆盖非法路径、版本不匹配、重复 ID、无效配方引用与不受支持能力。
 - 更新接口契约后再暴露新的 API；旧项目需要显式迁移或保留 M0 兼容读取。
 
-完成标准：合法样例通过，非法样例给出字段级原因，mock 可以产生受验证规格，UI 显示待确认内容；仍不执行代码。
+已满足：合法样例通过、非法字段报错、mock 受验证、UI 待确认；仍不执行代码。
 
 ## 第二项：真实文本 provider
 

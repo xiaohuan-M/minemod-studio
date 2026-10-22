@@ -38,3 +38,17 @@ test('symlink records are never followed', { skip: process.platform === 'win32' 
   symlinkSync(outside, join(dir, 'projects', `${id}.json`));
   assert.throws(() => store.get(id), { code: 'INVALID_PROJECT_FILE' });
 });
+
+test('spec confirmation survives restart and older M0 records remain readable', (t) => {
+  const {dir,store} = fixture(t);
+  const project = store.create({name:'x',prompt:'y'});
+  const generated = mockProvider.planSpec(project);
+  let saved = store.setSpec(project.id, generated.spec, 0, generated.source);
+  saved = store.confirmSpec(project.id, saved.revision);
+  assert.deepEqual(new ProjectStore(dir).get(project.id), saved);
+  const legacy = {...project};
+  for (const key of ['revision','spec','specSource','specHash','confirmedSpecHash']) delete legacy[key];
+  writeFileSync(join(dir,'projects',project.id + '.json'), JSON.stringify(legacy));
+  assert.equal(store.get(project.id).revision, 0);
+  assert.equal(store.get(project.id).spec, null);
+});

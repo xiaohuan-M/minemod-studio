@@ -1,10 +1,45 @@
 {
-  "$comment": "M1 规格草案示例，当前 M0 API 不接受此对象，也不会据此生成模组。",
-  "schemaVersion": "draft-1",
+  "schemaVersion": 1,
   "modId": "moonlight_workshop",
   "displayName": "月光工坊",
-  "target": { "edition": "java", "loader": "fabric", "minecraft": "1.21.1", "java": 21 },
-  "items": [{ "id": "moonlight_hammer", "displayName": { "zh_cn": "月光锤", "en_us": "Moonlight Hammer" }, "kind": "basic_item", "maxStackSize": 1, "texture": "user-supplied-or-placeholder" }],
-  "recipes": [{ "id": "moonlight_hammer", "type": "crafting_shaped", "pattern": ["III", " S ", " S "], "key": { "I": "minecraft:iron_ingot", "S": "minecraft:stick" }, "result": { "item": "moonlight_workshop:moonlight_hammer", "count": 1 } }],
-  "assumptions": ["首轮只验证物品注册与合成，不含武器攻击或右键行为。", "该草案使用中立规格，生成器必须转换为目标版本的实际资源格式。"]
+  "target": {
+    "edition": "java",
+    "loader": "fabric",
+    "minecraft": "1.21.1",
+    "java": 21
+  },
+  "items": [
+    {
+      "id": "moonlight_hammer",
+      "displayName": {
+        "zh_cn": "月光锤",
+        "en_us": "Moonlight Hammer"
+      },
+      "kind": "basic_item",
+      "maxStackSize": 1
+    }
+  ],
+  "recipes": [
+    {
+      "id": "moonlight_hammer",
+      "type": "crafting_shaped",
+      "pattern": [
+        "III",
+        " S ",
+        " S "
+      ],
+      "key": {
+        "I": "minecraft:iron_ingot",
+        "S": "minecraft:stick"
+      },
+      "result": {
+        "item": "moonlight_workshop:moonlight_hammer",
+        "count": 1
+      }
+    }
+  ],
+  "assumptions": [
+    "普通物品及合成规格，不含武器攻击或右键行为。",
+    "规格验证不等于 Fabric 编译或游戏实测；原版物品引用尚未核对注册表。"
+  ]
 }

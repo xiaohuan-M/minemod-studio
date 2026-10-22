@@ -2,9 +2,9 @@
 
 ## 当前任务边界
 
-- 仓库是 MineMod Studio 的 M0 开发基础，不是完整模组生成器。
+- 仓库是 MineMod Studio 的 M1 开发版，不是完整模组生成器。
 - 先读 `README.md`、`docs/ROADMAP.md`、`docs/DEVELOPMENT.md` 和修改涉及的接口文档。
-- 从 M1 的规格与 provider 开始推进。不要跳过真实模板验证去宣称全版本兼容。
+- ModSpec v1 已实现；继续完成 M1 的 provider 与真实模型验证。不要跳过真实模板验证去宣称全版本兼容。
 
 ## 工程规则
 

@@ -5,6 +5,7 @@ import { ProjectStore } from './storage/project-store.mjs';
 import { mockProvider } from './providers/mock.mjs';
 import { capabilities } from './core/capabilities.mjs';
 import { AppError } from './core/errors.mjs';
+import { modSpecSchema } from './core/mod-spec.mjs';
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
@@ -16,6 +17,13 @@ const ASSETS = new Map([
 function json(response, status, body) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   response.end(JSON.stringify(body));
+}
+
+function fields(input, allowed) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some((key) => !allowed.includes(key))) {
+    throw new AppError(400, 'INVALID_INPUT', '请求字段不正确。');
+  }
+  return input;
 }
 
 async function body(request) {
@@ -54,9 +62,11 @@ export function makeServer({ dataDir }) {
         response.writeHead(200, { 'Content-Type': type });
         response.end(content);
       } else if (request.method === 'GET' && pathname === '/api/health') {
-        json(response, 200, { ok: true, version: '0.0.1', stage: 'M0' });
+        json(response, 200, { ok: true, version: '0.0.1', stage: capabilities().stage });
       } else if (request.method === 'GET' && pathname === '/api/capabilities') {
         json(response, 200, capabilities());
+      } else if (request.method === 'GET' && pathname === '/api/schema/mod-spec') {
+        json(response, 200, modSpecSchema);
       } else if (request.method === 'GET' && pathname === '/api/projects') {
         json(response, 200, { projects: store.list() });
       } else if (request.method === 'POST' && pathname === '/api/projects') {
@@ -67,6 +77,24 @@ export function makeServer({ dataDir }) {
           throw new AppError(400, 'INVALID_INPUT', '演示规划接口只接受空对象。');
         }
         json(response, 200, store.plan(pathname.split('/')[3], mockProvider));
+      } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/generate$/.test(pathname)) {
+        const input = fields(await body(request), ['provider', 'revision']);
+        if (input.provider !== 'mock') throw new AppError(400, 'INVALID_PROVIDER', '请选择离线示例。');
+        const project = store.get(pathname.split('/')[3]);
+        store.assertRevision(project, input.revision);
+        const result = mockProvider.planSpec(project);
+        json(response, 200, store.setSpec(project.id, result.spec, input.revision, result.source));
+      } else if (request.method === 'PUT' && /^\/api\/projects\/[^/]+\/spec$/.test(pathname)) {
+        const input = fields(await body(request), ['spec', 'revision']);
+        json(response, 200, store.setSpec(pathname.split('/')[3], input.spec, input.revision));
+      } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/confirm$/.test(pathname)) {
+        const input = fields(await body(request), ['revision']);
+        json(response, 200, store.confirmSpec(pathname.split('/')[3], input.revision));
+      } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+\/spec\/export$/.test(pathname)) {
+        const project = store.get(pathname.split('/')[3]);
+        if (!project.spec) throw new AppError(409, 'SPEC_REQUIRED', '请先生成或保存规格。');
+        response.setHeader('Content-Disposition', 'attachment; filename="' + project.spec.modId + '.modspec.json"');
+        json(response, 200, project.spec);
       } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+$/.test(pathname)) {
         json(response, 200, store.get(pathname.split('/')[3]));
       } else {

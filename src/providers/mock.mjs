@@ -1,6 +1,14 @@
+import example from '../../examples/project-spec.json' with { type: 'json' };
+
 // Offline contract fixture. It must never claim to generate, compile or test a mod.
 export const mockProvider = {
   id: 'mock',
+  planSpec(project) {
+    const spec = structuredClone(example);
+    spec.displayName = project.name;
+    spec.assumptions.unshift('这是固定的普通物品示例，不代表已理解你的需求；请编辑并确认。');
+    return { spec, source: { provider: 'mock', demo: true } };
+  },
   plan(project) {
     return {
       provider: 'mock',

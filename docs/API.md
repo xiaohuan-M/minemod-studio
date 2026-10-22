@@ -1,10 +1,10 @@
-# M0 HTTP API
+# HTTP API · M1 开发中
 
 Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发服务，非公共服务 API；没有远程认证或权限管理，不支持反向代理。JSON 请求上限 24 KiB；创建时名称 1–80 字符、需求 1–4000 字符（按 JavaScript string.length）。字段会去除两端空白。
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.0.1",stage:"M0"}` |
+| GET | `/api/health` | `{ok:true,version:"0.0.1",stage:"M1-in-progress"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt}` → 201，返回 Project |
@@ -49,3 +49,17 @@ POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字
 | 500 | PROJECT_CORRUPT / INTERNAL_ERROR | 记录损坏或内部故障 |
 
 错误响应不含系统绝对路径、堆栈和密钥。非法路径不读工作区文件；缺少 Origin 的命令行客户端仍可访问，因此此服务不能抵御已在本机运行的恶意程序。
+
+## ModSpec v1
+
+旧 schemaVersion=1 项目保持可读，新增字段默认 revision=0、spec/specSource/specHash/confirmedSpecHash=null；不覆盖旧计划。写操作递增 revision，过时的规格请求返回 409 PROJECT_CHANGED。
+
+| 方法 | 路径 | 请求与结果 |
+| --- | --- | --- |
+| GET | `/api/schema/mod-spec` | JSON Schema；另有跨字段语义检查 |
+| POST | `/api/projects/:id/spec/generate` | `{provider:"mock",revision}` → 固定离线规格示例 |
+| PUT | `/api/projects/:id/spec` | `{spec,revision}` → 校验并保存，清除旧确认 |
+| POST | `/api/projects/:id/spec/confirm` | `{revision}` → 确认当前规范化 SHA-256 |
+| GET | `/api/projects/:id/spec/export` | 下载已保存的规格 JSON，非模组工程/JAR |
+
+规格保存后 status=awaiting_review，确认后 spec_confirmed。specSource 标记 manual/mock 及 demo；artifacts 仍为空。422 INVALID_SPEC 给出字段路径，409 SPEC_REQUIRED 表示尚无规格。确认不触发生成、构建或网络调用。详见 [规格契约](MODSPEC.md)。

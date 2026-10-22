@@ -9,13 +9,13 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <header><a class="brand" href="/">▦ MineMod Studio</a><span class="badge">LOCAL · M0</span></header>
+  <header><a class="brand" href="/">▦ MineMod Studio</a><span class="badge">LOCAL · M1</span></header>
   <main>
     <section class="intro">
       <p class="eyebrow">你的想法，你的工程</p>
       <h1>从一个点子，<br>开始创造方块世界。</h1>
       <p>开源、本地优先的 AI 模组工坊。先记录想法，再逐步构建可玩的作品。</p>
-      <aside><strong>当前是开发基础版</strong><br>可创建本地项目和查看演示计划。AI 接入、代码生成、真实编译和 JAR 导出尚未实现。无需 API Key，不向外部发送请求。</aside>
+      <aside><strong>当前是开发基础版</strong><br>可管理本地项目，编辑、校验和确认物品与配方规格。当前使用离线示例；AI 接入、代码生成、真实编译和 JAR 导出尚未实现。</aside>
     </section>
     <div class="workspace">
       <section class="panel">
@@ -39,7 +39,16 @@
       <p class="eyebrow">项目详情</p>
       <h2 id="project-title"></h2>
       <p id="project-prompt" class="preserve"></p>
-      <button type="button" id="plan-button">查看离线演示计划</button>
+      <div class="actions"><button type="button" id="spec-button">生成离线规格示例</button><button type="button" id="plan-button" class="secondary">查看流程演示</button></div>
+      <section id="spec-panel" hidden>
+        <h3>模组规格 · 审查与确认</h3>
+        <p id="spec-state" class="demo-label"></p>
+        <div id="spec-preview" class="spec-preview"></div>
+        <label for="spec-editor">规格 JSON（普通物品和配方；暂不支持行为脚本）</label>
+        <textarea id="spec-editor" rows="18" spellcheck="false"></textarea>
+        <div class="actions"><button type="button" id="save-spec">校验并保存修改</button><button type="button" id="confirm-spec" class="secondary">确认当前规格</button><a id="export-spec" download>导出已保存的规格 JSON</a></div>
+        <p class="target">确认仅针对当前规格。再次修改后需要重新确认；规格 JSON 不是模组或 JAR。</p>
+      </section>
       <div id="plan" hidden><p class="demo-label">流程演示 · 未调用大模型 · 未构建</p><p id="plan-summary" class="preserve"></p><ol id="steps"></ol><ul id="assumptions"></ul></div>
     </section>
     <p id="feedback" role="status" aria-live="polite"></p>

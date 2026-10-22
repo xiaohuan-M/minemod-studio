@@ -70,3 +70,32 @@ test('serves a static shell with a restrictive content security policy', async (
   assert.equal((await fetch(`${base}/app.js`)).status, 200);
   assert.equal((await fetch(`${base}/style.css`)).status, 200);
 });
+
+test('spec workflow validates, persists, confirms, exports and rejects stale edits', async (t) => {
+  const base = await fixture(t);
+  let project = await (await post(base, '/api/projects', {name:'规格工坊',prompt:'普通物品与合成'})).json();
+  const route = '/api/projects/' + project.id;
+  assert.equal((await post(base, route + '/spec/confirm', {revision:0})).status, 409);
+  project = await (await post(base, route + '/spec/generate', {provider:'mock',revision:0})).json();
+  assert.equal(project.status, 'awaiting_review');
+  assert.equal(project.specSource.demo, true);
+  assert.equal(project.spec.schemaVersion, 1);
+  const revision = project.revision;
+  project = await (await post(base, route + '/spec/confirm', {revision})).json();
+  assert.equal(project.confirmedSpecHash, project.specHash);
+  assert.equal(project.status, 'spec_confirmed');
+  assert.equal((await post(base, route + '/spec/generate', {provider:'mock',revision})).status, 409);
+  const exported = await fetch(base + route + '/spec/export');
+  assert.match(exported.headers.get('content-disposition'), /attachment/);
+  assert.deepEqual(await exported.json(), project.spec);
+  const put = spec => fetch(base + route + '/spec', {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({spec,revision:project.revision})});
+  assert.equal((await put({...project.spec,command:'not allowed'})).status, 422);
+  assert.equal((await (await fetch(base + route)).json()).revision, project.revision);
+  project.spec.displayName = '修改后的工坊';
+  const updated = await (await put(project.spec)).json();
+  assert.equal(updated.confirmedSpecHash, null);
+  assert.equal(updated.status, 'awaiting_review');
+  assert.equal(updated.specSource.provider, 'manual');
+  assert.notEqual(updated.specHash, project.specHash);
+  assert.equal((await (await fetch(base + '/api/schema/mod-spec')).json()).title, 'MineMod ModSpec v1');
+});
