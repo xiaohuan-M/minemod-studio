@@ -1,40 +1,38 @@
-# 开发与验证
+# 开发、验证与发行
 
-Node.js >=24.5，ES modules，依赖通过 package-lock.json 固定，选型理由见 docs/research/OPEN-SOURCE-REVIEW.md。`npm ci` 后 `npm start`。前端为原生浏览器模块，不需要构建。`.env` 仅由 CLI 加载，不要提交个人配置。开发约定见 AGENTS.md。
+Node.js >=24.5，ES modules，npm lockfile 固定版本。`npm ci --ignore-scripts` 后 `npm start`；前端原生模块从固定静态路由提供，无 CDN 或前端构建步骤。`.env` 仅由 CLI 加载，不提交个人配置。模块职责见 ARCHITECTURE.md；工程约定见 AGENTS.md。
 
-## 代码结构
+## 验证层次
 
-- `src/core`：ModSpec、素材、ZIP、错误、能力声明；不依赖 HTTP。
-- `src/engineering/generator.mjs`：固定 Fabric 工程生成；只接受验证后的声明式规格和素材。
-- `templates/fabric-1.21.1`：版本锁、官方 wrapper、校验哈希和许可证。
-- `src/storage`：项目历史、不可变素材和工程快照，原子 JSON 替换与完整性检查。
-- `src/providers`：Chat Completions 规格/素材适配，大小/超时/取消/脱敏。
-- `src/runner/manager.mjs`：真实 Docker 构建、日志、取消、状态恢复、产物校验。
-- `src/server.mjs` / `src/workshop-routes.mjs`：Host/Origin 检查与 HTTP 接口。
-- `web`：项目、内容、配方、素材、工程与构建界面；`model-preview.js` 为立方体几何预览。
+| 命令 | 覆盖 | 外部条件 |
+| --- | --- | --- |
+| `npm run verify` | 全部 JS 语法、ESLint 未定义变量等规则、TypeScript 契约、Node 单元/API 回归 | 无真实 API/Docker |
+| `npm run format:check` | 源码、页面、脚本、测试统一格式 | 无网络 |
+| `npm run test:browser` | 方案/会话、UV/姿态、动画编辑/绑定、MCADDON、备份恢复、下载、窄屏 | Chromium；`npx playwright install chromium` 或 `MINEMOD_CHROMIUM_PATH` |
+| `npm run test:build` | HTTP → 真 Gradle → JAR/报告/交付包、取消、旧产物保留 | Docker、准备镜像、Maven/Mojang 网络 |
+| `npm run package` | 受版本管理源码 + lockfile 生产依赖 + 清单 + SHA-256 | Git、已安装冻结依赖 |
+| `npm run test:package` | 实际 ZIP 全文件哈希、外部临时目录解压与启动、静态模块/目标/目录/项目 | 无 npm install/API/Docker |
 
-## 检查
+测试均使用独立临时目录；真实构建证据保留于 `.minemod/validation-*`。`MINEMOD_TEST_TARGET` 可选 fabric-1.21.1（默认）、fabric-1.20.1、forge-1.20.1、neoforge-1.21.1。`MINEMOD_TEST_GRADLE_CACHE` 可把受信任已有缓存复制到独立测试目录。不要用缓存命中来声称首次下载已验证。
 
-`npm run verify` 执行语法检查和 Node 内置自动化测试，使用临时目录与本机模拟模型服务，不需要真实 API 或 Docker。模型模拟测试不能替代实际服务测试。CI 配置在三种桌面平台执行这组检查。
+`npm run doctor` 仅诊断。`MINEMOD_BUILD_TARGET=forge-1.20.1 npm run setup:builder` 显式准备目标固定镜像；页面也能操作。常规 CI 在三种桌面 OS 运行 verify/format，另在 Ubuntu 跑浏览器与便携包；不自动调用真实模型或下载游戏依赖。远程 CI 状态需独立查看，不能由本地成功推断。
 
-`npm run doctor` 仅读取 Docker 与 provider 配置状态。`npm run setup:builder` 显式授权下载固定镜像。
+修改生成 Java 或 runner 时必须真实构建相关目标并更新 TEMPLATE-VALIDATION.md，记录模板、游戏/加载器/API/映射/Gradle/JDK/镜像和产物哈希。编译通过仍需独立客户端/服务端游戏测试。
 
-`npm run test:build` 是独立的联网集成检查：使用专用 `.minemod/validation-*` 数据目录创建完整工程，真实构建并下载验证 JAR 和 bundle，检查取消与旧产物保留。可用 `MINEMOD_TEST_GRADLE_CACHE` 指向已有缓存以复制到独立测试目录，不能把不受信任缓存用于生产。首次无缓存验证也已通过，见模板记录。
+## 发行与升级
 
-构建变更必须记录 Minecraft/Loader/API/Yarn/Loom/Gradle/JDK、模板提交与镜像摘要。新增支持的内容要进入 `examples/full-workshop.json` 并实际编译；扩展其他版本须独立模板与实际验证，不能仅修改能力标记。
+1. 同步 package.json、package-lock、界面与能力文档；完成相关检查。
+2. 把发行输入纳入 Git 并提交。打包只读取 Git 管理的源文件和 package-lock 的非 dev 依赖，不扫描用户数据。发布包的 manifest 应为 `workingTreeModified:false`。
+3. `npm run package` 生成 `dist/minemod-studio-<version>.zip` 和 `.sha256`；`npm run test:package` 验证实际归档。所有运行依赖许可证保留，Node/Docker 不打进包。
+4. CI 可上传构建附件；创建 GitHub Release 时另附 ZIP 与校验和，不能把一个成功的本地命令称作已发布 Release。
+5. 用户升级先停止服务、备份 `.minemod`，解压到新目录后迁移数据和 `.env`。不要运行两个共享数据目录的进程；私有 .env 永远不进入发行包。
 
-## 数据与边界
+ZIP 时间戳/顺序固定，相同源文件和依赖可重建相同字节。manifest 包含提交和工作区状态；源提交变化会改变包哈希。JAR 不作跨构建字节一致保证。
 
-JSON 存储面向单进程，服务使用带进程身份的排他写锁；不提供数据库级断电事务。同一数据目录的第二个服务会明确拒绝启动；诊断命令不构造会恢复运行任务的 manager。构建镜像准备脚本使用独立临时记录目录。
+## 维护边界
 
-规格确认、工程审查批准、构建联网选择分别生效。任何规格编辑/恢复使当前工程引用与批准失效，旧快照和产物仍可读取。构建工作区由生成器物化，API 不允许上传任意 Gradle/Java 文件或指定命令。素材保存创建新 ID，原资源不会被覆盖。
+数据写入采用乐观版本、单写者锁和原子文件替换；多文件备份导入有预验证/回滚，不承诺断电事务。不要在任务运行时清理目录。没有自动磁盘清理；缓存、工作区和产物需按需备份整理。
 
-工作区、日志和产物会占用磁盘。当前没有自动清理器；不要在构建运行时删除目录。源码和交付 ZIP 不包含 `.env`、密钥或完整项目需求文本。
+新依赖须说明理由与许可，更新 OPEN-SOURCE-REVIEW.md 与 lockfile。源代码/API 变化同步文档和有价值的回归；不要仅测试实现细节。原版游戏数据事实列表固定来源，不分发 Minecraft 游戏代码或纹理。
 
-## 尚需验证
-
-真实 `newapi.nowrise.cn` / `gpt-6-luna` 调用按用户要求跳过。Minecraft 客户端游戏实测、Windows/macOS Docker Desktop 构建、复杂第三方 bbmodel 互通尚未验证。几何预览不是实际持有姿态渲染器，导入不支持的模型类型会报错。
-
-浏览器验证：`npx playwright install chromium` 后执行 `npm run test:browser`。也可用 `MINEMOD_CHROMIUM_PATH` 指定已安装 Chromium。脚本创建独立数据目录，不调用真实 API，覆盖目标选择、规格编辑、WebGL、UV/姿态保存、截图下载与窄屏布局。Three.js 与 OrbitControls 从锁定的本地 node_modules 映射到固定 URL，不使用 CDN 或宽泛静态目录。
-
-备份导入先在数据目录下的临时目录验证，再移动新记录并最后提交项目；异常会回滚本次新增文件。进程在提交过程中被强制终止可能留下无项目引用的文件，未提供完整的断电事务保证。
+真实文本/视觉/图像调用按要求跳过；游戏实测、Windows/macOS Docker Desktop、复杂第三方 bbmodel 互通与签名桌面发行仍待验证。错误必须真实呈现，不降级为假成功。

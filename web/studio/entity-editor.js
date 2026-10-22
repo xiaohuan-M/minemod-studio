@@ -117,7 +117,10 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     $('entity-texture').replaceChildren(
       ...[
         { id: '', name: '程序占位贴图' },
-        ...detail.filter((a) => a.kind === 'texture' && a.width === 64),
+        ...detail.filter(
+          (a) =>
+            a.kind === 'texture' && (getProject()?.target.edition === 'bedrock' || a.width === 64),
+        ),
       ].map((a) => {
         const o = el('option', a.name);
         o.value = a.id;

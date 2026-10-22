@@ -1,42 +1,53 @@
 # MineMod Studio · 本地模组工坊
 
-**完全开源、本地优先、自带 LLM API 的 Minecraft 创作工具。** 从自然语言与可视化内容编辑，到贴图、立方体模型、源码审查、真实 Gradle 编译和 JAR 交付，代码采用 MIT 许可，无平台账号、积分或订阅依赖。
+**完全公开源码、自带 AI 服务、数据保存在自己电脑上的 Minecraft 创作工具。** 用自然语言或表单设计内容，制作贴图与模型，审查源码，编译 Java 模组或打包 Bedrock 附加包。代码采用 MIT 许可，无强制账号、积分、订阅或遥测。
 
-当前版本 **0.2.0**，已打通 **Java / Fabric / Minecraft 1.20.1、1.21.1** 创作流程，并提供 **Bedrock 1.21.60** 普通物品、食物、方块、贴图与配方附加包生成。两个 Fabric 目标的完整内容样例经过真实 Docker 构建；Bedrock 只经过包结构验证，工具、法杖和 Java 模型不支持；编译成功不代表游戏实测。Forge、NeoForge、其他 Minecraft 版本、任意 Java 行为、实体和动画尚未实现，不能把它称作这些平台的完整支持。
+当前版本 **0.3.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
 
-参考 [AutoMods 公开产品流程](https://automods.cn/#faq)，独立实现。不是其源码或官方客户端，与 Mojang、Microsoft 无关联。具体能力和证据见 [功能清单](docs/FEATURES.md) 与 [编译记录](docs/TEMPLATE-VALIDATION.md)。
+## 支持目标
 
-## 可以做什么
+| 目标 | Java 运行版本 | 产物 | 已完成验证 |
+| --- | --- | --- | --- |
+| Fabric 1.20.1 | 17 | JAR | 完整内容/实体/素材样例真实编译 |
+| Fabric 1.21.1 | 21 | JAR | 完整内容/实体/素材样例真实编译 |
+| Forge 1.20.1 | 17 | JAR | 完整内容/实体/素材样例真实编译 |
+| NeoForge 1.21.1 | 21 | JAR | 完整内容/实体/素材样例真实编译 |
+| Bedrock 1.21.60 | 不适用 | MCADDON | 包结构、引用、动画资源与浏览器完整流程 |
 
-- **需求与持续修改**：持久创作记录、方案比较；自带 Chat Completions API；发送当前规格与修改要求，输出经严格校验；取消、超时、限流提示、连接检查；失败日志可在用户选择后交给模型分析。
-- **内容编辑**：普通物品、食物、剑/镐/斧/锹/锄、闪电法杖、方块；中文/英文名称、堆叠、材质、伤害、冷却、硬度、抗爆性、亮度。
-- **库存与配方**：内容卡片、3×3 有序/无序合成编辑；本地引用、产物数量和 ID 校验。
-- **贴图工坊**：16/32/64 像素绘制、橡皮、填充、撤销、PNG 导入导出；文本 LLM 可生成 16×16 像素数组草稿。
-- **模型工坊**：立方体编辑、拖动旋转与缩放预览、多个查看角度；静态 bbmodel 导入导出；文本 LLM 可生成立方体草稿。贴图单独导入绑定；不支持任意网格、骨骼或动画。
-- **资源库**：本地保存来源与许可、重复利用、绑定物品/方块；保存修改创建新资源，旧工程继续引用旧资源。
-- **版本与工程**：项目搜索/重命名/归档、可迁移完整备份；规格导入导出、复制项目、最近 20 个规格版本恢复；确定性工程快照、文件差异、源码预览、完整源码 ZIP（含 Gradle wrapper）。
-- **构建与交付**：固定摘要的 Docker 镜像、快照批准、联网选择、真实日志、取消与超时、重启中断记录；校验 JAR 后提供 JAR/源码/报告交付包；失败不覆盖旧成功产物。
+以上均**尚未进行游戏实测**。不同目标的能力明确区分，见 [功能清单](docs/FEATURES.md)；编译记录、工具链与产物哈希见 [验证证据](docs/TEMPLATE-VALIDATION.md)。
 
-未配置 API 时，手动编辑、素材制作、工程生成和构建都可使用；离线示例是固定样例，不会冒充 AI 理解需求。
+## 本地启动
 
-## 启动
+需要 **Node.js 24.5+**。选择一种方式：
 
-安装 **Node.js 24.5+（推荐 Node 24 LTS）**：
+- **便携 ZIP**：解压 `minemod-studio-0.3.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
+- **从源码启动**：
 
 ```sh
 git clone https://github.com/xiaohuan-M/minemod-studio.git
 cd minemod-studio
-npm ci
+npm ci --ignore-scripts
 npm start
 ```
 
-浏览器打开 `http://127.0.0.1:4310`。服务只接受本机 127.0.0.1；没有远程部署/多用户功能。数据默认保存在 `.minemod/`。不要同时运行多个服务进程访问同一数据目录。运行依赖已锁定，许可证和选型理由见 docs/research/OPEN-SOURCE-REVIEW.md；目前没有前端打包步骤。
+在运行程序的电脑打开 `http://127.0.0.1:4310`。这是本机网页应用，固定回环监听，不是公共托管服务。数据位于 `.minemod/`，写锁阻止两个服务同时修改同一目录。`npm run doctor` 检查配置和构建环境，不调用模型或下载镜像。
 
-Linux / macOS 可运行 `./start.sh`；Windows 可双击 `start.cmd`。两者均要求先安装 Node；不会静默安装 Docker 或调用模型。
+没有 API 也可以手工编辑、使用原创资源目录、生成工程和交付作品。离线示例明确标为固定示例，不会假装理解自然语言。
 
-## 配置自己的模型
+## 创作流程
 
-复制 `.env.example` 为 `.env`，填写并重启：
+1. 新建项目，选择目标；载入功能示例，或让自己的模型提出方案、生成规格。
+2. 编辑物品/食物/工具/方块/生物和九宫格配方；选择原版材料，制作或导入素材。
+3. 在模型工坊编辑 UV、贴图、显示姿态；在动画工坊设置关键帧，绑定到 Bedrock 实体。
+4. 校验保存并确认规格，生成工程，检查源码和版本差异。此时即可导出完整源码。
+5. 批准工程快照后构建。Java 需要启动 Docker（Linux 容器），首次准备固定镜像并允许下载依赖；Bedrock 在本地直接打包。
+6. 下载 JAR/MCADDON 或含源码、素材来源和构建报告的交付包，在独立游戏实例验证。
+
+Java 使用锁版本的 Gradle/JDK 容器；也可在源码包中用匹配 JDK 执行 `./gradlew build`。Fabric 1.20.1 容器使用 JDK21 编译器输出 Java17 字节码，Forge 使用 JDK17；其余目标使用 JDK21。源工程首次构建需要下载合法游戏依赖。不会自动安装作品或修改真实游戏目录。
+
+## 自带模型与图片服务
+
+复制 `.env.example` 为 `.env`，填写服务端配置并重启：
 
 ```dotenv
 MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
@@ -44,49 +55,38 @@ MINEMOD_LLM_MODEL=your-model
 MINEMOD_LLM_API_KEY=your-key
 ```
 
-本次用户选用的配置是 `https://newapi.nowrise.cn/v1` + `gpt-6-luna`；真实调用按用户要求暂时跳过。程序不写死这家服务；可更换兼容基址和模型。本机模型可使用 `http://127.0.0.1:11434/v1`，本机端点可不设密钥。
+支持 OpenAI-compatible Chat Completions。可以接本机 `http://127.0.0.1:11434/v1`，本机端点允许无密钥；远程服务需 HTTPS 和密钥。文本、图像服务独立配置，`MINEMOD_IMAGE_*` 可接兼容 Images API。参考图生成模型需要文本服务支持视觉输入；图片接口要求返回 base64 PNG。每次调用前可核对目的地与发送内容；密钥不进入浏览器、项目或导出。
 
-在页面选择“我的 LLM API”，核对地址和发送内容，再确认调用。配置本身不会发出请求。密钥只由服务端读取，不进入浏览器、项目或导出。JSON 模式、token 参数和超时配置见 [模型接入](src/providers/README.md)。模型素材是文本生成的结构化像素/立方体草稿，不能等同于专业图像模型或任意 3D 生成服务。
+当前指定服务 `https://newapi.nowrise.cn/v1`、模型 `gpt-6-luna` 的真实调用按要求跳过。协议、取消、超时和错误处理通过本机模拟服务测试，不能据此保证该服务当前支持所有接口或模型效果。详见 [模型接入](src/providers/README.md)。
 
-## 制作第一个模组
+## 功能概览
 
-1. 新建项目时选择目标，载入对应功能示例或使用自己的模型生成规格。
-2. 用内容表单和 3×3 配方编辑器修改；制作或导入贴图/模型，并绑定到内容。
-3. 点击“校验并保存修改”，核对后“确认当前规格”。
-4. 点击“从已确认规格生成工程”，检查差异和源码。此时可直接下载源码 ZIP。
-5. 需要应用内构建时，先安装并启动 **Docker（Linux 容器）**。在页面准备镜像，或显式运行 `npm run setup:builder` 下载固定镜像。
-6. 批准此工程快照，首次构建勾选允许下载依赖；点击构建，查看真实日志。
-7. 成功后下载 JAR 或交付包；安装匹配的 Fabric Loader 和 Fabric API，在独立游戏实例中实测。
+- 多方案比较、持续创作记录、版本恢复、失败构建日志诊断、token 用量记录。
+- 物品/方块/生物卡片、九宫格配方、按目标版本校验原版物品 ID。
+- 16/32/64 像素绘画、PNG、图片量化、图像生成/参考图编辑、文本或视觉辅助模型草稿。
+- 本地 WebGL 贴图预览、UV、手持/头戴/物品栏姿态、截图、静态与受限动画 bbmodel 互通。
+- 立方体根骨骼、线性关键帧、播放与片段管理；Bedrock 实体几何/动画/行为打包。
+- 本地素材库、来源/许可、可分享资源包、随仓库分发的原创 CC0 目录。
+- 项目搜索、重命名、归档、完整备份迁移；不可变素材、规格历史、工程快照、旧成功产物保留。
+- 真编译、取消、超时、重启中断恢复、产物检查、完整源码与报告导出。
 
-构建容器提供 JDK 21 和 Gradle，无需在宿主安装 JDK。源码包也可用本机 JDK 21 执行 `./gradlew build`（Windows：`gradlew.bat build`）。首次会下载 Minecraft/Maven 依赖。缓存齐全后可尝试禁网构建；不能保证未缓存依赖的离线构建成功。
+自定义 Java 动画实体、任意网格/嵌套骨骼、盔甲/维度/GUI、任意代码自动修复、在线多人市场和未列出的 Minecraft 版本尚未实现。
 
-`npm run doctor` 只检查配置和 Docker，不调用模型、不下载镜像。
-
-## 验证与开发
+## 开发与维护
 
 ```sh
-npm run verify        # 语法与 Node 自动化测试，不需要 Docker/API
-npm run test:build    # 显式真实 Docker 集成构建，会下载依赖，需先准备镜像
+npm run verify        # 语法、ESLint、TypeScript 契约、Node 单元/API 回归
+npm run format:check  # 统一代码格式
+npx playwright install chromium
+npm run test:browser  # 完整网页流程，独立数据目录，无真实 API
+npm run package      # 源码 + 生产依赖便携 ZIP + SHA-256
+npm run test:package # 解压后独立启动与文件校验
 ```
 
-真实集成检查生成全部支持内容并绑定自定义素材，校验 JAR 内容和 SHA-256、交付 ZIP、取消任务及旧产物保留。保留结果于 `.minemod/validation-*`。常规 CI 不运行这个联网构建。
+`npm run test:build` 显式运行真实 Docker 集成构建；用 `MINEMOD_TEST_TARGET` 选择 Java 目标。常规 CI 不调用真实模型、不下载游戏依赖。Linux 构建已验证，Windows/macOS Docker 与游戏实测仍需独立完成。架构为模块化单体，具体边界见 [架构](docs/ARCHITECTURE.md)、[开发说明](docs/DEVELOPMENT.md)、[贡献指南](CONTRIBUTING.md)。
 
-Linux 的实际构建已验证；Windows/macOS 的应用测试与 Docker Desktop 构建应分别核对，不能由 Linux 结果推断全部平台已通过。游戏实测和真实模型测试尚未完成。
+## 数据与许可
 
-| 文档 | 内容 |
-| --- | --- |
-| [功能清单](docs/FEATURES.md) | 实现范围、明确限制 |
-| [开发说明](docs/DEVELOPMENT.md) | 环境、结构、验证与维护 |
-| [接口契约](docs/API.md) | 项目、资源、工程、构建、模型接口 |
-| [规格契约](docs/MODSPEC.md) | 数据约束和历史 |
-| [构建决策](docs/adr/0002-fixed-container-builder.md) | 隔离、权限、网络和产物验证 |
-| [模板编译证据](docs/TEMPLATE-VALIDATION.md) | 固定依赖和真实构建记录 |
-| [路线图](docs/ROADMAP.md) | 已实现与待验证工作 |
+应用代码 [MIT](LICENSE)；便携包保留第三方依赖及其许可证，`RELEASE-MANIFEST.json` 列出源提交、运行依赖与文件哈希。Minecraft、加载器和用户素材保留各自许可，本站 MIT 不为其重新授权。独立原创目录见 [community](community/README.md)。
 
-## 许可证与数据
-
-代码 [MIT](LICENSE)，第三方模板与 Gradle wrapper 保留各自许可证。Minecraft 依赖需要从其合法来源下载，项目许可证不覆盖 Minecraft 代码/资产。素材来源与许可随工程写入 `ASSETS.json`。
-
-页面可下载并导入包含关联素材、历史、工程和产物的项目备份（最多 32 MiB）。备份整个 `.minemod/` 可保留全部数据；`.env` 另行安全保管。没有遥测或自动上传。安全边界见 [SECURITY.md](SECURITY.md)。
-
-Bedrock 目标无需 Docker：确认规格、生成并批准工程后，点击构建即可本地打包，下载 MCADDON；在 Minecraft 1.21.60 的独立测试世界同时启用行为包与资源包。尚未进行游戏实测。
+项目备份包含需求/会话、规格、关联素材、源码快照与产物，最多 32 MiB；分享前自行确认内容。升级前停止服务并备份 `.minemod/`，新目录解压程序后迁移数据和 `.env`，不要覆盖运行中的数据。无数据库级断电事务保证。接口、规格与安全边界见 [API](docs/API.md)、[ModSpec](docs/MODSPEC.md)、[SECURITY](SECURITY.md)。

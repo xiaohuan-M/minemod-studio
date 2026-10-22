@@ -2,14 +2,14 @@
 
 规范文件：`schemas/mod-spec.v1.schema.json`；可执行示例：`examples/project-spec.json`。结构检查直接读取该 schema，引用/唯一性等跨字段约束由 `src/core/mod-spec.mjs` 验证。
 
-首轮固定目标为 Java / Fabric / Minecraft 1.21.1 / JDK 21。模板已通过真实 Gradle 编译，详见 TEMPLATE-VALIDATION.md；游戏实测仍需独立完成。
+目标由 src/core/targets.ts 固定组合决定，默认 Fabric 1.21.1 / Java21。四个 Java 目标已真实编译，Bedrock 已验证包结构；详见 TEMPLATE-VALIDATION.md，游戏实测仍需独立完成。
 
 - 一个自定义 modId，2–48 个小写字母、数字或下划线，以字母开头；不能使用 minecraft、fabric、java。
 - 1–32 个物品：basic_item、food、sword、pickaxe、axe、shovel、hoe、lightning_wand。提供 zh_cn/en_us 名称，堆叠 1–64；工具与法杖必须为 1。food 必须填写 nutrition/saturation；工具必须填写材质、attackDamage、attackSpeed；法杖可设置 1–120 秒冷却。
 - 可选 0–32 个方块，提供名称、硬度、抗爆性和 0–15 亮度；物品与方块 ID 共同唯一。
 - 物品和方块可引用资源库中的 textureAsset；物品另可引用 modelAsset（UUID）。资源必须存在且类型正确。textureColor 为没有资源时的程序占位图颜色。
 - 0–64 个配方，ID 唯一。有序配方为 1–3 行、每行 1–3 格且同宽；字符与 key 完全对应。无序配方包含 1–9 个原料。
-- 引用仅接受已声明的本模组物品/方块和 minecraft 命名空间；原版物品是否真实存在尚未对照游戏注册表。产物必须是本模组物品/方块，数量不超过其最大堆叠数。
+- 引用仅接受已声明的本模组物品/方块和 minecraft 命名空间；原版物品按所选目标的固定注册表校验，旧记录仍可读取以便修正。产物必须是本模组物品/方块，数量不超过其最大堆叠数。
 - 0–20 条假设，每条最多 500 字。所有对象拒绝未知字段；不接受脚本、命令、自定义文件路径、行为代码。
 - HTTP 请求仍受 24 KiB 总大小限制。超限应拆分规格；条目上限不意味着最大组合都能提交。
 
@@ -23,6 +23,8 @@
 
 ## 目标与实体扩展
 
-目标组合由 `/api/targets` 注册表确定：Fabric 1.20.1/Java17、Fabric 1.21.1/Java21、Bedrock 1.21.60/java0。Bedrock 的 java=0 表示不适用，只接受其声明的物品/食物/方块/配方能力。
+目标组合由 `/api/targets` 注册表确定：Fabric 1.20.1/Java17、Fabric 1.21.1/Java21、Forge 1.20.1/Java17、NeoForge 1.21.1/Java21、Bedrock 1.21.60/java0。Bedrock 的 java=0 表示不适用，支持物品/食物/方块/配方/实体与立方体动画，不支持工具/法杖/Java 物品模型。
 
-Fabric 可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，掉落表默认为空；其原型的 AI、繁殖、日晒等行为保留。引用贴图必须为 64×64，遵循对应原版模型的归一化 UV。不是自定义骨骼模型协议。
+Java 目标可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，掉落表默认为空；其原型的 AI、繁殖、日晒等行为保留。引用贴图必须为 64×64，遵循对应原版模型的归一化 UV。不是自定义骨骼模型协议。
+
+Bedrock 同样接受最多 8 个实体的基础字段，提供简单敌对/被动 AI，不继承完整原版 Java 行为。可选 modelAsset 引用 model/animated_model、animationClip 选择动画片段，贴图允许 16/32/64。默认使用原创立方体角色与 walk 动画；walk 随移动播放，其他选中片段持续播放。模型引用、片段和素材类型在工程生成时校验；Java 不接受这些自定义实体绑定。实体默认不加入自然生成。

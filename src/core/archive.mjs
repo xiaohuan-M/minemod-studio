@@ -51,7 +51,14 @@ export function zipFiles(files) {
     record.writeUInt32LE(data.length, 24);
     record.writeUInt16LE(name.length, 28);
     record.writeUInt32LE(
-      ((path === 'gradlew' || path.endsWith('/gradlew') ? 0o100755 : 0o100644) * 65536) >>> 0,
+      ((path === 'gradlew' ||
+      path.endsWith('/gradlew') ||
+      path === 'start.sh' ||
+      path.endsWith('/start.sh')
+        ? 0o100755
+        : 0o100644) *
+        65536) >>>
+        0,
       38,
     );
     record.writeUInt32LE(offset, 42);

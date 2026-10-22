@@ -1,4 +1,4 @@
-# Fabric 模板真实编译记录
+# 模板编译与交付验证记录
 
 日期：2026-10-22。验证平台：Linux，Docker 28.4.0。以下是编译证据，不代表 Minecraft 客户端游戏实测。
 
@@ -75,3 +75,9 @@ Forge JAR 25151 bytes；NeoForge JAR 23874 bytes。均真实完成完整内容�
 Forge 使用独立官方 Gradle/JDK17 多架构镜像：`gradle:8.10.2-jdk17@sha256:c2900027f3f0681c2cbfb09d527813851ad67aeafbb409997297efa2df20e748`。NeoForge 沿用固定 JDK21 镜像，并显式采用 ModDevGradle 的 `disableRecompilation=true` 官方管线，避免在 4 GiB runner 中反编译整个 Minecraft 源码。该选项仍真实编译生成的模组 Java，不伪造或绕过模组编译。依据 ModDevGradle 文档提交 e9c127db51cd59d8d19e238af6a01e071d769661。
 
 源码使用官方映射的独立注册代码和各加载器元数据；共同 Minecraft JSON/贴图由共享资源生成过程产生，不把 Fabric Java 直接替换包名后交付。
+
+## Bedrock 动画与浏览器验证 · 0.3
+
+新增独立原创实体模型、线性关键帧动画、实体行为与渲染控制器。包检查覆盖 client entity → geometry / animation / texture / render controller 的引用。浏览器实际完成方案与会话、UV/姿态、动画关键帧编辑、绑定实体、生成/批准、MCADDON 下载、完整项目备份恢复和窄屏布局。动画资源另经过独立 Bedrock ZIP 下载、嵌入 PNG 的 bbmodel HTTP 导入往返；不支持的骨骼层级/表达式明确拒绝。
+
+这些是结构与浏览器证据，没有运行 Minecraft Bedrock，也没有使用真实图像或视觉 API。

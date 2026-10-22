@@ -21,24 +21,6 @@ export function modelPreview(canvas, onSelect = () => {}) {
       view() {},
       select() {},
       animate() {},
-      animate(poses) {
-        for (const [index, mesh] of meshes.entries()) {
-          const pivot = mesh.parent,
-            pose = poses[index] ?? {};
-          pivot.position
-            .copy(pivot.userData.bindPosition)
-            .add(new THREE.Vector3(...(pose.translation ?? [0, 0, 0])));
-          pivot.rotation.copy(pivot.userData.bindRotation);
-          for (const [i, axis] of ['x', 'y', 'z'].entries())
-            pivot.rotation[axis] += THREE.MathUtils.degToRad((pose.rotation ?? [0, 0, 0])[i]);
-          pivot.scale
-            .copy(pivot.userData.bindScale)
-            .multiply(new THREE.Vector3(...(pose.scale ?? [1, 1, 1])));
-        }
-        root.updateMatrixWorld(true);
-        helper?.update();
-        draw();
-      },
       capture() {
         throw new Error('WebGL 不可用。');
       },

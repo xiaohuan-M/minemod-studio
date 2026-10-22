@@ -1,67 +1,54 @@
-# 当前架构 · 0.2
+# 架构与设计原则 · 0.3
 
-当前模块与运行流程以 [开发说明](DEVELOPMENT.md)、[接口契约](API.md) 和 [Docker runner 决策](adr/0002-fixed-container-builder.md) 为准。以下 M0/M1 内容是历史设计记录，不代表当前功能状态。
+采用**模块化单体**：一个本地 Node 进程提供 API 和网页，领域规则、存储、模型服务、目标生成器与构建器分层。无需额外数据库或前端打包服务，贡献者可定位单个行为；目标适配器避免将不同加载器的 API 混在同一个模板中。
 
-工程流程：ModSpec → 确认 → 固定生成器 + 不可变素材 → 工程 SHA-256 快照 → 文件审查与批准 → 本机受限 Docker → JAR 校验 → 下载。规格版本、工程快照和构建任务分别记录；编辑规格清除当前工程批准，但保留历史构建产物。
+```mermaid
+flowchart LR
+  UI[本地网页与编辑器] --> HTTP[HTTP 应用层]
+  HTTP --> Core[ModSpec / 素材 / 动画规则]
+  HTTP --> AI[文本与图像 Provider]
+  HTTP --> Store[项目 / 素材 / 快照存储]
+  Core --> Generate[目标生成器]
+  Generate --> Snapshot[不可变工程快照]
+  Snapshot --> Review[用户审查与批准]
+  Review --> Build[固定 Docker 编译 / 本地打包]
+  Build --> Artifact[校验产物与报告]
+```
 
-数据布局：projects/<uuid>.json、assets/<uuid>.json、workspaces/<project>/<hash>.json、builds/records/<uuid>.json、builds/runs/<uuid>/workspace、builds/artifacts/<uuid>/mod.jar、builds/cache。均位于用户选择的数据目录下。
+## 模块责任
 
----
+| 模块 | 责任与依赖方向 |
+| --- | --- |
+| `src/core` | 规格 schema/语义、目标、素材/动画、注册表、ZIP；不导入 HTTP/UI |
+| `src/contracts` | 渐进式 TypeScript 适配器边界；不宣称全项目已经静态类型化 |
+| `src/providers` | Chat Completions 与 Images 独立配置，约束输入/输出、取消/超时、脱敏 |
+| `src/engineering/adapters` | Fabric、Forge/NeoForge、Bedrock；只接收已校验声明式数据 |
+| `templates` | 各版本依赖锁、wrapper、来源与许可；生成器不查询任意模型代码 |
+| `src/storage` | 项目/历史/会话、不可变素材、快照、迁移备份、单写者锁 |
+| `src/runner` | 目标固定命令、镜像与执行限制；任务状态、日志、产物验证 |
+| `src/server.mjs` 与 route 模块 | HTTP 边界、操作编排、Origin/Host、并发与确认 |
+| `web/studio` | 像素/模型/实体/动画编辑；纯时间采样可单测，WebGL 由本地 Three.js 提供 |
 
-# 架构与边界
+生成器共享纯 Minecraft JSON/贴图输出；Fabric 与 Forge 系列 Java 注册代码分别维护。Bedrock 以标准行为/资源包表达，无法对应的能力明确拒绝。目标注册表提供 UI、校验、构建和报告共同使用的版本与能力，模板编译证据独立记录。
 
-## M0 基础（M1 增量见下）
+## 数据与一致性
 
-采用 Node.js 24 ESM 和无构建步骤的浏览器界面。运行时无第三方依赖，降低启动与交接成本；这只是开发基线，不是对最终 UI 框架的锁定。
+数据目录包含 `projects/<uuid>.json`、`assets/<uuid>.json`、`workspaces/<project>/<hash>.json`、`builds/records`、`builds/artifacts`、`builds/runs` 和 `builds/cache`。用户名称不参与路径；读取拒绝符号链接/越界与损坏记录。
 
-| 模块 | 责任 | 当前限制 |
-| --- | --- | --- |
-| `web/` | 项目输入、列表与演示计划 | 原生 JS 界面壳，尚无资产编辑器 |
-| `src/server.mjs` | HTTP 契约、错误与请求边界 | 回环监听、固定静态文件表，无远程服务模式 |
-| `src/core/` | 项目验证、目标与能力声明 | 固定单一目标，无工程生成 |
-| `src/storage/` | JSON 项目记录 | 同目录临时文件替换；单进程、非事务数据库 |
-| `src/providers/mock.mjs` | 无网络的计划示例 | 固定步骤，不理解玩法、不调用 LLM |
+- 项目 revision 实现乐观并发；规格、20 版历史与最近 100 次会话在同一个原子 JSON 替换中提交。模型过期响应不能覆盖人工修改。
+- 规范化必须幂等，规格与素材以 SHA-256 追踪；素材保存生成新 ID，避免影响旧工程。动画的再次校验也必须保持字节级规范表示。
+- 工程由规格和素材生成不可变快照；确认绑定规格哈希，批准绑定工程哈希。编辑、恢复或导入清除批准，旧产物继续可下载。
+- 完整备份先验证所有记录、哈希和引用，在临时目录准备后最后提交新项目；失败回滚本次新增文件。不是数据库级断电事务，崩溃可能留下无引用记录。
+- 带进程身份的排他锁阻止双写者；只回收可证明为同机已退出进程的锁，不窃取来源不明锁。
 
-项目名不参与文件路径，记录以 UUID 命名。服务拒绝不匹配的 Host 和跨站 Origin，无 CORS 开放。静态内容只允许三个确定的文件。文件存储可供单用户单进程开发，不承诺多进程并发或断电级事务一致性；高频任务事件与快照引入前重新评估 SQLite。
+JSON 存储适合当前单人本地使用。未来多人服务或高频事件写入需另行引入事务数据库与认证；不能把本地进程直接公开部署。
 
-## 目标模块
+## 执行与扩展
 
-1. **规格层**：自然语言转 `ModSpec`，版本化结构验证，区分默认值、假设和用户确认事项。
-2. **编排层**：有限状态机，负责需求、计划、审查、执行、验证和交付；记录有序事件，支持取消及恢复。
-3. **适配层**：文本、图片与模型能力分开声明。不同模型按能力匹配，不假设同一个 API 都能完成。
-4. **工程层**：版本固定的模板清单、声明式文件变更、差异与快照。模型不拥有任意文件或 shell 权限。
-5. **执行层**：独立 runner，以任务白名单与结构化参数启动 Gradle，隔离工作目录、限制资源、控制网络。
-6. **资产层**：源文件与导出文件分离，每个资产记录来源、用途、授权信息与哈希。
-7. **预览层**：从规格和生成资源读取物品与配方；模型预览优先标准文件导入，再评估 Blockbench 交互协议。
+模型输出仅能形成经过 Ajv 与领域校验的规格/素材，没有任意 shell、文件路径或 Java 执行能力。真实构建需要审查具体快照和选择联网；Java 固定受限 Docker runner，Bedrock 在本机纯数据打包。导入的外部源码不能直接进入 runner，必须经本机生成器重建。
 
-## 后续任务状态
+构建状态独立于项目：`queued → running → passed / failed / cancelled / timed_out / interrupted`。成功只表示编译或包结构验证，`gameTested` 单独保持 false，除非取得真实游戏证据。失败诊断生成修正规格建议，不自动改模板或无限重试。
 
-`draft → planning → awaiting_review → generating → awaiting_build_approval → building → build_passed → exported`
+增加目标先实现注册表、独立模板/生成器、能力拒绝、契约回归与真实构建；增加 provider 先声明协议、输入范围、公开配置与取消/错误语义。不要为了插件形式动态执行不受信任第三方代码。
 
-任一步可进入 `failed` 或 `cancelled`，重试创建新的运行记录；游戏实测作为独立证据，不折叠为构建状态。当前 `planned` 仅表示演示计划已保存，是 M0 的简化状态。引入真实任务时进行 schemaVersion 迁移，不能静默重解释旧记录。
-
-## 文件与数据
-
-M0 数据：`.minemod/projects/<uuid>.json`，schemaVersion=1。支持手动复制整个数据目录备份；当前无删除、导入、历史恢复或迁移工具。
-
-M2 目标布局：每个项目分为 spec、workspace、snapshots、runs、artifacts。每个 run 记录 provider ID、目标清单、工程快照哈希、时间、退出码和日志索引。任何工程路径必须经过规范化与真实路径校验，拒绝绝对路径、上级路径、符号链接和越界归档条目。
-
-## 网络与密钥
-
-默认 mock 无外部调用；配置远程模型时显示即将发送的上下文。服务端管理 API Key，不把密钥放 localStorage、项目、导出文件或日志。限制地址协议与重定向；本地地址支持是显式 provider 配置能力，不能从网页请求随意指定 URL。云服务费用由用户选择的服务商承担计费，不实现积分系统。
-
-## 构建隔离
-
-Gradle 本身能执行任意代码，shell=false 不能构成隔离。M2 的 runner 必须确定可验证的容器或受限进程方案，并在每个平台检测隔离能力。Docker 可能涉及用户的安装与许可选择，当前未选定、不自动安装。无隔离时只导出工程供用户手动审查和构建，不能默认降级成本机全权限自动执行。
-
-## M1 规格增量
-
-`src/core/mod-spec.mjs` 使用仓库内 JSON Schema 的固定子集完成结构检查，再验证唯一 ID、配方键、引用和堆叠数；不接收用户自定义 schema。规格保存使用项目 revision 做乐观并发检查，SHA-256 绑定确认结果。编辑后清除确认；旧 M0 记录按新增字段默认值读取。规格仅是声明式数据，不执行模型输出，也不等价于可构建工程。
-
-## M1 模型增量
-
-CLI 只从服务端环境创建 provider。HTTP 层验证用户选择和当前 configurationId 后，使用 AbortController 调用有限时、限响应大小的适配器。请求断开、取消或超时都会中止 fetch。最多两个并发请求，每项目一个；结果必须通过 ModSpec 验证及 revision 校验才可保存。模型输出不会成为 shell 参数或代码。普通运行和 CI 不自动访问云端；连接测试同样需显式确认。
-
-## 规格历史持久化
-
-每个项目保存最多 20 个替换前的 specHistory，独立于当前规格。规格变更与历史追加在同一 JSON 临时文件中写入并原子替换，避免跨文件更新不一致；仍不承诺断电级事务。历史读取同时校验 ModSpec 和 SHA-256。HTTP 仅按需返回单份历史，项目列表不包含历史正文；恢复也使用 revision 检查并取消确认。
+运行依赖与工具选择见 [开源评估](research/OPEN-SOURCE-REVIEW.md)；验证和发行流程见 [开发说明](DEVELOPMENT.md)。

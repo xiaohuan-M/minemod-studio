@@ -1,8 +1,8 @@
 {
   "name": "minemod-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Local-first open-source Minecraft workshop with BYO LLM, assets and verified Fabric builds",
+  "description": "Local-first open-source Minecraft workshop with BYO AI, animated assets and verified multi-loader builds",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -13,14 +13,17 @@
     "start": "node --use-env-proxy --env-file-if-exists=.env src/cli.mjs",
     "check": "node scripts/check.mjs",
     "test": "node --test",
-    "verify": "npm run check && npm run typecheck && npm test",
+    "verify": "npm run check && npm run lint && npm run typecheck && npm test",
     "doctor": "node --use-env-proxy --env-file-if-exists=.env scripts/doctor.mjs",
     "setup:builder": "node --use-env-proxy --env-file-if-exists=.env scripts/setup-builder.mjs",
     "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs",
-    "format": "prettier --write \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
+    "format": "prettier --write \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\" eslint.config.mjs",
+    "format:check": "prettier --check \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\" eslint.config.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test:browser": "node scripts/verify-browser.mjs"
+    "test:browser": "node scripts/verify-browser.mjs",
+    "lint": "eslint src web scripts test eslint.config.mjs",
+    "package": "node scripts/package.mjs",
+    "test:package": "node scripts/verify-package.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",
@@ -32,6 +35,8 @@
     "@types/node": "26.6.5",
     "@types/pngjs": "6.0.5",
     "@types/three": "0.186.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
     "prettier": "3.9.10",
     "typescript": "7.0.2"
   }

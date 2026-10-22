@@ -1,13 +1,13 @@
-# HTTP API · 0.2
+# HTTP API · 0.3
 
 Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发服务，非公共服务 API；没有远程认证或权限管理，不支持反向代理。JSON 请求上限 24 KiB；创建时名称 1–80 字符、需求 1–4000 字符（按 JavaScript string.length）。字段会去除两端空白。
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.2.0",stage:"Fabric-workshop-preview"}` |
+| GET | `/api/health` | `{ok:true,version:"0.3.0",stage:"multi-target-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
-| POST | `/api/projects` | `{name,prompt}` → 201，返回 Project |
+| POST | `/api/projects` | `{name,prompt,targetId?}` → 201，返回 Project |
 | GET | `/api/projects/:id` | 返回 Project，未知 UUID 为 404 |
 | POST | `/api/projects/:id/plan` | 请求 `{}` → 200；替换为离线演示计划 |
 
@@ -92,7 +92,7 @@ source 区分 mock/manual/openai-compatible；模型来源含 model、durationMs
 
 `spec/generate` 可增加 `instruction`（最多 4000 字）和 `repairBuildId`。仅允许附加本项目 failed 构建的日志末尾最多 6000 字；当前规格作为上下文一起发送。规格仍完整校验并通过 revision 检查后才保存，不直接修改源码或重跑构建。
 
-`POST /api/providers/openai-compatible/asset` 请求 `{consent,kind:"texture"|"model",prompt}`（1–2000 字），返回 `{kind,data,source}`。只发送素材描述；结果经校验后返回，不自动入库。断开请求会中止对应模型调用。与规格请求共享最多两个并发请求限制，同一素材生成任务不重复启动。
+`POST /api/providers/openai-compatible/asset` 请求 `{consent,kind:"texture"|"model",prompt}`（1–2000 字），返回 `{kind,data,source}`。发送素材描述与明确选定的可选图片参考（见末节）；结果经校验后返回，不自动入库。断开请求会中止对应模型调用。与规格请求共享最多两个并发请求限制，同一素材生成任务不重复启动。
 
 ## 素材
 
@@ -102,9 +102,9 @@ source 区分 mock/manual/openai-compatible；模型来源含 model、durationMs
 | POST | `/api/assets` | `{name,kind,data,source,license,format?}` → 不可变新资源；请求最多 1 MiB |
 | GET | `/api/assets/:id` | 完整资源、哈希与来源 |
 | GET | `/api/assets/:id/png` | 贴图 PNG 下载 |
-| GET | `/api/assets/:id/bbmodel` | 静态模型 bbmodel 下载；含占位纹理，用户贴图单独导出绑定 |
+| GET | `/api/assets/:id/bbmodel` | 静态/动画模型 bbmodel 下载；默认含占位纹理，用户贴图可通过 blockbench/export 嵌入 |
 
-texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGGBBAA`；model data 为 Java 立方体 `elements`，最多 128 个。`format:"bbmodel"` 将受限静态模型转为规范形式。不接受 mesh、动画或组变换。
+texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGGBBAA`；model data 为 Java 立方体 `elements`，最多 128 个。`format:"bbmodel"` 将受限静态模型转为规范形式。静态 kind=model 不接受 mesh、动画或组变换；动画 kind=animated_model 见末节。
 
 ## 工程与交付
 
@@ -137,7 +137,7 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 
 ## 多目标适配
 
-`GET /api/targets` 返回 `id/label/target/artifact/features/validation/enabled`。新建项目可传 `targetId`；省略时保持 `fabric-1.21.1`。可用目标：`fabric-1.21.1`、`fabric-1.20.1`、`bedrock-1.21.60`（java=0 表示不适用）。版本、加载器与 Java 必须成套匹配。`GET /api/examples/full-workshop?target=<id>` 返回该目标的内置示例。
+`GET /api/targets` 返回 `id/label/target/artifact/features/validation/enabled`。新建项目可传 `targetId`；省略时保持 `fabric-1.21.1`。可用目标：`fabric-1.21.1`、`fabric-1.20.1`、`forge-1.20.1`、`neoforge-1.21.1`、`bedrock-1.21.60`（java=0 表示不适用）。版本、加载器与 Java 必须成套匹配。`GET /api/examples/full-workshop?target=<id>` 返回该目标的内置示例。
 
 构建接口沿用快照批准流程。Bedrock 在本机打包，无需 Docker、镜像或联网。`GET /api/builds/:id/artifact` 下载该任务的 JAR 或 MCADDON；旧 `/jar` 保留，仅接受 JAR。报告的 `artifact.format` 明确类型，`gameTested` 保持 false。`bundle` 包含目标对应安装说明。
 

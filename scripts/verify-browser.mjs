@@ -137,8 +137,31 @@ try {
     'mobile horizontal overflow',
   );
   assert.deepEqual(errors, []);
+  // GPU-disabled machines must keep editing/export usable instead of throwing in animation setup.
+  const fallback = await browser.newPage();
+  const fallbackErrors = [];
+  fallback.on('pageerror', (e) => fallbackErrors.push(e.message));
+  await fallback.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      return String(type).includes('webgl') ? null : getContext.call(this, type, ...args);
+    };
+  });
+  await fallback.goto('http://127.0.0.1:' + server.address().port);
+  await fallback.locator('#projects button').first().click();
+  assert.equal(await fallback.getAttribute('#model-canvas', 'data-renderer'), 'unavailable');
+  await fallback.locator('#animation-studio summary').click();
+  await fallback.click('#animation-create');
+  await fallback.click('#animation-save-key');
+  await fallback.fill('#animation-name', '无 GPU 编辑');
+  await fallback.click('#animation-save');
+  await fallback.waitForFunction(() =>
+    document.querySelector('#asset-library').textContent.includes('无 GPU 编辑'),
+  );
+  assert.deepEqual(fallbackErrors, []);
+  await fallback.close();
   console.log(
-    'Browser passed: proposals/conversation, targets, WebGL/UV, animated entity editing, MCADDON export, portable backup and mobile layout.',
+    'Browser passed: proposals/conversation, targets, WebGL/UV, animated entity editing, MCADDON export, portable backup, mobile layout and editing without WebGL.',
   );
 } finally {
   await browser?.close();
