@@ -6,6 +6,8 @@ import { mockProvider } from './providers/mock.mjs';
 import { capabilities } from './core/capabilities.mjs';
 import { AppError } from './core/errors.mjs';
 import { modSpecSchema } from './core/mod-spec.mjs';
+import { TARGET } from './core/project.mjs';
+import pkg from '../package.json' with { type: 'json' };
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
@@ -42,9 +44,24 @@ async function body(request) {
   catch { throw new AppError(400, 'INVALID_JSON', 'JSON 格式不正确。'); }
 }
 
-export function makeServer({ dataDir }) {
+export function makeServer({ dataDir, llmProvider = null }) {
   const store = new ProjectStore(dataDir);
-  return createServer({ requestTimeout: 15_000, headersTimeout: 10_000 }, async (request, response) => {
+  const active = new Map();
+  function requireConsent(input) {
+    if (!llmProvider?.info.configured) throw new AppError(409, 'PROVIDER_NOT_CONFIGURED', '请先在服务端 .env 中配置 LLM 基址、模型和密钥，然后重启服务。');
+    if (input.consent !== llmProvider.info.configurationId) throw new AppError(400, 'CONSENT_REQUIRED', '请先核对当前服务商、模型和发送内容并明确确认。');
+  }
+  async function callModel(key, project, response) {
+    if (active.has(key)) throw new AppError(409, 'PLANNING_ACTIVE', '该项目已有模型请求，请等待或取消。');
+    if (active.size >= 2) throw new AppError(429, 'PLANNING_LIMIT', '最多同时运行两个模型请求，请稍后再试。');
+    const controller = new AbortController();
+    active.set(key, controller);
+    const disconnect = () => { if (!response.writableEnded) controller.abort(); };
+    response.once('close', disconnect);
+    try { return await llmProvider.planSpec(project, {signal:controller.signal}); }
+    finally { active.delete(key); response.off('close', disconnect); }
+  }
+  const server = createServer({ requestTimeout: 15_000, headersTimeout: 10_000 }, async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -62,11 +79,21 @@ export function makeServer({ dataDir }) {
         response.writeHead(200, { 'Content-Type': type });
         response.end(content);
       } else if (request.method === 'GET' && pathname === '/api/health') {
-        json(response, 200, { ok: true, version: '0.0.1', stage: capabilities().stage });
+        json(response, 200, { ok: true, version: pkg.version, stage: capabilities().stage });
       } else if (request.method === 'GET' && pathname === '/api/capabilities') {
         json(response, 200, capabilities());
       } else if (request.method === 'GET' && pathname === '/api/schema/mod-spec') {
         json(response, 200, modSpecSchema);
+      } else if (request.method === 'GET' && pathname === '/api/providers') {
+        json(response, 200, {providers:[
+          {id:'mock',label:'离线固定示例',configured:true,local:true},
+          llmProvider?.info ?? {id:'openai-compatible',label:'自定义 LLM',configured:false},
+        ]});
+      } else if (request.method === 'POST' && pathname === '/api/providers/openai-compatible/test') {
+        const input = fields(await body(request), ['consent']);
+        requireConsent(input);
+        const result = await callModel('connection-test', {name:'连接验证',prompt:'一个普通物品，不需要配方。只用于验证接口与规格输出。',target:TARGET}, response);
+        json(response, 200, {ok:true,validatedSpec:true,source:result.source});
       } else if (request.method === 'GET' && pathname === '/api/projects') {
         json(response, 200, { projects: store.list() });
       } else if (request.method === 'POST' && pathname === '/api/projects') {
@@ -78,12 +105,19 @@ export function makeServer({ dataDir }) {
         }
         json(response, 200, store.plan(pathname.split('/')[3], mockProvider));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/generate$/.test(pathname)) {
-        const input = fields(await body(request), ['provider', 'revision']);
-        if (input.provider !== 'mock') throw new AppError(400, 'INVALID_PROVIDER', '请选择离线示例。');
+        const input = fields(await body(request), ['provider', 'revision', 'consent']);
+        if (!['mock', 'openai-compatible'].includes(input.provider)) throw new AppError(400, 'INVALID_PROVIDER', '请选择离线示例或自定义 LLM。');
         const project = store.get(pathname.split('/')[3]);
         store.assertRevision(project, input.revision);
-        const result = mockProvider.planSpec(project);
+        if (input.provider !== 'mock') requireConsent(input);
+        const result = input.provider === 'mock' ? mockProvider.planSpec(project) : await callModel(project.id, project, response);
         json(response, 200, store.setSpec(project.id, result.spec, input.revision, result.source));
+      } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/cancel$/.test(pathname)) {
+        fields(await body(request), []);
+        const project = store.get(pathname.split('/')[3]);
+        const controller = active.get(project.id);
+        controller?.abort();
+        json(response, 200, {cancelled:!!controller});
       } else if (request.method === 'PUT' && /^\/api\/projects\/[^/]+\/spec$/.test(pathname)) {
         const input = fields(await body(request), ['spec', 'revision']);
         json(response, 200, store.setSpec(pathname.split('/')[3], input.spec, input.revision));
@@ -102,10 +136,12 @@ export function makeServer({ dataDir }) {
       }
     } catch (error) {
       const known = error instanceof AppError;
-      if (!known) console.error('[minemod] Internal request failure:', error.code ?? error.name);
+      if (!known) console.error('[minemod] Internal request failure');
       if (!response.destroyed && !response.headersSent) {
         json(response, known ? error.status : 500, { error: { code: known ? error.code : 'INTERNAL_ERROR', message: known ? error.message : '本地服务发生错误。' } });
       }
     }
   });
+  server.on('close', () => { for (const controller of active.values()) controller.abort(); });
+  return server;
 }

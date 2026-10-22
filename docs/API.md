@@ -4,7 +4,7 @@ Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发�
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.0.1",stage:"M1-in-progress"}` |
+| GET | `/api/health` | `{ok:true,version:"0.1.0",stage:"M1-in-progress"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt}` → 201，返回 Project |
@@ -57,9 +57,21 @@ POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字
 | 方法 | 路径 | 请求与结果 |
 | --- | --- | --- |
 | GET | `/api/schema/mod-spec` | JSON Schema；另有跨字段语义检查 |
-| POST | `/api/projects/:id/spec/generate` | `{provider:"mock",revision}` → 固定离线规格示例 |
+| POST | `/api/projects/:id/spec/generate` | `{provider,revision,consent?}` → 离线示例或模型规格 |
 | PUT | `/api/projects/:id/spec` | `{spec,revision}` → 校验并保存，清除旧确认 |
 | POST | `/api/projects/:id/spec/confirm` | `{revision}` → 确认当前规范化 SHA-256 |
 | GET | `/api/projects/:id/spec/export` | 下载已保存的规格 JSON，非模组工程/JAR |
 
 规格保存后 status=awaiting_review，确认后 spec_confirmed。specSource 标记 manual/mock 及 demo；artifacts 仍为空。422 INVALID_SPEC 给出字段路径，409 SPEC_REQUIRED 表示尚无规格。确认不触发生成、构建或网络调用。详见 [规格契约](MODSPEC.md)。
+
+## 自定义 LLM
+
+`GET /api/providers` 返回 mock 和 openai-compatible 的配置状态。已配置模型包含 baseUrl、model、local、timeoutMs、configurationId 和 sends，不包含密钥。未配置时包含可操作的 configurationError，离线模式仍可使用。
+
+- `POST /api/projects/:id/spec/generate`：provider=mock 不联网；provider=openai-compatible 必须携带当前 configurationId 作为 consent，同时提供当前 revision。输入不接受任意基址、模型或密钥。
+- `POST /api/providers/openai-compatible/test`：`{consent}`，发送固定测试样例；成功返回 `{ok:true,validatedSpec:true,source}`，不保存项目。
+- `POST /api/projects/:id/spec/cancel`：`{}`，返回 `{cancelled:boolean}`。网页可直接终止请求，服务端也会取消对应模型调用。
+
+source 区分 mock/manual/openai-compatible；模型来源含 model、durationMs、usage.inputTokens/outputTokens（未返回则 null），demo=false。未确认规格仍为 awaiting_review。
+
+错误：400 CONSENT_REQUIRED / INVALID_PROVIDER，409 PROVIDER_NOT_CONFIGURED / PLANNING_ACTIVE / PROJECT_CHANGED，429 PROVIDER_RATE_LIMIT / PLANNING_LIMIT，499 PROVIDER_CANCELLED，504 PROVIDER_TIMEOUT，422 PROVIDER_INVALID_SPEC，502 PROVIDER_AUTH / PROVIDER_REDIRECT / PROVIDER_HTTP / PROVIDER_UNREACHABLE / PROVIDER_INVALID_RESPONSE / PROVIDER_RESPONSE_TOO_LARGE。失败不保存新规格，无自动重试。

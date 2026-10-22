@@ -11,7 +11,7 @@ export function capabilities() {
       modSpec: true,
       specReview: true,
       specExport: true,
-      llmPlanning: false,
+      llmPlanning: true,
       codeGeneration: false,
       textureGeneration: false,
       blockbench: false,

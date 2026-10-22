@@ -1,125 +1,162 @@
 const $ = (id) => document.getElementById(id);
 let selected = null;
-let planning = false;
+let busy = false;
+let dirty = false;
+let llm = null;
+let activeFetch = null;
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10000) });
+  const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json' }, signal: options.signal ?? AbortSignal.timeout(10000) });
   const value = await response.json();
   if (!response.ok) throw new Error(value.error?.message ?? '请求失败');
   return value;
 }
-
 function feedback(message, error = false) {
   $('feedback').textContent = message;
   $('feedback').classList.toggle('error', error);
 }
-
+function canReplace() { return !dirty || window.confirm('有未保存的规格修改，是否放弃这些修改？'); }
+function actions() {
+  for (const name of ['create-button', 'plan-button', 'provider-select', 'model-consent', 'spec-editor']) $(name).disabled = busy;
+  const cloud = $('provider-select').value === 'openai-compatible';
+  $('spec-button').disabled = busy || (cloud && (!llm?.configured || !$('model-consent').checked));
+  $('spec-button').textContent = cloud ? '使用我的模型生成规格' : '生成离线规格示例';
+  $('save-spec').disabled = busy || !dirty;
+  $('confirm-spec').disabled = busy || dirty || !selected?.spec || !!selected?.confirmedSpecHash;
+  $('test-model').disabled = busy || !llm?.configured || !$('model-consent').checked;
+  $('cancel-model').hidden = !activeFetch;
+}
 function show(project) {
   selected = project;
+  dirty = false;
   $('detail').hidden = false;
   $('project-title').textContent = project.name;
   $('project-prompt').textContent = project.prompt;
   $('plan').hidden = !project.plan;
-  $('plan-button').disabled = planning;
-  showSpec(project);
   if (project.plan) {
     $('plan-summary').textContent = project.plan.summary;
     $('steps').replaceChildren(...project.plan.steps.map((step) => {
-      const li = document.createElement('li');
-      li.textContent = step.title;
-      return li;
+      const li = document.createElement('li'); li.textContent = step.title; return li;
     }));
     $('assumptions').replaceChildren(...project.plan.assumptions.map((value) => {
-      const li = document.createElement('li');
-      li.textContent = value;
-      return li;
+      const li = document.createElement('li'); li.textContent = value; return li;
     }));
   }
+  $('spec-panel').hidden = !project.spec;
+  if (project.spec) {
+    $('spec-editor').value = JSON.stringify(project.spec, null, 2);
+    const source = project.specSource;
+    const label = source?.demo ? '离线固定示例' : source?.provider === 'openai-compatible' ? 'LLM 生成 · ' + source.model : '手动编辑规格';
+    const usage = source?.usage;
+    const tokens = usage ? ' · 输入/输出 token：' + (usage.inputTokens ?? '未知') + '/' + (usage.outputTokens ?? '未知') : '';
+    $('spec-state').textContent = label + ' · ' + (project.confirmedSpecHash ? '已确认' : '待审查') + ' · 未构建' + tokens;
+    $('export-spec').href = '/api/projects/' + project.id + '/spec/export';
+    const entries = project.spec.items.map(item => item.displayName.zh_cn + ' / ' + item.displayName.en_us + ' · ' + item.id + ' · 堆叠 ' + item.maxStackSize);
+    entries.push(...project.spec.recipes.map(recipe => '配方 ' + recipe.id + ' · ' + (recipe.type === 'crafting_shaped' ? '有序' : '无序') + ' → ' + recipe.result.item + ' × ' + recipe.result.count));
+    entries.push(...project.spec.assumptions.map(text => '待核对：' + text));
+    $('spec-preview').replaceChildren(...entries.map(text => { const p = document.createElement('p'); p.textContent = text; return p; }));
+  }
+  actions();
 }
-
 async function refresh() {
   const { projects } = await api('/api/projects');
   $('empty').hidden = projects.length > 0;
   $('projects').replaceChildren(...projects.map((project) => {
     const li = document.createElement('li');
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = project.name;
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = project.name;
     const status = document.createElement('small');
     status.textContent = ({draft:'已记录想法',planned:'已有演示计划',awaiting_review:'规格待确认',spec_confirmed:'规格已确认'})[project.status] + ' · 未构建';
     button.append(status);
-    button.addEventListener('click', () => { if (!planning) show(project); });
-    li.append(button);
-    return li;
+    button.addEventListener('click', async () => {
+      if (busy || !canReplace()) return;
+      busy = true; actions();
+      try { show(await api('/api/projects/' + project.id)); $('model-consent').checked = false; }
+      catch (error) { feedback(error.message, true); }
+      finally { busy = false; actions(); }
+    });
+    li.append(button); return li;
   }));
 }
-
 $('create-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  $('create-button').disabled = true;
+  if (busy || !canReplace()) return;
+  busy = true; actions();
   try {
-    const project = await api('/api/projects', { method: 'POST', body: JSON.stringify({ name: $('name').value, prompt: $('prompt').value }) });
-    show(project);
-    $('create-form').reset();
-    await refresh();
-    feedback('项目已保存。数据保存在运行此服务的电脑上。');
+    const project = await api('/api/projects', {method:'POST',body:JSON.stringify({name:$('name').value,prompt:$('prompt').value})});
+    show(project); $('create-form').reset(); $('model-consent').checked = false;
+    await refresh(); feedback('项目已保存。数据保存在运行此服务的电脑上。');
   } catch (error) { feedback(error.message, true); }
-  finally { $('create-button').disabled = false; }
+  finally { busy = false; actions(); }
 });
 
-$('plan-button').addEventListener('click', async () => {
-  if (!selected || planning) return;
+async function updateProject(path, method, payload, message, model = false) {
+  if (!selected || busy) return;
   const id = selected.id;
-  planning = true;
-  $('plan-button').disabled = true;
+  busy = true;
+  if (model) activeFetch = new AbortController();
+  actions();
+  if (model) feedback('正在请求选定模型，可取消；原规格会保留至新结果校验成功。');
   try {
-    const project = await api(`/api/projects/${id}/plan`, { method: 'POST', body: '{}' });
-    if (selected?.id === id) show(project);
-    await refresh();
-    feedback('已保存离线演示计划。尚未生成代码或执行构建。');
-  } catch (error) { feedback(error.message, true); }
-  finally { planning = false; $('plan-button').disabled = false; }
+    const project = await api('/api/projects/' + id + path, {
+      method,body:JSON.stringify(payload),signal:activeFetch?.signal,
+    });
+    show(project); await refresh(); feedback(message);
+  } catch (error) {
+    feedback(error.name === 'AbortError' ? '请求已停止。请查看项目当前状态；服务商可能仍会计费。' : error.message, true);
+    if (model) {
+      try { show(await api('/api/projects/' + id)); } catch { /* Keep the visible last saved state. */ }
+    }
+  } finally { busy = false; activeFetch = null; if (model) $('model-consent').checked = false; actions(); }
+}
+$('plan-button').addEventListener('click', () => {
+  if (canReplace()) void updateProject('/plan','POST',{},'已保存离线演示计划。尚未生成代码或执行构建。');
 });
-
-refresh().catch((error) => feedback(`无法读取项目：${error.message}`, true));
-
-function showSpec(project) {
-  $('spec-panel').hidden = !project.spec;
-  if (!project.spec) return;
-  $('spec-editor').value = JSON.stringify(project.spec, null, 2);
-  $('confirm-spec').disabled = !!project.confirmedSpecHash;
-  $('spec-state').textContent = (project.specSource?.demo ? '离线固定示例' : '手动编辑规格') + ' · ' + (project.confirmedSpecHash ? '已确认' : '待审查') + ' · 未构建';
-  $('export-spec').href = '/api/projects/' + project.id + '/spec/export';
-  const entries = project.spec.items.map(item => item.displayName.zh_cn + ' / ' + item.displayName.en_us + ' · ' + item.id + ' · 堆叠 ' + item.maxStackSize);
-  entries.push(...project.spec.recipes.map(recipe => '配方 ' + recipe.id + ' · ' + (recipe.type === 'crafting_shaped' ? '有序' : '无序') + ' → ' + recipe.result.item + ' × ' + recipe.result.count));
-  entries.push(...project.spec.assumptions.map(text => '待核对：' + text));
-  $('spec-preview').replaceChildren(...entries.map(text => { const p = document.createElement('p'); p.textContent = text; return p; }));
-}
-
-async function updateSpec(path, method, payload, message) {
-  if (!selected || planning) return;
-  const id = selected.id;
-  planning = true;
-  for (const name of ['spec-button', 'save-spec', 'confirm-spec', 'plan-button', 'create-button']) $(name).disabled = true;
-  try {
-    const project = await api('/api/projects/' + id + path, {method,body:JSON.stringify({...payload,revision:selected.revision})});
-    if (selected?.id === id) show(project);
-    await refresh();
-    feedback(message);
-  } catch (error) { feedback(error.message, true); }
-  finally {
-    planning = false;
-    for (const name of ['spec-button', 'save-spec', 'plan-button', 'create-button']) $(name).disabled = false;
-    $('confirm-spec').disabled = !!selected?.confirmedSpecHash || $('spec-editor').value !== JSON.stringify(selected?.spec, null, 2);
-  }
-}
-$('spec-button').addEventListener('click', () => updateSpec('/spec/generate', 'POST', {provider:'mock'}, '离线示例已保存。请核对物品、配方和假设后确认。'));
+$('spec-button').addEventListener('click', () => {
+  if (!selected || busy || !canReplace()) return;
+  if (selected.spec && !window.confirm('新结果通过校验后将替换当前规格并清除确认。建议先导出保存的规格。继续吗？')) return;
+  const provider = $('provider-select').value;
+  const model = provider === 'openai-compatible';
+  if (model && (!llm?.configured || !$('model-consent').checked)) return;
+  void updateProject('/spec/generate','POST',{
+    provider,revision:selected.revision,...(model ? {consent:llm.configurationId} : {}),
+  },model ? '模型规格已通过校验并保存。请审查假设和配方，再确认。' : '离线示例已保存。请核对物品、配方和假设后确认。',model);
+});
 $('save-spec').addEventListener('click', () => {
-  try { void updateSpec('/spec', 'PUT', {spec:JSON.parse($('spec-editor').value)}, '规格已校验并保存，之前的确认已失效。'); }
-  catch { feedback('JSON 格式不正确，请检查引号和逗号。', true); }
+  if (!selected) return;
+  try { void updateProject('/spec','PUT',{spec:JSON.parse($('spec-editor').value),revision:selected.revision},'规格已校验并保存，之前的确认已失效。'); }
+  catch { feedback('JSON 格式不正确，请检查引号和逗号。',true); }
 });
-$('confirm-spec').addEventListener('click', () => updateSpec('/spec/confirm', 'POST', {}, '当前规格已确认。尚未生成代码或执行构建。'));
+$('confirm-spec').addEventListener('click', () => {
+  if (selected && !dirty) void updateProject('/spec/confirm','POST',{revision:selected.revision},'当前规格已确认。尚未生成代码或执行构建。');
+});
 $('spec-editor').addEventListener('input', () => {
-  $('confirm-spec').disabled = true;
-  feedback('有未保存的修改，请先校验并保存。');
+  dirty = $('spec-editor').value !== JSON.stringify(selected?.spec,null,2);
+  actions(); feedback(dirty ? '有未保存的修改，请先校验并保存。' : '当前显示已保存的规格。');
 });
+$('provider-select').addEventListener('change', () => {
+  $('model-details').hidden = $('provider-select').value !== 'openai-compatible';
+  $('model-consent').checked = false; actions();
+});
+$('model-consent').addEventListener('change', actions);
+$('test-model').addEventListener('click', async () => {
+  if (busy || !llm?.configured || !$('model-consent').checked) return;
+  busy = true; activeFetch = new AbortController(); actions();
+  feedback('正在发送固定测试样例，验证模型返回的规格。');
+  try {
+    await api('/api/providers/openai-compatible/test',{method:'POST',body:JSON.stringify({consent:llm.configurationId}),signal:activeFetch.signal});
+    feedback('连接验证通过：该接口返回了合法规格。实际玩法质量仍需审查。');
+  } catch (error) { feedback(error.name === 'AbortError' ? '已停止连接测试；服务商可能仍会计费。' : error.message,true); }
+  finally { busy = false; activeFetch = null; $('model-consent').checked = false; actions(); }
+});
+$('cancel-model').addEventListener('click', () => { activeFetch?.abort(); });
+window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
+
+async function initialize() {
+  const {providers} = await api('/api/providers');
+  llm = providers.find(provider => provider.id === 'openai-compatible');
+  $('provider-info').textContent = llm?.configured
+    ? '目标：' + llm.baseUrl + '\n模型：' + llm.model + '\n超时：' + llm.timeoutMs / 1000 + ' 秒'
+    : (llm?.configurationError ?? '尚未配置自定义模型。请按下方说明填写服务端 .env 并重启。');
+  await refresh(); actions();
+}
+initialize().catch(error => feedback('初始化失败：' + error.message,true));

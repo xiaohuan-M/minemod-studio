@@ -4,11 +4,11 @@
 
 - 仓库是 MineMod Studio 的 M1 开发版，不是完整模组生成器。
 - 先读 `README.md`、`docs/ROADMAP.md`、`docs/DEVELOPMENT.md` 和修改涉及的接口文档。
-- ModSpec v1 已实现；继续完成 M1 的 provider 与真实模型验证。不要跳过真实模板验证去宣称全版本兼容。
+- ModSpec v1 已实现；Chat Completions provider 已实现；继续真实模型联调与固定模板验证。不要跳过真实模板验证去宣称全版本兼容。
 
 ## 工程规则
 
-- Node.js >=24；ES modules；当前无第三方运行依赖。新依赖必须在 PR 中说明必要性并更新锁文件。
+- Node.js >=24.5；ES modules；当前无第三方运行依赖。新依赖必须在 PR 中说明必要性并更新锁文件。
 - 核心规则放 `src/core`，存储放 `src/storage`，模型适配放 `src/providers`。核心层不导入 HTTP 或 UI。
 - 用户界面默认中文；错误给出可操作信息。代码和日志不包含 API Key、个人绝对路径或完整模型请求。
 - 改行为时同步更新能力声明、API 文档与必要测试。不得让 UI 将 mock 结果呈现为真实 AI、构建或游戏实测结果。

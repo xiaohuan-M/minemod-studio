@@ -15,7 +15,7 @@
       <p class="eyebrow">你的想法，你的工程</p>
       <h1>从一个点子，<br>开始创造方块世界。</h1>
       <p>开源、本地优先的 AI 模组工坊。先记录想法，再逐步构建可玩的作品。</p>
-      <aside><strong>当前是开发基础版</strong><br>可管理本地项目，编辑、校验和确认物品与配方规格。当前使用离线示例；AI 接入、代码生成、真实编译和 JAR 导出尚未实现。</aside>
+      <aside><strong>当前是开发基础版</strong><br>可管理本地项目，编辑、校验和确认物品与配方规格。支持自带 API 的模型规划，默认离线示例。代码生成、真实编译和 JAR 导出尚未实现。</aside>
     </section>
     <div class="workspace">
       <section class="panel">
@@ -39,7 +39,21 @@
       <p class="eyebrow">项目详情</p>
       <h2 id="project-title"></h2>
       <p id="project-prompt" class="preserve"></p>
-      <div class="actions"><button type="button" id="spec-button">生成离线规格示例</button><button type="button" id="plan-button" class="secondary">查看流程演示</button></div>
+      <section class="provider-panel" aria-labelledby="provider-title">
+        <h3 id="provider-title">规划方式</h3>
+        <label for="provider-select">选择模型来源</label>
+        <select id="provider-select"><option value="mock">离线固定示例 · 无网络请求</option><option value="openai-compatible">我的 LLM API · 自定义模型</option></select>
+        <div id="model-details" hidden>
+          <p id="provider-info" class="preserve"></p>
+          <p>生成规格会发送本项目的名称、需求文本和目标版本。连接测试只发送固定样例。服务商可能计费，程序不估算费用，也不自动重试。</p>
+          <label class="consent"><input id="model-consent" type="checkbox">我已核对目标服务和发送内容，同意本次调用。</label>
+          <button id="test-model" type="button" class="secondary">验证模型连接（会调用 API）</button>
+          <details><summary>配置我的 API</summary><p>在运行服务的电脑上，将 .env.example 复制为 .env，填写以下配置并重启。密钥只保存在服务端文件中，不填入网页。</p><pre>MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
+MINEMOD_LLM_MODEL=your-model-name
+MINEMOD_LLM_API_KEY=your-api-key</pre><p>本机接口可使用 http://127.0.0.1:11434/v1。若服务不接受 JSON 模式，设置 MINEMOD_LLM_JSON_MODE=false；仍会验证输出规格。连接测试通过只说明该接口能返回有效规格。</p></details>
+        </div>
+      </section>
+      <div class="actions"><button type="button" id="spec-button">生成离线规格示例</button><button type="button" id="cancel-model" class="secondary" hidden>取消当前请求</button><button type="button" id="plan-button" class="secondary">查看流程演示</button></div>
       <section id="spec-panel" hidden>
         <h3>模组规格 · 审查与确认</h3>
         <p id="spec-state" class="demo-label"></p>

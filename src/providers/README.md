@@ -1,22 +1,37 @@
-# 模型适配契约（M1 设计）
+# 自带 LLM · Chat Completions 适配器
 
-**当前只有 mock.mjs 被实现与启用。** `.env.example` 中的 LLM 变量是预留项，填入不会发起模型请求。
+已实现 `mock.mjs` 和 `openai-compatible.mjs`。默认 mock；配置文件不会自动触发模型请求。Node.js >=24.5，使用原生 fetch，无第三方运行依赖。
 
-## 能力分离
+## 服务端配置
 
-文本规划、代码变更提案、图片生成和 3D 生成使用不同能力标签。首先实现 `planSpec`，接收受控文本上下文，输出经过本地 schema 验证的 ModSpec。不要把自然语言计划当成可执行工具参数。
+将 `.env.example` 复制为未跟踪的 `.env`，填写并重启 `npm start`。
 
-拟定调用：`planSpec({ prompt, target, previousSpec, signal }) → { spec, assumptions, usage }`。usage 在服务商未返回时为 unknown，不伪造费用。模型身份和基址由服务端受控配置决定，HTTP 请求不得携带任意 URL 或密钥覆盖。
+| 变量 | 含义 / 默认 |
+| --- | --- |
+| MINEMOD_LLM_BASE_URL | 接口基址，例如 https://你的服务/v1；程序追加 chat/completions |
+| MINEMOD_LLM_MODEL | 服务商定义的模型 ID |
+| MINEMOD_LLM_API_KEY | 服务端密钥；云端必需，本机可省略 |
+| MINEMOD_LLM_TIMEOUT_MS | 45000；允许 1000–120000，覆盖请求和响应读取 |
+| MINEMOD_LLM_MAX_TOKENS | 4096；允许 256–8192，使用 max_tokens 请求字段 |
+| MINEMOD_LLM_TOKEN_FIELD | max_tokens；支持需要 max_completion_tokens 的服务 |
+| MINEMOD_LLM_JSON_MODE | true；服务不支持 response_format=json_object 时设 false |
 
-## 首个适配器
+云端必须 HTTPS。本机可用 http://localhost、http://127.0.0.1、http://[::1]；基址不接受 URL 用户名/密码、查询参数或片段。不跟随重定向。`npm start` 开启 Node 的环境代理支持，使用现有 HTTPS_PROXY / HTTP_PROXY / NO_PROXY 和 CA 信任；不关闭 TLS 校验。在托管环境中还需允许实际服务商域名，并通过环境设置安全提供凭据，不能把密钥发到聊天中。
 
-OpenAI-compatible 指与常见 chat completions 文本请求形状兼容的服务，而非某个特定 SDK 或所有 OpenAI 功能。逐个验证 JSON 输出、token 字段、取消和错误。可接用户的兼容云服务，也可验证本机 Ollama / LM Studio 的兼容接口；未经实测不写“已支持”。原生厂商协议后续单独适配。
+## 调用与确认
 
-## 必要约束
+网页只显示脱敏的配置元信息，不接受 URL/密钥覆盖，也不保存 API Key。切换到“我的 LLM API”后显示目的地址、模型以及将发送的项目名称、需求文本和目标版本；勾选确认后才能发起生成。每次调用结束会重置确认。服务重启会变更 configurationId，旧页面须刷新。
 
-- 默认 mock。用户显式选择 provider，并确认上下文目的地后才发出请求。
-- 密钥服务端管理，不进入项目 JSON、前端、日志、快照或导出。先支持环境变量，UI 持久化须另设计系统密钥链。
-- 基址限制 http/https；云端须 HTTPS；localhost HTTP 只用于用户明确配置的本地服务。禁用跨主机重定向携带 Authorization。
-- 设定超时、取消信号、响应大小、token 与重试上限。401/403 不自动重试，429 尊重服务商间隔并允许取消。
-- 最多两次格式修复；无效数据不能进入工程生成。日志只记录脱敏事件与耗时。
-- 开发测试使用假响应；真实调用为显式 opt-in，不能让 CI 产生费用。
+连接测试同样需要确认，会向所选模型发送固定样例，验证返回的 ModSpec，不包含项目内容，也可能计费。测试通过不代表玩法质量、全协议或其他模型兼容。
+
+适配器发送 system schema + 受控 user JSON，使用非流式 Chat Completions，不发送项目文件、已有规格、日志或密钥作为模型上下文。不支持原生 Anthropic/Gemini 协议、Responses API、工具调用和图片输入。允许纯 JSON 或完整 JSON 代码围栏；通过结构和语义校验后才保存。响应最多 128 KiB，最终规格最多 20 KiB。未知 token 数标为未知，不估算费用。
+
+## 错误、取消和并发
+
+401/403、429、重定向、无效 JSON、非法规格、超限、超时分别给出可操作的中文错误，响应正文和认证信息不进入日志或错误。没有自动重试或自动格式修复（上限为 0 次），避免额外计费；429 提示尊重 Retry-After 后再手动重试。
+
+可取消请求，断开网页请求也会中止服务端 fetch；第三方仍可能完成或计费。失败/取消不覆盖原规格。每个项目只允许一个模型请求，整个服务最多两个；请求返回后重新核对 revision，避免覆盖生成期间的人工修改。再次生成或手工编辑会清除旧确认，仍不执行任何代码。
+
+## 验证范围
+
+CI 使用本机假服务验证真实 HTTP 请求形状、认证头、JSON 模式、输出校验、错误脱敏、限流、响应体超时、取消、重复请求和并发冲突，不使用用户密钥或产生模型费用。尚未完成真实云模型或 Ollama / LM Studio 的端到端实测；需按用户明确选择的基址、模型和安全配置的密钥单独验证。
