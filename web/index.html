@@ -376,12 +376,17 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                 height="300"
                 aria-label="可拖动旋转的 3D 模型预览"
               ></canvas>
-              <p class="target">拖动旋转，滚轮缩放；几何预览不等于游戏渲染。</p>
+              <p class="target">
+                拖动旋转，滚轮缩放；本地 WebGL
+                贴图预览，点击选择立方体；人形为比例参考，姿态需进游戏核对。
+              </p>
               <label
                 >预览角度<select id="model-view">
                   <option value="orbit">环绕</option>
-                  <option value="hand">手持角度</option>
-                  <option value="head">头部角度</option>
+                  <option value="hand">第三人称右手与人形</option>
+                  <option value="head">头部与人形</option>
+                  <option value="gui">物品栏</option>
+                  <option value="ground">掉落物</option>
                   <option value="front">正面</option>
                 </select></label
               ><label>立方体<select id="cube-select"></select></label>
@@ -399,6 +404,64 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                     type="file"
                     accept=".bbmodel,.json"
                 /></label>
+              </div>
+              <details>
+                <summary>旋转、UV 与显示姿态</summary>
+                <div class="form-grid">
+                  <label
+                    >旋转轴<select id="cube-axis">
+                      <option>x</option>
+                      <option selected>y</option>
+                      <option>z</option>
+                    </select></label
+                  ><label
+                    >角度<select id="cube-angle">
+                      <option>-45</option>
+                      <option>-22.5</option>
+                      <option selected>0</option>
+                      <option>22.5</option>
+                      <option>45</option>
+                    </select></label
+                  ><label>旋转中心 x,y,z<input id="cube-origin" value="8,8,8" /></label
+                  ><label class="consent"
+                    ><input type="checkbox" id="cube-rescale" />旋转时保持截面尺寸</label
+                  >
+                </div>
+                <p class="target">调整后点击“更新立方体”。</p>
+                <div class="form-grid">
+                  <label
+                    >UV 面<select id="uv-face">
+                      <option>north</option>
+                      <option>south</option>
+                      <option>east</option>
+                      <option>west</option>
+                      <option>up</option>
+                      <option>down</option>
+                    </select></label
+                  ><label>UV u1,v1,u2,v2<input id="uv-coordinates" value="0,0,16,16" /></label
+                  ><label
+                    >UV 旋转<select id="uv-rotation">
+                      <option>0</option>
+                      <option>90</option>
+                      <option>180</option>
+                      <option>270</option>
+                    </select></label
+                  ><label class="consent"><input type="checkbox" id="uv-hidden" />隐藏此面</label>
+                </div>
+                <button id="uv-update" class="secondary">更新 UV</button>
+                <p class="target">
+                  显示姿态对应上方所选手持、头部、物品栏或掉落物；环绕和正面编辑右手姿态。
+                </p>
+                <div class="form-grid">
+                  <label>姿态旋转 x,y,z<input id="display-rotation" value="0,0,0" /></label
+                  ><label>姿态位移 x,y,z<input id="display-translation" value="0,0,0" /></label
+                  ><label>姿态缩放 x,y,z<input id="display-scale" value="1,1,1" /></label>
+                </div>
+                <button id="display-update" class="secondary">更新显示姿态</button>
+              </details>
+              <div class="actions">
+                <button id="model-texture-pixels" class="secondary">使用当前像素画布预览</button
+                ><button id="model-screenshot" class="secondary">导出预览 PNG</button>
               </div>
               <label>模型名称<input id="model-name" value="我的模型" maxlength="80" /></label
               ><button id="model-save">保存模型到资源库</button>

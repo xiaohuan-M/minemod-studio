@@ -127,3 +127,34 @@ test('asset library persists attribution and immutable snapshots require confirm
   writeFileSync(join(dir, 'workspaces', p.id, snapshot.hash + '.json'), JSON.stringify(corrupt));
   assert.throws(() => workspaces.get(p.id, snapshot.hash));
 });
+
+test('model roundtrip preserves UV rotation, hidden faces, rescale, texture resolution and display transforms', () => {
+  const input = {
+    elements: [
+      {
+        from: [0, 0, 0],
+        to: [16, 16, 16],
+        rotation: { origin: [8, 8, 8], axis: 'y', angle: 22.5, rescale: true },
+        faces: { north: { uv: [2, 3, 10, 12], rotation: 90 }, south: null },
+      },
+    ],
+    display: {
+      thirdperson_righthand: {
+        rotation: [20, 40, 0],
+        translation: [0, 2, 0],
+        scale: [0.5, 0.5, 0.5],
+      },
+    },
+  };
+  const model = validateModel(input),
+    texture = { width: 32, height: 32, pixels: Array(1024).fill('#cc8844ff') };
+  const bb = exportBlockbench(model, 'UV', texture);
+  assert.equal(bb.resolution.width, 32);
+  assert.deepEqual(bb.elements[0].faces.north.uv, [4, 6, 20, 24]);
+  assert.deepEqual(importBlockbench(bb), model);
+  for (const invalid of [
+    { ...input, display: { head: { scale: [99, 1, 1] } } },
+    { elements: [{ from: [0, 0, 0], to: [1, 1, 1], faces: { north: { rotation: 12 } } }] },
+  ])
+    assert.throws(() => validateModel(invalid));
+});

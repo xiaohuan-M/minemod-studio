@@ -34,3 +34,5 @@ JSON 存储面向单进程，不提供跨进程写锁或断电事务。只有服
 ## 尚需验证
 
 真实 `newapi.nowrise.cn` / `gpt-6-luna` 调用按用户要求跳过。Minecraft 客户端游戏实测、Windows/macOS Docker Desktop 构建、复杂第三方 bbmodel 互通尚未验证。几何预览不是实际持有姿态渲染器，导入不支持的模型类型会报错。
+
+浏览器验证：`npx playwright install chromium` 后执行 `npm run test:browser`。也可用 `MINEMOD_CHROMIUM_PATH` 指定已安装 Chromium。脚本创建独立数据目录，不调用真实 API，覆盖目标选择、规格编辑、WebGL、UV/姿态保存、截图下载与窄屏布局。Three.js 与 OrbitControls 从锁定的本地 node_modules 映射到固定 URL，不使用 CDN 或宽泛静态目录。

@@ -1,4 +1,4 @@
-import { modelPreview } from './model-preview.js';
+import { initModelEditor } from './studio/model-editor.js';
 const $ = (id) => document.getElementById(id);
 const tools = new Set(['sword', 'pickaxe', 'axe', 'shovel', 'hoe']);
 const names = {
@@ -487,77 +487,14 @@ export function initWorkshop({
     await refreshAssets();
     feedback('贴图已保存。可以在内容编辑器绑定到物品或方块。');
   });
-  // Static cube models can be exchanged with Blockbench; unsupported features fail validation.
-  let model = { elements: [{ from: [4, 0, 4], to: [12, 16, 12] }] };
-  const preview = modelPreview($('model-canvas'));
-  function renderCubes(index = 0) {
-    $('cube-select').replaceChildren(
-      ...model.elements.map((_, i) => option(String(i), '立方体 ' + (i + 1))),
-    );
-    $('cube-select').value = String(Math.min(index, model.elements.length - 1));
-    loadCube();
-    preview.set(model);
-  }
-  function loadCube() {
-    const cube = model.elements[Number($('cube-select').value)];
-    if (cube) {
-      $('cube-from').value = cube.from.join(',');
-      $('cube-to').value = cube.to.join(',');
-    }
-  }
-  function vector(id) {
-    const v = $(id)
-      .value.split(',')
-      .map((s) => Number(s.trim()));
-    if (v.length !== 3 || v.some((n) => !Number.isFinite(n) || n < -16 || n > 32))
-      throw new Error('坐标需要是三个 -16–32 之间的数字，用逗号分开。');
-    return v;
-  }
-  $('cube-select').onchange = loadCube;
-  $('model-view').onchange = () => preview.view($('model-view').value);
-  $('cube-update').onclick = run(() => {
-    const from = vector('cube-from'),
-      to = vector('cube-to');
-    if (from.some((n, i) => n >= to[i])) throw new Error('每个终点坐标必须大于起点。');
-    const index = Number($('cube-select').value);
-    model.elements[index] = { ...model.elements[index], from, to };
-    renderCubes(index);
-  });
-  $('cube-add').onclick = run(() => {
-    if (model.elements.length >= 128) throw new Error('最多 128 个立方体。');
-    model.elements.push({ from: [6, 0, 6], to: [10, 4, 10] });
-    renderCubes(model.elements.length - 1);
-  });
-  $('cube-delete').onclick = run(() => {
-    if (model.elements.length <= 1) throw new Error('模型至少保留一个立方体。');
-    model.elements.splice(Number($('cube-select').value), 1);
-    renderCubes();
-  });
-  $('model-save').onclick = run(async () => {
-    const saved = await request(
-      '/api/assets',
-      'POST',
-      assetPayload('model', $('model-name').value, model),
-    );
-    model = saved.data;
-    renderCubes();
-    await refreshAssets();
-    feedback('模型已保存，可绑定到物品，也可导出 bbmodel。');
-  });
-  $('model-import').onchange = run(async () => {
-    const file = $('model-import').files[0];
-    if (!file) return;
-    if (file.size > 800 * 1024) throw new Error('模型文件最多 800 KiB。');
-    const data = JSON.parse(await file.text());
-    const saved = await request('/api/assets', 'POST', {
-      ...assetPayload('model', file.name.slice(0, 80), data),
-      ...(data.meta || file.name.endsWith('.bbmodel') ? { format: 'bbmodel' } : {}),
-    });
-    model = saved.data;
-    $('model-name').value = saved.name;
-    renderCubes();
-    await refreshAssets();
-    feedback('静态模型已校验并导入资源库。贴图请单独导入和绑定。');
+  const modelEditor = initModelEditor({
+    api,
+    request,
+    run,
+    assetPayload,
+    refreshAssets,
+    feedback,
+    getPixels: () => ({ width: size, height: size, pixels }),
   });
   let assetAbort = null;
   $('ai-asset-cancel').onclick = () => assetAbort?.abort();
@@ -587,9 +524,8 @@ export function initWorkshop({
         $('texture-name').value = '模型生成的贴图';
         drawPixels();
       } else {
-        model = result.data;
+        modelEditor.set(result.data);
         $('model-name').value = '模型生成的立方体';
-        renderCubes();
       }
       $('asset-source').value = 'LLM: ' + result.source.model;
       $('asset-license').value = '待用户核对服务商条款';
@@ -645,9 +581,8 @@ export function initWorkshop({
             $('texture-name').value = asset.name;
             drawPixels();
           } else {
-            model = data.data;
+            modelEditor.set(data.data);
             $('model-name').value = asset.name;
-            renderCubes();
           }
           feedback('已载入；再次保存会创建新资源，保留旧工程引用。');
         });
@@ -899,6 +834,5 @@ export function initWorkshop({
     })().catch((error) => feedback(error.message, true));
   });
   drawPixels();
-  renderCubes();
   kindFields();
 }

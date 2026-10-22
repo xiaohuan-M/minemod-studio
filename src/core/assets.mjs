@@ -99,23 +99,67 @@ export function validateModel(input) {
         ![-45, -22.5, 0, 22.5, 45].includes(r.angle)
       )
         fail('模型仅支持 Java 方块格式的单轴 0、±22.5、±45 度旋转。');
-      element.rotation = { origin: [...r.origin], axis: r.axis, angle: r.angle };
+      if (r.rescale !== undefined && typeof r.rescale !== 'boolean') fail('rescale 必须为布尔值。');
+      element.rotation = {
+        origin: [...r.origin],
+        axis: r.axis,
+        angle: r.angle,
+        ...(r.rescale ? { rescale: true } : {}),
+      };
     }
     element.faces = Object.fromEntries(
       ['north', 'south', 'east', 'west', 'up', 'down'].map((face) => {
+        if (e.faces?.[face] === null) return [face, null];
         const uv = e.faces?.[face]?.uv ?? [0, 0, 16, 16];
+        const rotation = e.faces?.[face]?.rotation ?? 0;
+        if (![0, 90, 180, 270].includes(rotation)) fail('UV 旋转必须为 0、90、180、270。');
         if (
           !Array.isArray(uv) ||
           uv.length !== 4 ||
           uv.some((n) => !Number.isFinite(n) || n < 0 || n > 16)
         )
           fail('模型 UV 必须在 0–16 范围。');
-        return [face, { uv: [...uv], texture: '#0' }];
+        return [face, { uv: [...uv], texture: '#0', ...(rotation ? { rotation } : {}) }];
       }),
     );
     return element;
   });
-  return { elements };
+  const display = {};
+  const slots = [
+    'thirdperson_righthand',
+    'thirdperson_lefthand',
+    'firstperson_righthand',
+    'firstperson_lefthand',
+    'head',
+    'gui',
+    'ground',
+    'fixed',
+  ];
+  if (
+    input.display !== undefined &&
+    (!input.display ||
+      typeof input.display !== 'object' ||
+      Array.isArray(input.display) ||
+      Object.keys(input.display).some((k) => !slots.includes(k)))
+  )
+    fail('模型显示姿态不正确。');
+  for (const [slot, transform] of Object.entries(input.display ?? {})) {
+    if (!transform || typeof transform !== 'object')
+      fail('姿态必须为 rotation、translation 和 scale 向量。');
+    const result = {};
+    for (const [field, min, max] of [
+      ['rotation', -360, 360],
+      ['translation', -80, 80],
+      ['scale', 0, 4],
+    ]) {
+      if (transform[field] !== undefined) {
+        if (!vector(transform[field], min, max)) fail('模型显示姿态的 ' + field + ' 超出范围。');
+        result[field] = [...transform[field]];
+      }
+    }
+    display[slot] = result;
+  }
+  return { elements, ...(Object.keys(display).length ? { display } : {}) };
 }
 export function importBlockbench(input) {
   if (
@@ -137,14 +181,10 @@ export function importBlockbench(input) {
   if (![width, height].every((n) => Number.isFinite(n) && n > 0 && n <= 4096))
     fail('模型纹理分辨率不正确。');
   return validateModel({
+    display: input.display,
     elements: input.elements.map((e) => {
-      if (
-        e.faces &&
-        Object.values(e.faces).some(
-          (face) => face.texture === null || face.texture === false || (face.rotation ?? 0) !== 0,
-        )
-      )
-        fail('请先烘焙 UV 旋转并显示模型所有立方体面。');
+      if (e.faces && Object.values(e.faces).some((face) => face.texture === false))
+        fail('模型面 texture 格式不正确。');
       if (e.rotation && (!Array.isArray(e.rotation) || e.rotation.length !== 3))
         fail('模型旋转必须为三个数值。');
       const nonzero = (e.rotation ?? [0, 0, 0]).map((n, i) => ({ n, i })).filter((v) => v.n !== 0);
@@ -158,13 +198,19 @@ export function importBlockbench(input) {
                 origin: e.origin ?? [8, 8, 8],
                 axis: ['x', 'y', 'z'][nonzero[0].i],
                 angle: nonzero[0].n,
+                ...(e.rescale ? { rescale: true } : {}),
               },
             }
           : {}),
         faces: Object.fromEntries(
           Object.entries(e.faces ?? {}).map(([face, value]) => [
             face,
-            { uv: value.uv?.map((n, i) => (n * 16) / (i % 2 ? height : width)) },
+            value.texture === null
+              ? null
+              : {
+                  uv: value.uv?.map((n, i) => (n * 16) / (i % 2 ? height : width)),
+                  rotation: value.rotation ?? 0,
+                },
           ]),
         ),
       };
@@ -173,10 +219,12 @@ export function importBlockbench(input) {
 }
 export function exportBlockbench(model, name, texture) {
   const clean = validateModel(model);
+  const tex = validateTexture(texture ?? placeholderTexture());
   return {
     meta: { format_version: '4.10', model_format: 'java_block', box_uv: false },
     name,
-    resolution: { width: 16, height: 16 },
+    resolution: { width: tex.width, height: tex.height },
+    ...(clean.display ? { display: clean.display } : {}),
     elements: clean.elements.map((e, index) => ({
       name: 'cube_' + index,
       type: 'cube',
@@ -185,8 +233,18 @@ export function exportBlockbench(model, name, texture) {
       to: e.to,
       origin: e.rotation?.origin ?? [8, 8, 8],
       rotation: ['x', 'y', 'z'].map((axis) => (axis === e.rotation?.axis ? e.rotation.angle : 0)),
+      rescale: e.rotation?.rescale ?? false,
       faces: Object.fromEntries(
-        Object.entries(e.faces).map(([face, v]) => [face, { uv: v.uv, texture: 0 }]),
+        Object.entries(e.faces).map(([face, v]) => [
+          face,
+          v === null
+            ? { texture: null, uv: [0, 0, 0, 0] }
+            : {
+                uv: v.uv.map((n, i) => (n * (i % 2 ? tex.height : tex.width)) / 16),
+                texture: 0,
+                ...(v.rotation ? { rotation: v.rotation } : {}),
+              },
+        ]),
       ),
     })),
     outliner: clean.elements.map(
@@ -197,8 +255,7 @@ export function exportBlockbench(model, name, texture) {
         name: 'texture.png',
         id: '0',
         uuid: '00000000-0000-4000-8000-999999999999',
-        source:
-          'data:image/png;base64,' + pngTexture(texture ?? placeholderTexture()).toString('base64'),
+        source: 'data:image/png;base64,' + pngTexture(tex).toString('base64'),
       },
     ],
   };

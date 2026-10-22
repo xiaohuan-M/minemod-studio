@@ -12,11 +12,18 @@ import { workshopServices } from './workshop-routes.mjs';
 import fullExample from '../examples/full-workshop.json' with { type: 'json' };
 import pkg from '../package.json' with { type: 'json' };
 
+const VENDORS = new Map([
+  ['/vendor/three.js', 'three/build/three.module.js'],
+  ['/vendor/three.core.js', 'three/build/three.core.js'],
+  ['/vendor/OrbitControls.js', 'three/examples/jsm/controls/OrbitControls.js'],
+]);
+
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/workshop.js', ['workshop.js', 'text/javascript; charset=utf-8']],
+  ['/studio/model-editor.js', ['studio/model-editor.js', 'text/javascript; charset=utf-8']],
   ['/model-preview.js', ['model-preview.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
@@ -116,7 +123,14 @@ export function makeServer({ dataDir, llmProvider = null }) {
         const pathname = url.pathname;
         if (await workshop.route({ request, response, url, json, body, fields, publicProject }))
           return;
-        if (request.method === 'GET' && ASSETS.has(pathname)) {
+        if (request.method === 'GET' && VENDORS.has(pathname)) {
+          const raw = await readFile(
+            fileURLToPath(new URL('../node_modules/' + VENDORS.get(pathname), import.meta.url)),
+            'utf8',
+          );
+          response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
+          response.end(raw.replaceAll("from 'three'", "from '/vendor/three.js'"));
+        } else if (request.method === 'GET' && ASSETS.has(pathname)) {
           const [file, type] = ASSETS.get(pathname);
           const content = await readFile(fileURLToPath(new URL(`../web/${file}`, import.meta.url)));
           response.writeHead(200, { 'Content-Type': type });

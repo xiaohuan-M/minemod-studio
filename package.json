@@ -19,7 +19,8 @@
     "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs",
     "format": "prettier --write \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
     "format:check": "prettier --check \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:browser": "node scripts/verify-browser.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",

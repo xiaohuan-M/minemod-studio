@@ -158,6 +158,11 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
             (item.tool || item.kind === 'lightning_wand' ? 'handheld' : 'generated'),
           textures: { layer0: ns + ':item/' + item.id },
         };
+    if (model.elements)
+      for (const element of model.elements)
+        element.faces = Object.fromEntries(
+          Object.entries(element.faces).filter(([, face]) => face !== null),
+        );
     resource(`assets/${ns}/models/item/${item.id}.json`, model);
   }
   for (const block of spec.blocks ?? []) {
