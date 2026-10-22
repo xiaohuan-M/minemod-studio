@@ -5,6 +5,14 @@ import { assertProjectId, createProject } from '../core/project.mjs';
 import { AppError } from '../core/errors.mjs';
 import { validateModSpec, specHash } from '../core/mod-spec.mjs';
 
+const HISTORY_LIMIT = 20;
+
+function assertStoredSpec(record) {
+  try {
+    if (record.specHash !== specHash(record.spec) || (record.confirmedSpecHash && record.confirmedSpecHash !== record.specHash)) throw new Error('Invalid spec hash');
+  } catch { throw new Error('Invalid stored spec'); }
+}
+
 export class ProjectStore {
   constructor(dataDir) {
     const requestedRoot = resolve(dataDir, 'projects');
@@ -23,11 +31,18 @@ export class ProjectStore {
       if (!lstatSync(file).isFile()) throw new AppError(409, 'INVALID_PROJECT_FILE', '项目文件必须是普通文件。');
       const value = JSON.parse(readFileSync(file, 'utf8'));
       if (value.schemaVersion !== 1 || value.id !== id) throw new Error('Invalid project record');
-      const project = { revision: 0, spec: null, specSource: null, specHash: null, confirmedSpecHash: null, ...value };
+      const project = { revision: 0, spec: null, specSource: null, specHash: null, confirmedSpecHash: null, specHistory: [], ...value };
       if (!Number.isSafeInteger(project.revision) || project.revision < 0) throw new Error('Invalid revision');
       if (project.spec) {
-        if (project.specHash !== specHash(project.spec) || (project.confirmedSpecHash && project.confirmedSpecHash !== project.specHash)) throw new Error('Invalid spec hash');
+        assertStoredSpec(project);
       } else if (project.specHash || project.confirmedSpecHash) throw new Error('Missing spec');
+      if (!Array.isArray(project.specHistory) || project.specHistory.length > HISTORY_LIMIT) throw new Error('Invalid history');
+      const revisions = new Set();
+      for (const entry of project.specHistory) {
+        if (!Number.isSafeInteger(entry.revision) || entry.revision < 0 || entry.revision >= project.revision || revisions.has(entry.revision)) throw new Error('Invalid history revision');
+        revisions.add(entry.revision);
+        assertStoredSpec(entry);
+      }
       return project;
     } catch (error) {
       if (error.code === 'ENOENT') throw new AppError(404, 'PROJECT_NOT_FOUND', '没有找到该项目。');
@@ -75,8 +90,32 @@ export class ProjectStore {
     const project = this.get(id);
     this.assertRevision(project, revision);
     const spec = validateModSpec(input);
+    const specHistory = [...project.specHistory];
+    if (project.spec) specHistory.push({revision:project.revision,spec:project.spec,specHash:project.specHash,
+      specSource:project.specSource,confirmedSpecHash:project.confirmedSpecHash,savedAt:project.updatedAt});
     return this.save({ ...project, spec, specHash: specHash(spec), specSource: source, confirmedSpecHash: null,
+      specHistory: specHistory.slice(-HISTORY_LIMIT),
       status: 'awaiting_review', revision: project.revision + 1, updatedAt: new Date().toISOString() });
+  }
+
+  history(id) {
+    return this.get(id).specHistory.toReversed().map((entry) => ({revision:entry.revision,savedAt:entry.savedAt,
+      specHash:entry.specHash,specSource:entry.specSource,confirmed:!!entry.confirmedSpecHash,
+      displayName:entry.spec.displayName,itemCount:entry.spec.items.length,recipeCount:entry.spec.recipes.length}));
+  }
+
+  snapshot(id, revision) {
+    if (!Number.isSafeInteger(revision) || revision < 0) throw new AppError(400, 'INVALID_INPUT', '历史版本号不正确。');
+    const entry = this.get(id).specHistory.find((entry) => entry.revision === revision);
+    if (!entry) throw new AppError(404, 'SNAPSHOT_NOT_FOUND', '历史版本不存在或已超出最近 20 个版本。');
+    return entry;
+  }
+
+  restoreSpec(id, fromRevision, revision) {
+    const project = this.get(id);
+    this.assertRevision(project, revision);
+    const entry = this.snapshot(id, fromRevision);
+    return this.setSpec(id, entry.spec, revision, {...entry.specSource,restoredFromRevision:fromRevision});
   }
 
   confirmSpec(id, revision) {

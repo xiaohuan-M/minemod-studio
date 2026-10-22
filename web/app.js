@@ -4,6 +4,7 @@ let busy = false;
 let dirty = false;
 let llm = null;
 let activeFetch = null;
+let historyRequest = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json' }, signal: options.signal ?? AbortSignal.timeout(10000) });
@@ -46,7 +47,7 @@ function show(project) {
   if (project.spec) {
     $('spec-editor').value = JSON.stringify(project.spec, null, 2);
     const source = project.specSource;
-    const label = source?.demo ? '离线固定示例' : source?.provider === 'openai-compatible' ? 'LLM 生成 · ' + source.model : '手动编辑规格';
+    const label = (source?.restoredFromRevision !== undefined ? '从版本 ' + source.restoredFromRevision + ' 恢复 · ' : '') + (source?.demo ? '离线固定示例' : source?.provider === 'openai-compatible' ? 'LLM 生成 · ' + source.model : '手动编辑规格');
     const usage = source?.usage;
     const tokens = usage ? ' · 输入/输出 token：' + (usage.inputTokens ?? '未知') + '/' + (usage.outputTokens ?? '未知') : '';
     $('spec-state').textContent = label + ' · ' + (project.confirmedSpecHash ? '已确认' : '待审查') + ' · 未构建' + tokens;
@@ -57,6 +58,7 @@ function show(project) {
     $('spec-preview').replaceChildren(...entries.map(text => { const p = document.createElement('p'); p.textContent = text; return p; }));
   }
   actions();
+  void refreshHistory(project.id);
 }
 async function refresh() {
   const { projects } = await api('/api/projects');
@@ -113,7 +115,7 @@ $('plan-button').addEventListener('click', () => {
 });
 $('spec-button').addEventListener('click', () => {
   if (!selected || busy || !canReplace()) return;
-  if (selected.spec && !window.confirm('新结果通过校验后将替换当前规格并清除确认。建议先导出保存的规格。继续吗？')) return;
+  if (selected.spec && !window.confirm('新结果通过校验后将替换当前规格并清除确认。旧规格会保留到历史中（最近 20 个版本）。继续吗？')) return;
   const provider = $('provider-select').value;
   const model = provider === 'openai-compatible';
   if (model && (!llm?.configured || !$('model-consent').checked)) return;
@@ -160,3 +162,39 @@ async function initialize() {
   await refresh(); actions();
 }
 initialize().catch(error => feedback('初始化失败：' + error.message,true));
+
+async function refreshHistory(id) {
+  const requestId = ++historyRequest;
+  $('history-preview').hidden = true;
+  $('history-list').replaceChildren();
+  if (!selected?.spec) return;
+  try {
+    const {history} = await api('/api/projects/' + id + '/spec/history');
+    if (selected?.id !== id || requestId !== historyRequest) return;
+    if (!history.length) {
+      const li = document.createElement('li'); li.textContent = '尚无历史版本；下一次修改时会保留当前规格。'; $('history-list').append(li);
+    }
+    for (const entry of history) {
+      const li = document.createElement('li');
+      const text = document.createElement('span');
+      text.textContent = '版本 ' + entry.revision + ' · ' + entry.displayName + ' · ' + entry.itemCount + ' 个物品 / ' + entry.recipeCount + ' 个配方 · ' + (entry.confirmed ? '当时已确认' : '当时未确认') + ' · ' + new Date(entry.savedAt).toLocaleString();
+      const view = document.createElement('button'); view.type = 'button'; view.className = 'secondary'; view.textContent = '查看版本 ' + entry.revision;
+      view.addEventListener('click', async () => {
+        if (busy) return;
+        try {
+          const snapshot = await api('/api/projects/' + id + '/spec/history/' + entry.revision);
+          if (selected?.id !== id || requestId !== historyRequest) return;
+          $('history-preview').textContent = JSON.stringify(snapshot.spec,null,2);
+          $('history-preview').hidden = false;
+        } catch (error) { feedback(error.message,true); }
+      });
+      const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'secondary'; restore.textContent = '恢复版本 ' + entry.revision;
+      restore.addEventListener('click', () => {
+        if (busy || selected?.id !== id || !canReplace()) return;
+        if (!window.confirm('恢复为版本 ' + entry.revision + '？当前规格将保留到历史中，恢复后需要重新确认。')) return;
+        void updateProject('/spec/restore','POST',{fromRevision:entry.revision,revision:selected.revision},'历史规格已恢复；请重新审查并确认。');
+      });
+      li.append(text,view,restore); $('history-list').append(li);
+    }
+  } catch (error) { if (selected?.id === id && requestId === historyRequest) feedback('历史读取失败：' + error.message,true); }
+}

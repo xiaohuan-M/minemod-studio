@@ -29,6 +29,7 @@ export function createProject(input) {
     specSource: null,
     specHash: null,
     confirmedSpecHash: null,
+    specHistory: [],
     plan: null,
     artifacts: [],
     createdAt: now,

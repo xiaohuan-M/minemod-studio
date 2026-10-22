@@ -61,6 +61,11 @@ MINEMOD_LLM_API_KEY=your-api-key</pre><p>本机接口可使用 http://127.0.0.1:
         <label for="spec-editor">规格 JSON（普通物品和配方；暂不支持行为脚本）</label>
         <textarea id="spec-editor" rows="18" spellcheck="false"></textarea>
         <div class="actions"><button type="button" id="save-spec">校验并保存修改</button><button type="button" id="confirm-spec" class="secondary">确认当前规格</button><a id="export-spec" download>导出已保存的规格 JSON</a></div>
+        <details id="history-panel"><summary>规格历史 · 最近 20 个被替换版本</summary>
+          <p>手工保存、重新生成和恢复前自动保存旧规格。恢复后需要重新确认，不触发模型调用。</p>
+          <ul id="history-list" class="history-list"></ul>
+          <pre id="history-preview" hidden></pre>
+        </details>
         <p class="target">确认仅针对当前规格。再次修改后需要重新确认；规格 JSON 不是模组或 JAR。</p>
       </section>
       <div id="plan" hidden><p class="demo-label">流程演示 · 未调用大模型 · 未构建</p><p id="plan-summary" class="preserve"></p><ol id="steps"></ol><ul id="assumptions"></ul></div>

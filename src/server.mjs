@@ -28,6 +28,10 @@ function fields(input, allowed) {
   return input;
 }
 
+function publicProject({specHistory, ...project}) {
+  return {...project, historyCount:specHistory.length};
+}
+
 async function body(request) {
   if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
     throw new AppError(415, 'JSON_REQUIRED', '请求必须使用 application/json。');
@@ -95,15 +99,15 @@ export function makeServer({ dataDir, llmProvider = null }) {
         const result = await callModel('connection-test', {name:'连接验证',prompt:'一个普通物品，不需要配方。只用于验证接口与规格输出。',target:TARGET}, response);
         json(response, 200, {ok:true,validatedSpec:true,source:result.source});
       } else if (request.method === 'GET' && pathname === '/api/projects') {
-        json(response, 200, { projects: store.list() });
+        json(response, 200, { projects: store.list().map(publicProject) });
       } else if (request.method === 'POST' && pathname === '/api/projects') {
-        json(response, 201, store.create(await body(request)));
+        json(response, 201, publicProject(store.create(await body(request))));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/plan$/.test(pathname)) {
         const input = await body(request);
         if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length) {
           throw new AppError(400, 'INVALID_INPUT', '演示规划接口只接受空对象。');
         }
-        json(response, 200, store.plan(pathname.split('/')[3], mockProvider));
+        json(response, 200, publicProject(store.plan(pathname.split('/')[3], mockProvider)));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/generate$/.test(pathname)) {
         const input = fields(await body(request), ['provider', 'revision', 'consent']);
         if (!['mock', 'openai-compatible'].includes(input.provider)) throw new AppError(400, 'INVALID_PROVIDER', '请选择离线示例或自定义 LLM。');
@@ -111,7 +115,7 @@ export function makeServer({ dataDir, llmProvider = null }) {
         store.assertRevision(project, input.revision);
         if (input.provider !== 'mock') requireConsent(input);
         const result = input.provider === 'mock' ? mockProvider.planSpec(project) : await callModel(project.id, project, response);
-        json(response, 200, store.setSpec(project.id, result.spec, input.revision, result.source));
+        json(response, 200, publicProject(store.setSpec(project.id, result.spec, input.revision, result.source)));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/cancel$/.test(pathname)) {
         fields(await body(request), []);
         const project = store.get(pathname.split('/')[3]);
@@ -120,17 +124,24 @@ export function makeServer({ dataDir, llmProvider = null }) {
         json(response, 200, {cancelled:!!controller});
       } else if (request.method === 'PUT' && /^\/api\/projects\/[^/]+\/spec$/.test(pathname)) {
         const input = fields(await body(request), ['spec', 'revision']);
-        json(response, 200, store.setSpec(pathname.split('/')[3], input.spec, input.revision));
+        json(response, 200, publicProject(store.setSpec(pathname.split('/')[3], input.spec, input.revision)));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/confirm$/.test(pathname)) {
         const input = fields(await body(request), ['revision']);
-        json(response, 200, store.confirmSpec(pathname.split('/')[3], input.revision));
+        json(response, 200, publicProject(store.confirmSpec(pathname.split('/')[3], input.revision)));
+      } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+\/spec\/history$/.test(pathname)) {
+        json(response, 200, {history:store.history(pathname.split('/')[3]),limit:20});
+      } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+\/spec\/history\/\d+$/.test(pathname)) {
+        json(response, 200, store.snapshot(pathname.split('/')[3], Number(pathname.split('/')[6])));
+      } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/restore$/.test(pathname)) {
+        const input = fields(await body(request), ['fromRevision', 'revision']);
+        json(response, 200, publicProject(store.restoreSpec(pathname.split('/')[3], input.fromRevision, input.revision)));
       } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+\/spec\/export$/.test(pathname)) {
         const project = store.get(pathname.split('/')[3]);
         if (!project.spec) throw new AppError(409, 'SPEC_REQUIRED', '请先生成或保存规格。');
         response.setHeader('Content-Disposition', 'attachment; filename="' + project.spec.modId + '.modspec.json"');
         json(response, 200, project.spec);
       } else if (request.method === 'GET' && /^\/api\/projects\/[^/]+$/.test(pathname)) {
-        json(response, 200, store.get(pathname.split('/')[3]));
+        json(response, 200, publicProject(store.get(pathname.split('/')[3])));
       } else {
         throw new AppError(404, 'NOT_FOUND', '接口或文件不存在。');
       }

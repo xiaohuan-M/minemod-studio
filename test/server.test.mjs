@@ -99,3 +99,22 @@ test('spec workflow validates, persists, confirms, exports and rejects stale edi
   assert.notEqual(updated.specHash, project.specHash);
   assert.equal((await (await fetch(base + '/api/schema/mod-spec')).json()).title, 'MineMod ModSpec v1');
 });
+
+test('history API separates metadata and snapshots and restores with revision checks', async t => {
+  const base=await fixture(t);
+  let project=await (await post(base,'/api/projects',{name:'历史项目',prompt:'普通物品'})).json();
+  const root='/api/projects/'+project.id;
+  project=await (await post(base,root+'/spec/generate',{provider:'mock',revision:0})).json();
+  const original=structuredClone(project);
+  project=await (await post(base,root+'/spec/generate',{provider:'mock',revision:project.revision})).json();
+  assert.equal(project.historyCount,1);assert.equal('specHistory' in project,false);
+  const {history,limit}=await (await fetch(base+root+'/spec/history')).json();
+  assert.equal(limit,20);assert.equal(history[0].revision,original.revision);assert.equal('spec' in history[0],false);
+  const snapshot=await (await fetch(base+root+'/spec/history/'+original.revision)).json();
+  assert.deepEqual(snapshot.spec,original.spec);
+  assert.equal((await post(base,root+'/spec/restore',{fromRevision:original.revision,revision:0})).status,409);
+  const restore=await post(base,root+'/spec/restore',{fromRevision:original.revision,revision:project.revision});
+  assert.equal(restore.status,200);
+  const restored=await restore.json();assert.equal(restored.historyCount,2);assert.equal(restored.confirmedSpecHash,null);
+  assert.equal((await fetch(base+root+'/spec/history/99999')).status,404);
+});

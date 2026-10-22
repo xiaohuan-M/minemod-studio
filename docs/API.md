@@ -75,3 +75,15 @@ POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字
 source 区分 mock/manual/openai-compatible；模型来源含 model、durationMs、usage.inputTokens/outputTokens（未返回则 null），demo=false。未确认规格仍为 awaiting_review。
 
 错误：400 CONSENT_REQUIRED / INVALID_PROVIDER，409 PROVIDER_NOT_CONFIGURED / PLANNING_ACTIVE / PROJECT_CHANGED，429 PROVIDER_RATE_LIMIT / PLANNING_LIMIT，499 PROVIDER_CANCELLED，504 PROVIDER_TIMEOUT，422 PROVIDER_INVALID_SPEC，502 PROVIDER_AUTH / PROVIDER_REDIRECT / PROVIDER_HTTP / PROVIDER_UNREACHABLE / PROVIDER_INVALID_RESPONSE / PROVIDER_RESPONSE_TOO_LARGE。失败不保存新规格，无自动重试。
+
+## 规格历史
+
+每次成功编辑、重新生成或恢复前，将当前规格（含来源、SHA-256、当时确认状态、时间、revision）一并写入项目 JSON，保留最近 20 个被替换版本。失败不会添加历史。项目响应返回 historyCount，不内嵌历史内容。
+
+| 方法 | 路径 | 行为 |
+| --- | --- | --- |
+| GET | `/api/projects/:id/spec/history` | `{history,limit:20}`；倒序元信息，不包含完整规格 |
+| GET | `/api/projects/:id/spec/history/:revision` | 单个历史快照和完整规格 |
+| POST | `/api/projects/:id/spec/restore` | `{fromRevision,revision}`；恢复旧规格并保留被替换版本 |
+
+恢复要求当前 revision，过时请求返回 409 PROJECT_CHANGED；丢失/已过保留上限的版本返回 404 SNAPSHOT_NOT_FOUND。恢复清除旧确认并标记 specSource.restoredFromRevision；不调用模型、不执行构建。读取时验证当前及历史规格哈希，损坏记录返回 500 PROJECT_CORRUPT 并保留原文件。

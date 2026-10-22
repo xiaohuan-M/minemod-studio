@@ -51,3 +51,7 @@ Gradle 本身能执行任意代码，shell=false 不能构成隔离。M2 的 run
 ## M1 模型增量
 
 CLI 只从服务端环境创建 provider。HTTP 层验证用户选择和当前 configurationId 后，使用 AbortController 调用有限时、限响应大小的适配器。请求断开、取消或超时都会中止 fetch。最多两个并发请求，每项目一个；结果必须通过 ModSpec 验证及 revision 校验才可保存。模型输出不会成为 shell 参数或代码。普通运行和 CI 不自动访问云端；连接测试同样需显式确认。
+
+## 规格历史持久化
+
+每个项目保存最多 20 个替换前的 specHistory，独立于当前规格。规格变更与历史追加在同一 JSON 临时文件中写入并原子替换，避免跨文件更新不一致；仍不承诺断电级事务。历史读取同时校验 ModSpec 和 SHA-256。HTTP 仅按需返回单份历史，项目列表不包含历史正文；恢复也使用 revision 检查并取消确认。
