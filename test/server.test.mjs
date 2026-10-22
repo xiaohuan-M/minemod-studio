@@ -20,7 +20,11 @@ async function fixture(t) {
 }
 
 function post(base, path, value, headers = {}) {
-  return fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(value) });
+  return fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(value),
+  });
 }
 
 test('HTTP workflow: create, list, plan, reopen; no fictional JAR', async (t) => {
@@ -42,9 +46,24 @@ test('HTTP workflow: create, list, plan, reopen; no fictional JAR', async (t) =>
 
 test('rejects cross-site writes, malformed JSON, large bodies and unknown files', async (t) => {
   const base = await fixture(t);
-  assert.equal((await post(base, '/api/projects', {}, { Origin: 'https://example.com' })).status, 403);
-  assert.equal((await post(base, '/api/projects', {}, { 'Content-Type': 'text/plain' })).status, 415);
-  assert.equal((await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' })).status, 400);
+  assert.equal(
+    (await post(base, '/api/projects', {}, { Origin: 'https://example.com' })).status,
+    403,
+  );
+  assert.equal(
+    (await post(base, '/api/projects', {}, { 'Content-Type': 'text/plain' })).status,
+    415,
+  );
+  assert.equal(
+    (
+      await fetch(`${base}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{',
+      })
+    ).status,
+    400,
+  );
   assert.equal((await post(base, '/api/projects', { prompt: 'a'.repeat(30_000) })).status, 413);
   assert.equal((await fetch(`${base}/.env`)).status, 404);
   assert.equal((await fetch(`${base}/src/server.mjs`)).status, 404);
@@ -54,7 +73,10 @@ test('rejects cross-site writes, malformed JSON, large bodies and unknown files'
 test('rejects DNS rebinding Host header', async (t) => {
   const base = await fixture(t);
   const status = await new Promise((resolve, reject) => {
-    const req = request(`${base}/api/health`, { headers: { Host: 'attacker.example' } }, (res) => { res.resume(); resolve(res.statusCode); });
+    const req = request(`${base}/api/health`, { headers: { Host: 'attacker.example' } }, (res) => {
+      res.resume();
+      resolve(res.statusCode);
+    });
     req.on('error', reject);
     req.end();
   });
@@ -73,23 +95,35 @@ test('serves a static shell with a restrictive content security policy', async (
 
 test('spec workflow validates, persists, confirms, exports and rejects stale edits', async (t) => {
   const base = await fixture(t);
-  let project = await (await post(base, '/api/projects', {name:'规格工坊',prompt:'普通物品与合成'})).json();
+  let project = await (
+    await post(base, '/api/projects', { name: '规格工坊', prompt: '普通物品与合成' })
+  ).json();
   const route = '/api/projects/' + project.id;
-  assert.equal((await post(base, route + '/spec/confirm', {revision:0})).status, 409);
-  project = await (await post(base, route + '/spec/generate', {provider:'mock',revision:0})).json();
+  assert.equal((await post(base, route + '/spec/confirm', { revision: 0 })).status, 409);
+  project = await (
+    await post(base, route + '/spec/generate', { provider: 'mock', revision: 0 })
+  ).json();
   assert.equal(project.status, 'awaiting_review');
   assert.equal(project.specSource.demo, true);
   assert.equal(project.spec.schemaVersion, 1);
   const revision = project.revision;
-  project = await (await post(base, route + '/spec/confirm', {revision})).json();
+  project = await (await post(base, route + '/spec/confirm', { revision })).json();
   assert.equal(project.confirmedSpecHash, project.specHash);
   assert.equal(project.status, 'spec_confirmed');
-  assert.equal((await post(base, route + '/spec/generate', {provider:'mock',revision})).status, 409);
+  assert.equal(
+    (await post(base, route + '/spec/generate', { provider: 'mock', revision })).status,
+    409,
+  );
   const exported = await fetch(base + route + '/spec/export');
   assert.match(exported.headers.get('content-disposition'), /attachment/);
   assert.deepEqual(await exported.json(), project.spec);
-  const put = spec => fetch(base + route + '/spec', {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({spec,revision:project.revision})});
-  assert.equal((await put({...project.spec,command:'not allowed'})).status, 422);
+  const put = (spec) =>
+    fetch(base + route + '/spec', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ spec, revision: project.revision }),
+    });
+  assert.equal((await put({ ...project.spec, command: 'not allowed' })).status, 422);
   assert.equal((await (await fetch(base + route)).json()).revision, project.revision);
   project.spec.displayName = '修改后的工坊';
   const updated = await (await put(project.spec)).json();
@@ -97,24 +131,45 @@ test('spec workflow validates, persists, confirms, exports and rejects stale edi
   assert.equal(updated.status, 'awaiting_review');
   assert.equal(updated.specSource.provider, 'manual');
   assert.notEqual(updated.specHash, project.specHash);
-  assert.equal((await (await fetch(base + '/api/schema/mod-spec')).json()).title, 'MineMod ModSpec v1');
+  assert.equal(
+    (await (await fetch(base + '/api/schema/mod-spec')).json()).title,
+    'MineMod ModSpec v1',
+  );
 });
 
-test('history API separates metadata and snapshots and restores with revision checks', async t => {
-  const base=await fixture(t);
-  let project=await (await post(base,'/api/projects',{name:'历史项目',prompt:'普通物品'})).json();
-  const root='/api/projects/'+project.id;
-  project=await (await post(base,root+'/spec/generate',{provider:'mock',revision:0})).json();
-  const original=structuredClone(project);
-  project=await (await post(base,root+'/spec/generate',{provider:'mock',revision:project.revision})).json();
-  assert.equal(project.historyCount,1);assert.equal('specHistory' in project,false);
-  const {history,limit}=await (await fetch(base+root+'/spec/history')).json();
-  assert.equal(limit,20);assert.equal(history[0].revision,original.revision);assert.equal('spec' in history[0],false);
-  const snapshot=await (await fetch(base+root+'/spec/history/'+original.revision)).json();
-  assert.deepEqual(snapshot.spec,original.spec);
-  assert.equal((await post(base,root+'/spec/restore',{fromRevision:original.revision,revision:0})).status,409);
-  const restore=await post(base,root+'/spec/restore',{fromRevision:original.revision,revision:project.revision});
-  assert.equal(restore.status,200);
-  const restored=await restore.json();assert.equal(restored.historyCount,2);assert.equal(restored.confirmedSpecHash,null);
-  assert.equal((await fetch(base+root+'/spec/history/99999')).status,404);
+test('history API separates metadata and snapshots and restores with revision checks', async (t) => {
+  const base = await fixture(t);
+  let project = await (
+    await post(base, '/api/projects', { name: '历史项目', prompt: '普通物品' })
+  ).json();
+  const root = '/api/projects/' + project.id;
+  project = await (
+    await post(base, root + '/spec/generate', { provider: 'mock', revision: 0 })
+  ).json();
+  const original = structuredClone(project);
+  project = await (
+    await post(base, root + '/spec/generate', { provider: 'mock', revision: project.revision })
+  ).json();
+  assert.equal(project.historyCount, 1);
+  assert.equal('specHistory' in project, false);
+  const { history, limit } = await (await fetch(base + root + '/spec/history')).json();
+  assert.equal(limit, 20);
+  assert.equal(history[0].revision, original.revision);
+  assert.equal('spec' in history[0], false);
+  const snapshot = await (await fetch(base + root + '/spec/history/' + original.revision)).json();
+  assert.deepEqual(snapshot.spec, original.spec);
+  assert.equal(
+    (await post(base, root + '/spec/restore', { fromRevision: original.revision, revision: 0 }))
+      .status,
+    409,
+  );
+  const restore = await post(base, root + '/spec/restore', {
+    fromRevision: original.revision,
+    revision: project.revision,
+  });
+  assert.equal(restore.status, 200);
+  const restored = await restore.json();
+  assert.equal(restored.historyCount, 2);
+  assert.equal(restored.confirmedSpecHash, null);
+  assert.equal((await fetch(base + root + '/spec/history/99999')).status, 404);
 });

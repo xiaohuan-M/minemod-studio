@@ -1,6 +1,6 @@
 # 自带 LLM · Chat Completions 适配器
 
-已实现 `mock.mjs` 和 `openai-compatible.mjs`。默认 mock；配置文件不会自动触发模型请求。Node.js >=24.5，使用原生 fetch，无第三方运行依赖。
+已实现 `mock.mjs` 和 `openai-compatible.mjs`。默认 mock；配置文件不会自动触发模型请求。Node.js >=24.5，使用原生 fetch，依赖通过 package-lock.json 固定；文本协议使用原生 fetch。
 
 ## 服务端配置
 

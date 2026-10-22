@@ -4,7 +4,13 @@ import { createProject, assertProjectId } from '../src/core/project.mjs';
 import { mockProvider } from '../src/providers/mock.mjs';
 
 test('project validation rejects empty, oversized and unexpected fields', () => {
-  for (const input of [null, [], { name: ' ', prompt: 'a' }, { name: 'x', prompt: 'a'.repeat(4001) }, { name: 'x', prompt: 'a', target: {} }]) {
+  for (const input of [
+    null,
+    [],
+    { name: ' ', prompt: 'a' },
+    { name: 'x', prompt: 'a'.repeat(4001) },
+    { name: 'x', prompt: 'a', target: {} },
+  ]) {
     assert.throws(() => createProject(input), { code: 'INVALID_INPUT' });
   }
 });
@@ -20,5 +26,6 @@ test('offline planning preserves user intent and cannot claim compiled artifacts
 });
 
 test('project ids cannot be filesystem paths', () => {
-  for (const id of ['../outside', '/tmp/a', '..%2Fsecret', '123', undefined]) assert.throws(() => assertProjectId(id), { code: 'INVALID_ID' });
+  for (const id of ['../outside', '/tmp/a', '..%2Fsecret', '123', undefined])
+    assert.throws(() => assertProjectId(id), { code: 'INVALID_ID' });
 });

@@ -1,118 +1,463 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>MineMod Studio · 本地模组工坊</title>
-  <link rel="stylesheet" href="/style.css">
-  <script type="module" src="/app.js"></script>
-</head>
-<body>
-  <header><a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.2</span></header>
-  <main>
-    <section class="intro">
-      <p class="eyebrow">你的想法，你的工程</p>
-      <h1>从想法到模组，<br>在自己的工坊完成。</h1>
-      <p>自带模型 API，本地保存工程。设计内容、制作素材、审查源码，真实编译并下载。</p>
-      <aside><strong>Fabric 1.21.1 创作工坊</strong><br>支持物品、食物、工具、方块与闪电法杖，配方、贴图和静态立方体模型。构建需要 Docker；也可导出完整源码自行构建。编译结果与游戏实测分别记录。</aside>
-    </section>
-    <div class="workspace">
-      <section class="panel">
-        <h2>新建项目</h2>
-        <form id="create-form">
-          <label for="name">项目名称</label>
-          <input id="name" name="name" placeholder="例如：雷霆工坊" maxlength="80" required>
-          <label for="prompt">你想做什么？</label>
-          <textarea id="prompt" name="prompt" placeholder="描述物品、方块和玩法，以及你希望玩家获得的体验……" maxlength="4000" rows="5" required></textarea>
-          <p class="target">当前构建目标 · Fabric / Minecraft 1.21.1 / Java 21</p>
-          <button type="submit" id="create-button">保存到本地</button>
-        </form>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>MineMod Studio · 本地模组工坊</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.2</span>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">你的想法，你的工程</p>
+        <h1>从想法到模组，<br />在自己的工坊完成。</h1>
+        <p>自带模型 API，本地保存工程。设计内容、制作素材、审查源码，真实编译并下载。</p>
+        <aside>
+          <strong>Fabric 1.21.1 创作工坊</strong
+          ><br />支持物品、食物、工具、方块与闪电法杖，配方、贴图和静态立方体模型。构建需要
+          Docker；也可导出完整源码自行构建。编译结果与游戏实测分别记录。
+        </aside>
       </section>
-      <section class="panel">
-        <h2>我的项目</h2>
-        <p id="empty">还没有项目。写下第一个想法吧。</p>
-        <ul id="projects" class="projects"></ul>
-      </section>
-    </div>
-    <section id="detail" class="panel detail" hidden>
-      <p class="eyebrow">项目详情</p>
-      <h2 id="project-title"></h2>
-      <p id="project-prompt" class="preserve"></p>
-      <section class="provider-panel" aria-labelledby="provider-title">
-        <h3 id="provider-title">规划方式</h3>
-        <label for="provider-select">选择模型来源</label>
-        <select id="provider-select"><option value="mock">离线固定示例 · 无网络请求</option><option value="openai-compatible">我的 LLM API · 自定义模型</option></select>
-        <div id="model-details" hidden>
-          <p id="provider-info" class="preserve"></p>
-          <p>生成规格会发送本项目的名称、需求文本、目标版本、当前规格和修改要求；若选择构建修复，还会发送选定失败日志末尾最多 6000 字。连接测试只发送固定样例。服务商可能计费，程序不估算费用，也不自动重试。</p>
-          <label class="consent"><input id="model-consent" type="checkbox">我已核对目标服务和发送内容，同意本次调用。</label>
-          <button id="test-model" type="button" class="secondary">验证模型连接（会调用 API）</button>
-          <details><summary>配置我的 API</summary><p>在运行服务的电脑上，将 .env.example 复制为 .env，填写以下配置并重启。密钥只保存在服务端文件中，不填入网页。</p><pre>MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
-MINEMOD_LLM_MODEL=your-model-name
-MINEMOD_LLM_API_KEY=your-api-key</pre><p>本机接口可使用 http://127.0.0.1:11434/v1。若服务不接受 JSON 模式，设置 MINEMOD_LLM_JSON_MODE=false；仍会验证输出规格。连接测试通过只说明该接口能返回有效规格。</p></details>
-        </div>
-      </section>
-      <label for="revision-instruction">继续修改的要求（可选）</label><textarea id="revision-instruction" rows="2" maxlength="4000" placeholder="例如：保留已有工具，增加一种发光方块和合成配方"></textarea>
-      <label for="repair-build">分析失败构建（可选，需要我的 LLM API；结果仍需审查）</label><select id="repair-build"><option value="">不附加构建日志</option></select>
-      <div class="actions"><button type="button" id="spec-button">生成离线规格示例</button><button type="button" id="cancel-model" class="secondary" hidden>取消当前请求</button><button type="button" id="plan-button" class="secondary">查看流程演示</button></div>
-      <section id="spec-panel" hidden>
-        <h3>模组规格 · 审查与确认</h3>
-        <p id="spec-state" class="demo-label"></p>
-        <div id="spec-preview" class="spec-preview"></div>
-        <label for="spec-editor">高级规格 JSON（下方有可视化编辑器；不接受任意行为脚本）</label>
-        <textarea id="spec-editor" rows="18" spellcheck="false"></textarea>
-        <div class="actions"><button type="button" id="save-spec">校验并保存修改</button><button type="button" id="confirm-spec" class="secondary">确认当前规格</button><a id="export-spec" download>导出已保存的规格 JSON</a></div>
-        <details id="history-panel"><summary>规格历史 · 最近 20 个被替换版本</summary>
-          <p>手工保存、重新生成和恢复前自动保存旧规格。恢复后需要重新确认，不触发模型调用。</p>
-          <ul id="history-list" class="history-list"></ul>
-          <pre id="history-preview" hidden></pre>
-        </details>
-        <p class="target">确认仅针对当前规格。再次修改后需要重新确认；规格 JSON 不是模组或 JAR。</p>
-      </section>
-      <div id="plan" hidden><p class="demo-label">流程演示 · 未调用大模型 · 未构建</p><p id="plan-summary" class="preserve"></p><ol id="steps"></ol><ul id="assumptions"></ul></div>
-    </section>
-    <section id="workshop" class="panel detail" hidden>
-      <nav class="workshop-nav"><a href="#content-editor">内容与合成</a><a href="#asset-workshop">贴图与模型</a><a href="#engineering">工程与交付</a></nav>
-      <section id="content-editor">
-        <h2>内容与合成</h2><p class="target">表单修改先写入规格草稿，再点击“校验并保存修改”。确认后可以生成工程。</p>
-        <div class="actions"><button id="load-full-example" class="secondary">载入完整功能示例</button><button id="clone-project" class="secondary">复制此项目</button><label class="file-button">导入规格 JSON<input id="import-spec" type="file" accept=".json"></label></div>
-        <div id="inventory" class="inventory"></div>
-        <details open><summary>编辑物品 / 方块</summary>
-          <form id="content-form">
-            <div class="form-grid"><label>类型<select id="content-kind"><option value="basic_item">普通物品</option><option value="food">食物</option><option value="sword">剑</option><option value="pickaxe">镐</option><option value="axe">斧</option><option value="shovel">锹</option><option value="hoe">锄</option><option value="lightning_wand">闪电法杖</option><option value="block">方块</option></select></label><label>注册 ID<input id="content-id" pattern="[a-z][a-z0-9_]{0,63}" required placeholder="crystal_sword"></label><label>中文名<input id="content-zh" maxlength="80" required></label><label>英文名<input id="content-en" maxlength="80" required></label><label>堆叠数量<input id="content-stack" type="number" min="1" max="64" value="64" required></label><label>占位贴图颜色<input id="content-color" type="color" value="#8e62cf"></label></div>
-            <div id="food-fields" class="form-grid" hidden><label>营养<input id="food-nutrition" type="number" min="1" max="20" value="5"></label><label>饱和度系数<input id="food-saturation" type="number" min="0" max="2" step="0.1" value="0.6"></label></div>
-            <div id="tool-fields" class="form-grid" hidden><label>工具材质<select id="tool-material"><option value="wood">木</option><option value="stone">石</option><option value="iron">铁</option><option value="gold">金</option><option value="diamond" selected>钻石</option><option value="netherite">下界合金</option></select></label><label>附加攻击伤害<input id="tool-damage" type="number" min="0" max="20" value="3"></label><label>攻击速度修正<input id="tool-speed" type="number" min="-4" max="4" step="0.1" value="-2.4"></label></div>
-            <label id="wand-fields" hidden>闪电冷却（秒；右键向视线 24 格内召雷）<input id="wand-cooldown" type="number" min="1" max="120" value="3"></label>
-            <div id="block-fields" class="form-grid" hidden><label>硬度<input id="block-hardness" type="number" min="0" max="50" step="0.1" value="2"></label><label>抗爆性<input id="block-resistance" type="number" min="0" max="1200" step="0.1" value="6"></label><label>亮度<input id="block-light" type="number" min="0" max="15" value="0"></label></div>
-            <div class="form-grid"><label>贴图资源<select id="content-texture"><option value="">使用占位贴图</option></select></label><label>物品立方体模型<select id="content-model"><option value="">使用默认模型</option></select></label></div>
-            <div class="actions"><button id="content-save" type="submit">添加到规格草稿</button><button id="content-reset" type="button" class="secondary">新建条目</button><button id="content-delete" type="button" class="secondary" hidden>移除选中条目</button></div>
+      <div class="workspace">
+        <section class="panel">
+          <h2>新建项目</h2>
+          <form id="create-form">
+            <label for="name">项目名称</label>
+            <input id="name" name="name" placeholder="例如：雷霆工坊" maxlength="80" required />
+            <label for="prompt">你想做什么？</label>
+            <textarea
+              id="prompt"
+              name="prompt"
+              placeholder="描述物品、方块和玩法，以及你希望玩家获得的体验……"
+              maxlength="4000"
+              rows="5"
+              required
+            ></textarea>
+            <p class="target">当前构建目标 · Fabric / Minecraft 1.21.1 / Java 21</p>
+            <button type="submit" id="create-button">保存到本地</button>
           </form>
-        </details>
-        <details><summary>3 × 3 配方编辑</summary><form id="recipe-form"><div class="form-grid"><label>配方 ID<input id="recipe-id" required pattern="[a-z][a-z0-9_]{0,63}"></label><label>类型<select id="recipe-type"><option value="crafting_shaped">有序合成</option><option value="crafting_shapeless">无序合成</option></select></label><label>产物<select id="recipe-result"></select></label><label>数量<input id="recipe-count" type="number" min="1" max="64" value="1" required></label></div><p class="target">每格填写 minecraft:diamond 或本项目注册 ID。空格表示不放原料；无序合成忽略位置。</p><div id="recipe-grid" class="craft-grid"></div><datalist id="ingredients"></datalist><div class="actions"><button type="submit">保存配方到草稿</button><button id="recipe-reset" type="button" class="secondary">清空配方表单</button></div></form><div id="recipe-list" class="recipe-list"></div></details>
-      </section>
-      <section id="asset-workshop">
-        <h2>素材工坊</h2><p class="target">本地绘制、编辑与导入，不需要 API。资源保存后可在内容编辑器中绑定，随源码导出来源和许可。</p>
-        <details><summary>用我的 LLM 生成素材草稿</summary><p>先在上方选择“我的 LLM API”并核对目标。只发送此处的素材描述，不发送项目文件。文本模型生成像素数组或立方体数据，质量取决于模型；支持生成后手工修改。</p><label>素材类型<select id="ai-asset-kind"><option value="texture">16 × 16 像素贴图</option><option value="model">静态立方体模型</option></select></label><label>描述<textarea id="ai-asset-prompt" rows="3" maxlength="2000" placeholder="例如：紫色水晶法杖，金色握柄"></textarea></label><label class="consent"><input id="ai-asset-consent" type="checkbox">允许将这次素材描述发送到上方配置的服务商（可能计费）</label><div class="actions"><button id="ai-asset-generate">生成素材草稿</button><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button></div></details>
-        <div class="workshop-columns">
-          <details open><summary>像素贴图</summary><div class="form-grid"><label>尺寸<select id="texture-size"><option>16</option><option>32</option><option>64</option></select></label><label>画笔颜色<input id="pixel-color" type="color" value="#a77adc"></label><label class="consent"><input id="pixel-erase" type="checkbox">橡皮</label></div><canvas id="pixel-canvas" width="256" height="256" aria-label="像素绘制画布"></canvas><div class="actions"><button id="pixel-fill" class="secondary">填充</button><button id="pixel-clear" class="secondary">清空</button><button id="pixel-undo" class="secondary">撤销</button><label class="file-button">导入 PNG<input id="texture-import" type="file" accept="image/png"></label></div><label>贴图名称<input id="texture-name" value="我的贴图" maxlength="80"></label><button id="texture-save">保存贴图到资源库</button></details>
-          <details open><summary>立方体模型</summary><canvas id="model-canvas" width="420" height="300" aria-label="可拖动旋转的 3D 模型预览"></canvas><p class="target">拖动旋转，滚轮缩放；几何预览不等于游戏渲染。</p><label>预览角度<select id="model-view"><option value="orbit">环绕</option><option value="hand">手持角度</option><option value="head">头部角度</option><option value="front">正面</option></select></label><label>立方体<select id="cube-select"></select></label><div class="form-grid"><label>起点 x,y,z<input id="cube-from" value="4,0,4"></label><label>终点 x,y,z<input id="cube-to" value="12,16,12"></label></div><div class="actions"><button id="cube-update" class="secondary">更新立方体</button><button id="cube-add" class="secondary">添加立方体</button><button id="cube-delete" class="secondary">删除立方体</button><label class="file-button">导入 bbmodel / 模型 JSON<input id="model-import" type="file" accept=".bbmodel,.json"></label></div><label>模型名称<input id="model-name" value="我的模型" maxlength="80"></label><button id="model-save">保存模型到资源库</button></details>
+        </section>
+        <section class="panel">
+          <h2>我的项目</h2>
+          <p id="empty">还没有项目。写下第一个想法吧。</p>
+          <ul id="projects" class="projects"></ul>
+        </section>
+      </div>
+      <section id="detail" class="panel detail" hidden>
+        <p class="eyebrow">项目详情</p>
+        <h2 id="project-title"></h2>
+        <p id="project-prompt" class="preserve"></p>
+        <section class="provider-panel" aria-labelledby="provider-title">
+          <h3 id="provider-title">规划方式</h3>
+          <label for="provider-select">选择模型来源</label>
+          <select id="provider-select">
+            <option value="mock">离线固定示例 · 无网络请求</option>
+            <option value="openai-compatible">我的 LLM API · 自定义模型</option>
+          </select>
+          <div id="model-details" hidden>
+            <p id="provider-info" class="preserve"></p>
+            <p>
+              生成规格会发送本项目的名称、需求文本、目标版本、当前规格和修改要求；若选择构建修复，还会发送选定失败日志末尾最多
+              6000 字。连接测试只发送固定样例。服务商可能计费，程序不估算费用，也不自动重试。
+            </p>
+            <label class="consent"
+              ><input
+                id="model-consent"
+                type="checkbox"
+              />我已核对目标服务和发送内容，同意本次调用。</label
+            >
+            <button id="test-model" type="button" class="secondary">
+              验证模型连接（会调用 API）
+            </button>
+            <details>
+              <summary>配置我的 API</summary>
+              <p>
+                在运行服务的电脑上，将 .env.example 复制为
+                .env，填写以下配置并重启。密钥只保存在服务端文件中，不填入网页。
+              </p>
+              <pre>
+MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
+MINEMOD_LLM_MODEL=your-model-name
+MINEMOD_LLM_API_KEY=your-api-key</pre>
+              <p>
+                本机接口可使用 http://127.0.0.1:11434/v1。若服务不接受 JSON 模式，设置
+                MINEMOD_LLM_JSON_MODE=false；仍会验证输出规格。连接测试通过只说明该接口能返回有效规格。
+              </p>
+            </details>
+          </div>
+        </section>
+        <label for="revision-instruction">继续修改的要求（可选）</label
+        ><textarea
+          id="revision-instruction"
+          rows="2"
+          maxlength="4000"
+          placeholder="例如：保留已有工具，增加一种发光方块和合成配方"
+        ></textarea>
+        <label for="repair-build">分析失败构建（可选，需要我的 LLM API；结果仍需审查）</label
+        ><select id="repair-build">
+          <option value="">不附加构建日志</option>
+        </select>
+        <div class="actions">
+          <button type="button" id="spec-button">生成离线规格示例</button
+          ><button type="button" id="cancel-model" class="secondary" hidden>取消当前请求</button
+          ><button type="button" id="plan-button" class="secondary">查看流程演示</button>
         </div>
-        <div class="form-grid"><label>资源来源<input id="asset-source" value="本人原创" maxlength="200"></label><label>许可说明<input id="asset-license" value="CC0-1.0" maxlength="200"></label></div><div id="asset-library" class="inventory"></div>
+        <section id="spec-panel" hidden>
+          <h3>模组规格 · 审查与确认</h3>
+          <p id="spec-state" class="demo-label"></p>
+          <div id="spec-preview" class="spec-preview"></div>
+          <label for="spec-editor">高级规格 JSON（下方有可视化编辑器；不接受任意行为脚本）</label>
+          <textarea id="spec-editor" rows="18" spellcheck="false"></textarea>
+          <div class="actions">
+            <button type="button" id="save-spec">校验并保存修改</button
+            ><button type="button" id="confirm-spec" class="secondary">确认当前规格</button
+            ><a id="export-spec" download>导出已保存的规格 JSON</a>
+          </div>
+          <details id="history-panel">
+            <summary>规格历史 · 最近 20 个被替换版本</summary>
+            <p>手工保存、重新生成和恢复前自动保存旧规格。恢复后需要重新确认，不触发模型调用。</p>
+            <ul id="history-list" class="history-list"></ul>
+            <pre id="history-preview" hidden></pre>
+          </details>
+          <p class="target">
+            确认仅针对当前规格。再次修改后需要重新确认；规格 JSON 不是模组或 JAR。
+          </p>
+        </section>
+        <div id="plan" hidden>
+          <p class="demo-label">流程演示 · 未调用大模型 · 未构建</p>
+          <p id="plan-summary" class="preserve"></p>
+          <ol id="steps"></ol>
+          <ul id="assumptions"></ul>
+        </div>
       </section>
-      <section id="engineering">
-        <h2>工程、构建与交付</h2><p id="engineering-state" class="target"></p>
-        <div class="actions"><button id="generate-workspace">从已确认规格生成工程</button><button id="check-builder" class="secondary">检查构建环境</button></div><p id="builder-status" role="status"></p>
-        <details><summary>首次准备构建镜像</summary><p>需要本机 Docker。下载固定版本的 Gradle + JDK 21 镜像；镜像准备会联网，不调用 LLM。</p><label class="consent"><input id="prepare-consent" type="checkbox">允许下载固定镜像</label><button id="prepare-builder" class="secondary">准备构建镜像</button></details>
-        <label>工程快照<select id="workspace-select"><option value="">尚未生成</option></select></label>
-        <div id="source-panel" hidden><p id="workspace-hash" class="hash"></p><div class="actions"><a id="source-download" download>下载完整源码 ZIP</a><button id="approve-workspace" class="secondary">我已审查，批准此工程快照</button></div><details open><summary>生成差异与源码</summary><ul id="workspace-diff" class="file-list"></ul><label>查看文件<select id="source-file"></select></label><pre id="source-preview"></pre></details></div>
-        <label class="consent"><input id="build-network" type="checkbox">允许本次构建下载 Maven / Minecraft 依赖（首次需要）</label>
-        <div class="actions"><button id="start-build">构建已批准的当前工程</button><button id="cancel-build" class="secondary" hidden>取消任务</button></div>
-        <p id="build-state" role="status"></p><pre id="build-log" aria-label="真实构建日志"></pre><div id="build-downloads" class="actions"></div><h3>构建记录</h3><ul id="build-history" class="history-list"></ul>
+      <section id="workshop" class="panel detail" hidden>
+        <nav class="workshop-nav">
+          <a href="#content-editor">内容与合成</a><a href="#asset-workshop">贴图与模型</a
+          ><a href="#engineering">工程与交付</a>
+        </nav>
+        <section id="content-editor">
+          <h2>内容与合成</h2>
+          <p class="target">表单修改先写入规格草稿，再点击“校验并保存修改”。确认后可以生成工程。</p>
+          <div class="actions">
+            <button id="load-full-example" class="secondary">载入完整功能示例</button
+            ><button id="clone-project" class="secondary">复制此项目</button
+            ><label class="file-button"
+              >导入规格 JSON<input id="import-spec" type="file" accept=".json"
+            /></label>
+          </div>
+          <div id="inventory" class="inventory"></div>
+          <details open>
+            <summary>编辑物品 / 方块</summary>
+            <form id="content-form">
+              <div class="form-grid">
+                <label
+                  >类型<select id="content-kind">
+                    <option value="basic_item">普通物品</option>
+                    <option value="food">食物</option>
+                    <option value="sword">剑</option>
+                    <option value="pickaxe">镐</option>
+                    <option value="axe">斧</option>
+                    <option value="shovel">锹</option>
+                    <option value="hoe">锄</option>
+                    <option value="lightning_wand">闪电法杖</option>
+                    <option value="block">方块</option>
+                  </select></label
+                ><label
+                  >注册 ID<input
+                    id="content-id"
+                    pattern="[a-z][a-z0-9_]{0,63}"
+                    required
+                    placeholder="crystal_sword" /></label
+                ><label>中文名<input id="content-zh" maxlength="80" required /></label
+                ><label>英文名<input id="content-en" maxlength="80" required /></label
+                ><label
+                  >堆叠数量<input
+                    id="content-stack"
+                    type="number"
+                    min="1"
+                    max="64"
+                    value="64"
+                    required /></label
+                ><label
+                  >占位贴图颜色<input id="content-color" type="color" value="#8e62cf"
+                /></label>
+              </div>
+              <div id="food-fields" class="form-grid" hidden>
+                <label
+                  >营养<input id="food-nutrition" type="number" min="1" max="20" value="5" /></label
+                ><label
+                  >饱和度系数<input
+                    id="food-saturation"
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value="0.6"
+                /></label>
+              </div>
+              <div id="tool-fields" class="form-grid" hidden>
+                <label
+                  >工具材质<select id="tool-material">
+                    <option value="wood">木</option>
+                    <option value="stone">石</option>
+                    <option value="iron">铁</option>
+                    <option value="gold">金</option>
+                    <option value="diamond" selected>钻石</option>
+                    <option value="netherite">下界合金</option>
+                  </select></label
+                ><label
+                  >附加攻击伤害<input
+                    id="tool-damage"
+                    type="number"
+                    min="0"
+                    max="20"
+                    value="3" /></label
+                ><label
+                  >攻击速度修正<input
+                    id="tool-speed"
+                    type="number"
+                    min="-4"
+                    max="4"
+                    step="0.1"
+                    value="-2.4"
+                /></label>
+              </div>
+              <label id="wand-fields" hidden
+                >闪电冷却（秒；右键向视线 24 格内召雷）<input
+                  id="wand-cooldown"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value="3"
+              /></label>
+              <div id="block-fields" class="form-grid" hidden>
+                <label
+                  >硬度<input
+                    id="block-hardness"
+                    type="number"
+                    min="0"
+                    max="50"
+                    step="0.1"
+                    value="2" /></label
+                ><label
+                  >抗爆性<input
+                    id="block-resistance"
+                    type="number"
+                    min="0"
+                    max="1200"
+                    step="0.1"
+                    value="6" /></label
+                ><label
+                  >亮度<input id="block-light" type="number" min="0" max="15" value="0"
+                /></label>
+              </div>
+              <div class="form-grid">
+                <label
+                  >贴图资源<select id="content-texture">
+                    <option value="">使用占位贴图</option>
+                  </select></label
+                ><label
+                  >物品立方体模型<select id="content-model">
+                    <option value="">使用默认模型</option>
+                  </select></label
+                >
+              </div>
+              <div class="actions">
+                <button id="content-save" type="submit">添加到规格草稿</button
+                ><button id="content-reset" type="button" class="secondary">新建条目</button
+                ><button id="content-delete" type="button" class="secondary" hidden>
+                  移除选中条目
+                </button>
+              </div>
+            </form>
+          </details>
+          <details>
+            <summary>3 × 3 配方编辑</summary>
+            <form id="recipe-form">
+              <div class="form-grid">
+                <label
+                  >配方 ID<input id="recipe-id" required pattern="[a-z][a-z0-9_]{0,63}" /></label
+                ><label
+                  >类型<select id="recipe-type">
+                    <option value="crafting_shaped">有序合成</option>
+                    <option value="crafting_shapeless">无序合成</option>
+                  </select></label
+                ><label>产物<select id="recipe-result"></select></label
+                ><label
+                  >数量<input id="recipe-count" type="number" min="1" max="64" value="1" required
+                /></label>
+              </div>
+              <p class="target">
+                每格填写 minecraft:diamond 或本项目注册 ID。空格表示不放原料；无序合成忽略位置。
+              </p>
+              <div id="recipe-grid" class="craft-grid"></div>
+              <datalist id="ingredients"></datalist>
+              <div class="actions">
+                <button type="submit">保存配方到草稿</button
+                ><button id="recipe-reset" type="button" class="secondary">清空配方表单</button>
+              </div>
+            </form>
+            <div id="recipe-list" class="recipe-list"></div>
+          </details>
+        </section>
+        <section id="asset-workshop">
+          <h2>素材工坊</h2>
+          <p class="target">
+            本地绘制、编辑与导入，不需要 API。资源保存后可在内容编辑器中绑定，随源码导出来源和许可。
+          </p>
+          <details>
+            <summary>用我的 LLM 生成素材草稿</summary>
+            <p>
+              先在上方选择“我的 LLM
+              API”并核对目标。只发送此处的素材描述，不发送项目文件。文本模型生成像素数组或立方体数据，质量取决于模型；支持生成后手工修改。
+            </p>
+            <label
+              >素材类型<select id="ai-asset-kind">
+                <option value="texture">16 × 16 像素贴图</option>
+                <option value="model">静态立方体模型</option>
+              </select></label
+            ><label
+              >描述<textarea
+                id="ai-asset-prompt"
+                rows="3"
+                maxlength="2000"
+                placeholder="例如：紫色水晶法杖，金色握柄"
+              ></textarea></label
+            ><label class="consent"
+              ><input
+                id="ai-asset-consent"
+                type="checkbox"
+              />允许将这次素材描述发送到上方配置的服务商（可能计费）</label
+            >
+            <div class="actions">
+              <button id="ai-asset-generate">生成素材草稿</button
+              ><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button>
+            </div>
+          </details>
+          <div class="workshop-columns">
+            <details open>
+              <summary>像素贴图</summary>
+              <div class="form-grid">
+                <label
+                  >尺寸<select id="texture-size">
+                    <option>16</option>
+                    <option>32</option>
+                    <option>64</option>
+                  </select></label
+                ><label>画笔颜色<input id="pixel-color" type="color" value="#a77adc" /></label
+                ><label class="consent"><input id="pixel-erase" type="checkbox" />橡皮</label>
+              </div>
+              <canvas id="pixel-canvas" width="256" height="256" aria-label="像素绘制画布"></canvas>
+              <div class="actions">
+                <button id="pixel-fill" class="secondary">填充</button
+                ><button id="pixel-clear" class="secondary">清空</button
+                ><button id="pixel-undo" class="secondary">撤销</button
+                ><label class="file-button"
+                  >导入 PNG<input id="texture-import" type="file" accept="image/png"
+                /></label>
+              </div>
+              <label>贴图名称<input id="texture-name" value="我的贴图" maxlength="80" /></label
+              ><button id="texture-save">保存贴图到资源库</button>
+            </details>
+            <details open>
+              <summary>立方体模型</summary>
+              <canvas
+                id="model-canvas"
+                width="420"
+                height="300"
+                aria-label="可拖动旋转的 3D 模型预览"
+              ></canvas>
+              <p class="target">拖动旋转，滚轮缩放；几何预览不等于游戏渲染。</p>
+              <label
+                >预览角度<select id="model-view">
+                  <option value="orbit">环绕</option>
+                  <option value="hand">手持角度</option>
+                  <option value="head">头部角度</option>
+                  <option value="front">正面</option>
+                </select></label
+              ><label>立方体<select id="cube-select"></select></label>
+              <div class="form-grid">
+                <label>起点 x,y,z<input id="cube-from" value="4,0,4" /></label
+                ><label>终点 x,y,z<input id="cube-to" value="12,16,12" /></label>
+              </div>
+              <div class="actions">
+                <button id="cube-update" class="secondary">更新立方体</button
+                ><button id="cube-add" class="secondary">添加立方体</button
+                ><button id="cube-delete" class="secondary">删除立方体</button
+                ><label class="file-button"
+                  >导入 bbmodel / 模型 JSON<input
+                    id="model-import"
+                    type="file"
+                    accept=".bbmodel,.json"
+                /></label>
+              </div>
+              <label>模型名称<input id="model-name" value="我的模型" maxlength="80" /></label
+              ><button id="model-save">保存模型到资源库</button>
+            </details>
+          </div>
+          <div class="form-grid">
+            <label>资源来源<input id="asset-source" value="本人原创" maxlength="200" /></label
+            ><label>许可说明<input id="asset-license" value="CC0-1.0" maxlength="200" /></label>
+          </div>
+          <div id="asset-library" class="inventory"></div>
+        </section>
+        <section id="engineering">
+          <h2>工程、构建与交付</h2>
+          <p id="engineering-state" class="target"></p>
+          <div class="actions">
+            <button id="generate-workspace">从已确认规格生成工程</button
+            ><button id="check-builder" class="secondary">检查构建环境</button>
+          </div>
+          <p id="builder-status" role="status"></p>
+          <details>
+            <summary>首次准备构建镜像</summary>
+            <p>
+              需要本机 Docker。下载固定版本的 Gradle + JDK 21 镜像；镜像准备会联网，不调用 LLM。
+            </p>
+            <label class="consent"
+              ><input id="prepare-consent" type="checkbox" />允许下载固定镜像</label
+            ><button id="prepare-builder" class="secondary">准备构建镜像</button>
+          </details>
+          <label
+            >工程快照<select id="workspace-select">
+              <option value="">尚未生成</option>
+            </select></label
+          >
+          <div id="source-panel" hidden>
+            <p id="workspace-hash" class="hash"></p>
+            <div class="actions">
+              <a id="source-download" download>下载完整源码 ZIP</a
+              ><button id="approve-workspace" class="secondary">我已审查，批准此工程快照</button>
+            </div>
+            <details open>
+              <summary>生成差异与源码</summary>
+              <ul id="workspace-diff" class="file-list"></ul>
+              <label>查看文件<select id="source-file"></select></label>
+              <pre id="source-preview"></pre>
+            </details>
+          </div>
+          <label class="consent"
+            ><input id="build-network" type="checkbox" />允许本次构建下载 Maven / Minecraft
+            依赖（首次需要）</label
+          >
+          <div class="actions">
+            <button id="start-build">构建已批准的当前工程</button
+            ><button id="cancel-build" class="secondary" hidden>取消任务</button>
+          </div>
+          <p id="build-state" role="status"></p>
+          <pre id="build-log" aria-label="真实构建日志"></pre>
+          <div id="build-downloads" class="actions"></div>
+          <h3>构建记录</h3>
+          <ul id="build-history" class="history-list"></ul>
+        </section>
       </section>
-    </section>
-    <p id="feedback" role="status" aria-live="polite"></p>
-  </main>
-  <footer>MineMod Studio · 独立开源项目，与 AutoMods、Mojang 或 Microsoft 无关联。</footer>
-</body>
+      <p id="feedback" role="status" aria-live="polite"></p>
+    </main>
+    <footer>MineMod Studio · 独立开源项目，与 AutoMods、Mojang 或 Microsoft 无关联。</footer>
+  </body>
 </html>

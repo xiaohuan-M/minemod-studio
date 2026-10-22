@@ -1,0 +1,4 @@
+node_modules
+.minemod
+templates
+package-lock.json

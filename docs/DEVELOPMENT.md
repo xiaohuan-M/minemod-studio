@@ -1,6 +1,6 @@
 # 开发与验证
 
-Node.js >=24.5，ES modules，没有第三方运行依赖。`npm ci` 后 `npm start`。前端为原生浏览器模块，不需要构建。`.env` 仅由 CLI 加载，不要提交个人配置。开发约定见 AGENTS.md。
+Node.js >=24.5，ES modules，依赖通过 package-lock.json 固定，选型理由见 docs/research/OPEN-SOURCE-REVIEW.md。`npm ci` 后 `npm start`。前端为原生浏览器模块，不需要构建。`.env` 仅由 CLI 加载，不要提交个人配置。开发约定见 AGENTS.md。
 
 ## 代码结构
 

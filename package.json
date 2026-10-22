@@ -13,9 +13,25 @@
     "start": "node --use-env-proxy --env-file-if-exists=.env src/cli.mjs",
     "check": "node scripts/check.mjs",
     "test": "node --test",
-    "verify": "npm run check && npm test",
+    "verify": "npm run check && npm run typecheck && npm test",
     "doctor": "node --use-env-proxy --env-file-if-exists=.env scripts/doctor.mjs",
     "setup:builder": "node --use-env-proxy --env-file-if-exists=.env scripts/setup-builder.mjs",
-    "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs"
+    "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs",
+    "format": "prettier --write \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "pngjs": "7.0.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/pngjs": "6.0.5",
+    "@types/three": "0.186.0",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2"
   }
 }

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { AppError } from './errors.mjs';
+import { getTarget, DEFAULT_TARGET_ID } from './targets.ts';
 
-export const TARGET = Object.freeze({ edition: 'java', loader: 'fabric', minecraft: '1.21.1', java: 21 });
+export const TARGET = getTarget(DEFAULT_TARGET_ID).target;
 
 function text(value, field, max) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) {
@@ -38,7 +39,10 @@ export function createProject(input) {
 }
 
 export function assertProjectId(id) {
-  if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)) {
+  if (
+    typeof id !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)
+  ) {
     throw new AppError(400, 'INVALID_ID', '项目 ID 格式不正确。');
   }
 }

@@ -14,7 +14,10 @@ export const mockProvider = {
       provider: 'mock',
       demo: true,
       summary: `待实现的创意：${project.prompt}`,
-      assumptions: ['当前输出是固定流程示例，尚未由大模型分析玩法。', '构建目标 Fabric / Minecraft 1.21.1；模板已通过编译，具体作品仍需审查与游戏实测。'],
+      assumptions: [
+        '当前输出是固定流程示例，尚未由大模型分析玩法。',
+        '构建目标 Fabric / Minecraft 1.21.1；模板已通过编译，具体作品仍需审查与游戏实测。',
+      ],
       steps: [
         { id: 'spec', title: '明确玩法与验收条件', state: 'todo' },
         { id: 'template', title: '初始化经验证的 Fabric 模板', state: 'todo' },

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 function files(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    return entry.isDirectory() ? files(path) : /\.(mjs|js)$/.test(path) ? [path] : [];
+    return entry.isDirectory() ? files(path) : /\.(mjs|js|ts)$/.test(path) ? [path] : [];
   });
 }
 let failed = false;
