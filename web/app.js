@@ -1,3 +1,4 @@
+import {initWorkshop} from './workshop.js';
 const $ = (id) => document.getElementById(id);
 let selected = null;
 let busy = false;
@@ -51,7 +52,7 @@ function show(project) {
     const label = (source?.restoredFromRevision !== undefined ? '从版本 ' + source.restoredFromRevision + ' 恢复 · ' : '') + (source?.demo ? '离线固定示例' : source?.provider === 'openai-compatible' ? 'LLM 生成 · ' + source.model : '手动编辑规格');
     const usage = source?.usage;
     const tokens = usage ? ' · 输入/输出 token：' + (usage.inputTokens ?? '未知') + '/' + (usage.outputTokens ?? '未知') : '';
-    $('spec-state').textContent = label + ' · ' + (project.confirmedSpecHash ? '已确认' : '待审查') + ' · 未构建' + tokens;
+    $('spec-state').textContent = label + ' · ' + (project.confirmedSpecHash ? '已确认' : '待审查') + tokens;
     $('export-spec').href = '/api/projects/' + project.id + '/spec/export';
     const entries = project.spec.items.map(item => item.displayName.zh_cn + ' / ' + item.displayName.en_us + ' · ' + item.id + ' · 堆叠 ' + item.maxStackSize);
     entries.push(...project.spec.recipes.map(recipe => '配方 ' + recipe.id + ' · ' + (recipe.type === 'crafting_shaped' ? '有序' : '无序') + ' → ' + recipe.result.item + ' × ' + recipe.result.count));
@@ -60,6 +61,7 @@ function show(project) {
   }
   actions();
   void refreshHistory(project.id);
+  document.dispatchEvent(new CustomEvent('project-shown',{detail:project}));
 }
 async function refresh() {
   const { projects } = await api('/api/projects');
@@ -68,7 +70,7 @@ async function refresh() {
     const li = document.createElement('li');
     const button = document.createElement('button'); button.type = 'button'; button.textContent = project.name;
     const status = document.createElement('small');
-    status.textContent = ({draft:'已记录想法',planned:'已有演示计划',awaiting_review:'规格待确认',spec_confirmed:'规格已确认'})[project.status] + ' · 未构建';
+    status.textContent = ({draft:'已记录想法',planned:'已有演示计划',awaiting_review:'规格待确认',spec_confirmed:'规格已确认',generated:'工程已生成',approved:'工程已批准'})[project.status] ?? project.status;
     button.append(status);
     button.addEventListener('click', async () => {
       if (busy || !canReplace()) return;
@@ -121,7 +123,7 @@ $('spec-button').addEventListener('click', () => {
   const model = provider === 'openai-compatible';
   if (model && (!llm?.configured || !$('model-consent').checked)) return;
   void updateProject('/spec/generate','POST',{
-    provider,revision:selected.revision,...(model ? {consent:llm.configurationId} : {}),
+    provider,revision:selected.revision,...(model&&$('revision-instruction').value.trim()?{instruction:$('revision-instruction').value.trim()}:{}),...(model&&$('repair-build').value?{repairBuildId:$('repair-build').value}:{}),...(model ? {consent:llm.configurationId} : {}),
   },model ? '模型规格已通过校验并保存。请审查假设和配方，再确认。' : '离线示例已保存。请核对物品、配方和假设后确认。',model);
 });
 $('save-spec').addEventListener('click', () => {
@@ -130,7 +132,7 @@ $('save-spec').addEventListener('click', () => {
   catch { feedback('JSON 格式不正确，请检查引号和逗号。',true); }
 });
 $('confirm-spec').addEventListener('click', () => {
-  if (selected && !dirty) void updateProject('/spec/confirm','POST',{revision:selected.revision},'当前规格已确认。尚未生成代码或执行构建。');
+  if (selected && !dirty) void updateProject('/spec/confirm','POST',{revision:selected.revision},'当前规格已确认，可以在工程面板生成源码。');
 });
 $('spec-editor').addEventListener('input', () => {
   dirty = $('spec-editor').value !== JSON.stringify(selected?.spec,null,2);
@@ -201,3 +203,5 @@ async function refreshHistory(id) {
     }
   } catch (error) { if (selected?.id === id && requestId === historyRequest) feedback('历史读取失败：' + error.message,true); }
 }
+
+initWorkshop({api,getProvider:()=>llm,getProject:()=>selected,isDirty:()=>dirty,isBusy:()=>busy,show,refresh,feedback});

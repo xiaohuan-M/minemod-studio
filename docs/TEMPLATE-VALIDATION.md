@@ -26,3 +26,15 @@ gradle:8.10.2-jdk21@sha256:963d59f7f22767da4efbcf46b661361b61af5fb88b0309da1071c
 本次完整样例 JAR：17,076 字节，SHA-256 `905cd42de779e14535494f7be5acb4e8270575c1fc6e89368542a17f51ede024`。读取 ZIP 目录与 CRC，检查 `fabric.mod.json`、`GeneratedMod.class` 和 `LightningWand.class` 成功。源码 ZIP 另经 Python zipfile 解压校验全部通过，并验证 gradlew 可执行位。JAR 的 ZIP 时间戳可能随重新构建变化，不能把此 JAR 哈希当作跨构建可重现性承诺。
 
 这些生成项目没有 JUnit 测试，Gradle 的 `test NO-SOURCE` 不表示游戏测试成功。尚未验证客户端启动、配方加载、方块掉落、手持渲染或多人游戏行为。真实 LLM 联调按用户要求跳过；不把模拟 HTTP 测试标为真实服务验证。
+
+## 应用接口端到端验证
+
+2026-10-22，应用真实 API 完成资源入库 → 完整规格 → 确认 → 工程 → 批准 → Docker 构建 → 下载与校验。包含自定义 PNG 和立方体模型绑定。
+
+- 工程 SHA-256：`f833b49b73774b26943d0655d6a577717f4e0644ae66bf747665e60fee50038e`。
+- JAR：17,172 字节，SHA-256 `b2e744d44d1dd1faed6c413a2af54da3c4c0a163ca8664b811879b8ee52c7d89`。
+- 检查 JAR 内 PNG 与资源接口导出的字节相同；交付 ZIP 内 JAR 与直接下载相同，报告 status=passed。
+- 独立无缓存构建也通过：Gradle BUILD SUCCESSFUL in 1m 49s，7 tasks；不是仅依赖已有 Gradle 缓存。
+- 分别验证排队取消和运行中容器取消；cancelled 任务不提供产物，之前成功 JAR 仍可下载且哈希不变。
+
+`npm run test:build` 可重跑这一应用级验证。它显式使用 Docker 与网络，不包含在 `npm run verify` 中。真实 LLM 和游戏测试仍未执行。

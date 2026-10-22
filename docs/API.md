@@ -1,17 +1,17 @@
-# HTTP API · M1 开发中
+# HTTP API · 0.2
 
 Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发服务，非公共服务 API；没有远程认证或权限管理，不支持反向代理。JSON 请求上限 24 KiB；创建时名称 1–80 字符、需求 1–4000 字符（按 JavaScript string.length）。字段会去除两端空白。
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.1.0",stage:"M1-in-progress"}` |
+| GET | `/api/health` | `{ok:true,version:"0.2.0",stage:"Fabric-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt}` → 201，返回 Project |
 | GET | `/api/projects/:id` | 返回 Project，未知 UUID 为 404 |
 | POST | `/api/projects/:id/plan` | 请求 `{}` → 200；替换为离线演示计划 |
 
-POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字段。演示计划不是生成任务，不支持事件流、费用或工具调用。未提供代码生成、编译、下载或资产接口。
+POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字段。演示计划不是生成任务，不支持事件流、费用或工具调用。工程、构建与素材接口见下文。
 
 ## Project
 
@@ -57,7 +57,7 @@ POST 必须使用 `Content-Type: application/json`；创建接口拒绝额外字
 | 方法 | 路径 | 请求与结果 |
 | --- | --- | --- |
 | GET | `/api/schema/mod-spec` | JSON Schema；另有跨字段语义检查 |
-| POST | `/api/projects/:id/spec/generate` | `{provider,revision,consent?}` → 离线示例或模型规格 |
+| POST | `/api/projects/:id/spec/generate` | `{provider,revision,consent?,instruction?,repairBuildId?}` → 离线示例或模型规格 |
 | PUT | `/api/projects/:id/spec` | `{spec,revision}` → 校验并保存，清除旧确认 |
 | POST | `/api/projects/:id/spec/confirm` | `{revision}` → 确认当前规范化 SHA-256 |
 | GET | `/api/projects/:id/spec/export` | 下载已保存的规格 JSON，非模组工程/JAR |
@@ -87,3 +87,50 @@ source 区分 mock/manual/openai-compatible；模型来源含 model、durationMs
 | POST | `/api/projects/:id/spec/restore` | `{fromRevision,revision}`；恢复旧规格并保留被替换版本 |
 
 恢复要求当前 revision，过时请求返回 409 PROJECT_CHANGED；丢失/已过保留上限的版本返回 404 SNAPSHOT_NOT_FOUND。恢复清除旧确认并标记 specSource.restoredFromRevision；不调用模型、不执行构建。读取时验证当前及历史规格哈希，损坏记录返回 500 PROJECT_CORRUPT 并保留原文件。
+
+## 持续修改与素材生成
+
+`spec/generate` 可增加 `instruction`（最多 4000 字）和 `repairBuildId`。仅允许附加本项目 failed 构建的日志末尾最多 6000 字；当前规格作为上下文一起发送。规格仍完整校验并通过 revision 检查后才保存，不直接修改源码或重跑构建。
+
+`POST /api/providers/openai-compatible/asset` 请求 `{consent,kind:"texture"|"model",prompt}`（1–2000 字），返回 `{kind,data,source}`。只发送素材描述；结果经校验后返回，不自动入库。断开请求会中止对应模型调用。与规格请求共享最多两个并发请求限制，同一素材生成任务不重复启动。
+
+## 素材
+
+| 方法 | 路径 | 请求/结果 |
+| --- | --- | --- |
+| GET | `/api/assets` | 元数据列表，不包含像素/模型正文 |
+| POST | `/api/assets` | `{name,kind,data,source,license,format?}` → 不可变新资源；请求最多 1 MiB |
+| GET | `/api/assets/:id` | 完整资源、哈希与来源 |
+| GET | `/api/assets/:id/png` | 贴图 PNG 下载 |
+| GET | `/api/assets/:id/bbmodel` | 静态模型 bbmodel 下载；含占位纹理，用户贴图单独导出绑定 |
+
+texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGGBBAA`；model data 为 Java 立方体 `elements`，最多 128 个。`format:"bbmodel"` 将受限静态模型转为规范形式。不接受 mesh、动画或组变换。
+
+## 工程与交付
+
+| 方法 | 路径 | 请求/结果 |
+| --- | --- | --- |
+| GET | `/api/examples/full-workshop` | 完整支持内容的规格示例 |
+| POST | `/api/projects/:id/clone` | `{}` → 新项目副本，确认清空 |
+| POST | `/api/projects/:id/import` | `{spec,revision}` → 与 PUT spec 相同的验证/历史规则 |
+| GET | `/api/projects/:id/workspaces` | 工程快照元数据列表 |
+| POST | `/api/projects/:id/workspaces` | `{revision}` → `{project,workspace}`，要求已确认规格 |
+| GET | `/api/projects/:id/workspaces/:hash` | 文件元数据、差异、模板信息 |
+| GET | `/api/projects/:id/workspaces/:hash/file?path=...` | 快照中精确匹配的文本文件；不读任意磁盘路径 |
+| GET | `/api/projects/:id/workspaces/:hash/source` | 完整源码 ZIP |
+| POST | `/api/projects/:id/workspaces/:hash/approve` | `{revision}` → 批准当前快照 |
+| GET | `/api/builder` | 实际 Docker / 镜像状态（无下载） |
+| POST | `/api/builder/prepare` | `{allowNetwork:true}` → 202 镜像准备任务 |
+| GET | `/api/projects/:id/builds` | 此项目构建元数据，不含日志正文 |
+| POST | `/api/projects/:id/builds` | `{revision,snapshotHash,allowNetwork:boolean}` → 202；要求当前工程已批准 |
+| GET | `/api/builds/:id` | 状态、真实日志、模板/工程/runner 哈希与产物元数据 |
+| POST | `/api/builds/:id/cancel` | `{}` → 请求取消 |
+| GET | `/api/builds/:id/jar` | 成功且哈希匹配的 JAR |
+| GET | `/api/builds/:id/report` | 构建报告 JSON |
+| GET | `/api/builds/:id/bundle` | 源码 + 已校验 JAR + 报告 + 安装说明 ZIP |
+
+`workspaceHash` 指向当前工程；`approvedWorkspaceHash` 是批准的工程哈希。规格修改/恢复清空这两个字段，但不删除旧快照。`lastWorkspaceHash` 用于与上次工程比较。生成、批准同样递增项目 revision。旧 Project.artifacts 字段为兼容保留，构建产物以 builds 接口为准。
+
+构建状态：queued / running / passed / failed / cancelled / timed_out / interrupted。全局最多一项镜像准备或构建任务。日志上限 256 KiB；passed 构建仍 `gameTested:false`。未通过的任务不能下载 JAR；旧通过任务仍可下载。
+
+常见错误：409 SPEC_UNCONFIRMED / WORKSPACE_CHANGED / BUILD_APPROVAL_REQUIRED / BUILD_ACTIVE / ARTIFACT_UNAVAILABLE，422 INVALID_ASSET / ASSET_MISSING / UNSAFE_PATH，500 WORKSPACE_CORRUPT / ASSET_CORRUPT。能力接口声明实现情况，环境是否就绪需查询 `/api/builder`，不能把 gradleBuild=true 当作 Docker 已安装。

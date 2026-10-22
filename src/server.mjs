@@ -7,12 +7,16 @@ import { capabilities } from './core/capabilities.mjs';
 import { AppError } from './core/errors.mjs';
 import { modSpecSchema } from './core/mod-spec.mjs';
 import { TARGET } from './core/project.mjs';
+import { workshopServices } from './workshop-routes.mjs';
+import fullExample from '../examples/full-workshop.json' with {type:'json'};
 import pkg from '../package.json' with { type: 'json' };
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/workshop.js', ['workshop.js', 'text/javascript; charset=utf-8']],
+  ['/model-preview.js', ['model-preview.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 
@@ -32,16 +36,16 @@ function publicProject({specHistory, ...project}) {
   return {...project, historyCount:specHistory.length};
 }
 
-async function body(request) {
+async function body(request, limit = MAX_BODY) {
   if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
     throw new AppError(415, 'JSON_REQUIRED', '请求必须使用 application/json。');
   }
-  if (Number(request.headers['content-length']) > MAX_BODY) throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
+  if (Number(request.headers['content-length']) > limit) throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
   let size = 0;
   const chunks = [];
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > MAX_BODY) throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
+    if (size > limit) throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
     chunks.push(chunk);
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
@@ -51,18 +55,19 @@ async function body(request) {
 export function makeServer({ dataDir, llmProvider = null }) {
   const store = new ProjectStore(dataDir);
   const active = new Map();
+  const workshop = workshopServices(dataDir,store);
   function requireConsent(input) {
     if (!llmProvider?.info.configured) throw new AppError(409, 'PROVIDER_NOT_CONFIGURED', '请先在服务端 .env 中配置 LLM 基址、模型和密钥，然后重启服务。');
     if (input.consent !== llmProvider.info.configurationId) throw new AppError(400, 'CONSENT_REQUIRED', '请先核对当前服务商、模型和发送内容并明确确认。');
   }
-  async function callModel(key, project, response) {
+  async function callModel(key, project, response, method = 'planSpec') {
     if (active.has(key)) throw new AppError(409, 'PLANNING_ACTIVE', '该项目已有模型请求，请等待或取消。');
     if (active.size >= 2) throw new AppError(429, 'PLANNING_LIMIT', '最多同时运行两个模型请求，请稍后再试。');
     const controller = new AbortController();
     active.set(key, controller);
     const disconnect = () => { if (!response.writableEnded) controller.abort(); };
     response.once('close', disconnect);
-    try { return await llmProvider.planSpec(project, {signal:controller.signal}); }
+    try { return await llmProvider[method](project, {signal:controller.signal}); }
     finally { active.delete(key); response.off('close', disconnect); }
   }
   const server = createServer({ requestTimeout: 15_000, headersTimeout: 10_000 }, async (request, response) => {
@@ -76,7 +81,9 @@ export function makeServer({ dataDir, llmProvider = null }) {
       // Restrict Host as well as Origin to resist DNS rebinding and cross-site writes.
       if (request.headers.host !== `127.0.0.1:${port}`) throw new AppError(403, 'HOST_DENIED', '请使用本机 127.0.0.1 地址。');
       if (request.headers.origin && request.headers.origin !== origin) throw new AppError(403, 'ORIGIN_DENIED', '不允许跨站请求。');
-      const pathname = new URL(request.url, origin).pathname;
+      const url = new URL(request.url, origin);
+      const pathname = url.pathname;
+      if (await workshop.route({request,response,url,json,body,fields,publicProject})) return;
       if (request.method === 'GET' && ASSETS.has(pathname)) {
         const [file, type] = ASSETS.get(pathname);
         const content = await readFile(fileURLToPath(new URL(`../web/${file}`, import.meta.url)));
@@ -86,6 +93,8 @@ export function makeServer({ dataDir, llmProvider = null }) {
         json(response, 200, { ok: true, version: pkg.version, stage: capabilities().stage });
       } else if (request.method === 'GET' && pathname === '/api/capabilities') {
         json(response, 200, capabilities());
+      } else if (request.method === 'GET' && pathname === '/api/examples/full-workshop') {
+        json(response, 200, fullExample);
       } else if (request.method === 'GET' && pathname === '/api/schema/mod-spec') {
         json(response, 200, modSpecSchema);
       } else if (request.method === 'GET' && pathname === '/api/providers') {
@@ -93,6 +102,10 @@ export function makeServer({ dataDir, llmProvider = null }) {
           {id:'mock',label:'离线固定示例',configured:true,local:true},
           llmProvider?.info ?? {id:'openai-compatible',label:'自定义 LLM',configured:false},
         ]});
+      } else if (request.method === 'POST' && pathname === '/api/providers/openai-compatible/asset') {
+        const input=fields(await body(request),['consent','kind','prompt']);requireConsent(input);
+        if(!['texture','model'].includes(input.kind)||typeof input.prompt!=='string'||!input.prompt.trim()||input.prompt.length>2000)throw new AppError(400,'INVALID_INPUT','请选择素材类型并填写 1–2000 字描述。');
+        json(response,200,await callModel('asset-generation',{kind:input.kind,prompt:input.prompt},response,'planAsset'));
       } else if (request.method === 'POST' && pathname === '/api/providers/openai-compatible/test') {
         const input = fields(await body(request), ['consent']);
         requireConsent(input);
@@ -109,10 +122,17 @@ export function makeServer({ dataDir, llmProvider = null }) {
         }
         json(response, 200, publicProject(store.plan(pathname.split('/')[3], mockProvider)));
       } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/spec\/generate$/.test(pathname)) {
-        const input = fields(await body(request), ['provider', 'revision', 'consent']);
+        const input = fields(await body(request), ['provider', 'revision', 'consent', 'instruction', 'repairBuildId']);
         if (!['mock', 'openai-compatible'].includes(input.provider)) throw new AppError(400, 'INVALID_PROVIDER', '请选择离线示例或自定义 LLM。');
         const project = store.get(pathname.split('/')[3]);
         store.assertRevision(project, input.revision);
+        if (input.instruction !== undefined && (typeof input.instruction !== 'string' || input.instruction.length > 4000)) throw new AppError(400,'INVALID_INPUT','修改需求最多 4000 字。');
+        if (input.instruction) project.instruction = input.instruction;
+        if (input.repairBuildId) {
+          const build = workshop.builds.get(input.repairBuildId);
+          if (build.projectId !== project.id || build.status !== 'failed') throw new AppError(400,'INVALID_INPUT','只能分析本项目失败的构建。');
+          project.buildFailure = build.log.slice(-6000);
+        }
         if (input.provider !== 'mock') requireConsent(input);
         const result = input.provider === 'mock' ? mockProvider.planSpec(project) : await callModel(project.id, project, response);
         json(response, 200, publicProject(store.setSpec(project.id, result.spec, input.revision, result.source)));
@@ -153,6 +173,7 @@ export function makeServer({ dataDir, llmProvider = null }) {
       }
     }
   });
-  server.on('close', () => { for (const controller of active.values()) controller.abort(); });
+  server.on('close', () => { for (const controller of active.values()) controller.abort(); void workshop.builds.close(); });
+  server.workshop = workshop;
   return server;
 }

@@ -1,8 +1,8 @@
 {
   "name": "minemod-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local-first, open-source AI Minecraft mod workshop — development foundation",
+  "description": "Local-first open-source Minecraft workshop with BYO LLM, assets and verified Fabric builds",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -13,6 +13,9 @@
     "start": "node --use-env-proxy --env-file-if-exists=.env src/cli.mjs",
     "check": "node scripts/check.mjs",
     "test": "node --test",
-    "verify": "npm run check && npm test"
+    "verify": "npm run check && npm test",
+    "doctor": "node --use-env-proxy --env-file-if-exists=.env scripts/doctor.mjs",
+    "setup:builder": "node --use-env-proxy --env-file-if-exists=.env scripts/setup-builder.mjs",
+    "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs"
   }
 }

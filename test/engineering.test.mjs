@@ -38,7 +38,7 @@ test('texture PNG is RGBA and model Blockbench roundtrip preserves cube geometry
   assert.throws(()=>validateTexture({...texture,pixels:['#ffffff']}));
   const model=validateModel({elements:[{from:[1,2,3],to:[5,8,10],rotation:{origin:[8,8,8],axis:'z',angle:22.5}}]});
   assert.deepEqual(importBlockbench(exportBlockbench(model,'模型',texture)),model);
-  assert.throws(()=>importBlockbench({elements:[{type:'mesh'}]}));assert.throws(()=>validateModel({elements:[{from:[0,0,0],to:[0,4,4]}]}));
+  assert.throws(()=>importBlockbench({elements:[{type:'mesh'}]}));assert.throws(()=>importBlockbench({elements:[{from:[0,0,0],to:[1,1,1]}],outliner:[{children:[],rotation:[0,0,0]}]}));assert.throws(()=>importBlockbench({elements:[{from:[0,0,0],to:[1,1,1]}],textures:[{},{}]}));assert.throws(()=>validateModel({elements:[{from:[0,0,0],to:[0,4,4]}]}));
 });
 test('asset library persists attribution and immutable snapshots require confirmation and detect tampering',t=>{
   const dir=fixture(t),assets=new AssetStore(dir),workspaces=new WorkspaceStore(dir,assets),projects=new ProjectStore(dir);

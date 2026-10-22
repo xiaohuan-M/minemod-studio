@@ -15,6 +15,6 @@ server.on('error', (error) => {
 });
 server.listen(port, '127.0.0.1', () => {
   console.log(`MineMod Studio · http://127.0.0.1:${port}`);
-  console.log('M1 开发版 / 规格编辑与自定义 LLM / 尚无代码生成或编译能力');
+  console.log('Fabric 1.21.1 工坊 / 内容与素材编辑 / 真实 Docker 构建 / 自定义 LLM 可选');
 });
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await server.workshop.builds.close(); server.close(); });

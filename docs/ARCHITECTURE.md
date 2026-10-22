@@ -1,3 +1,13 @@
+# 当前架构 · 0.2
+
+当前模块与运行流程以 [开发说明](DEVELOPMENT.md)、[接口契约](API.md) 和 [Docker runner 决策](adr/0002-fixed-container-builder.md) 为准。以下 M0/M1 内容是历史设计记录，不代表当前功能状态。
+
+工程流程：ModSpec → 确认 → 固定生成器 + 不可变素材 → 工程 SHA-256 快照 → 文件审查与批准 → 本机受限 Docker → JAR 校验 → 下载。规格版本、工程快照和构建任务分别记录；编辑规格清除当前工程批准，但保留历史构建产物。
+
+数据布局：projects/<uuid>.json、assets/<uuid>.json、workspaces/<project>/<hash>.json、builds/records/<uuid>.json、builds/runs/<uuid>/workspace、builds/artifacts/<uuid>/mod.jar、builds/cache。均位于用户选择的数据目录下。
+
+---
+
 # 架构与边界
 
 ## M0 基础（M1 增量见下）

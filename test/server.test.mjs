@@ -36,7 +36,7 @@ test('HTTP workflow: create, list, plan, reopen; no fictional JAR', async (t) =>
   const list = await (await fetch(`${base}/api/projects`)).json();
   assert.equal(list.projects[0].id, project.id);
   const caps = await (await fetch(`${base}/api/capabilities`)).json();
-  assert.equal(caps.features.gradleBuild, false);
+  assert.equal(caps.features.gradleBuild, true);
   assert.equal(caps.provider.externalRequests, false);
 });
 
@@ -66,7 +66,7 @@ test('serves a static shell with a restrictive content security policy', async (
   const response = await fetch(base);
   assert.equal(response.status, 200);
   assert.ok(response.headers.get('content-security-policy').includes("frame-ancestors 'none'"));
-  assert.match(await response.text(), /开发基础版/);
+  assert.match(await response.text(), /Fabric 1.21.1 创作工坊/);
   assert.equal((await fetch(`${base}/app.js`)).status, 200);
   assert.equal((await fetch(`${base}/style.css`)).status, 200);
 });

@@ -154,3 +154,20 @@ test('cancel preserves prior spec, duplicate requests are rejected, and late res
   assert.equal((await late).status,409);
   assert.equal((await (await fetch(base+root)).json()).spec.displayName,'并发人工修改');
 });
+
+test('iterative planning sends current spec and selected diagnostics, without unrelated local fields',async t=>{
+  const {provider,calls}=await modelFixture(t,response=>send(response,envelope(spec)));
+  await provider.planSpec({...project,spec,instruction:'增加一个物品',buildFailure:'compileJava failed',privatePath:'do not send'});
+  const context=JSON.parse(calls[0].body.messages[1].content);assert.deepEqual(context.currentSpec,spec);assert.equal(context.instruction,'增加一个物品');assert.equal(context.buildFailure,'compileJava failed');assert.equal(context.privatePath,undefined);
+});
+
+test('structured texture and cube generation validates outputs and requires fresh service consent',async t=>{
+  let output={width:16,height:16,pixels:Array(256).fill('#aa77ccff')};const {provider,calls}=await modelFixture(t,response=>send(response,envelope(output)));
+  const {base}=await appFixture(t,provider);const path='/api/providers/openai-compatible/asset';
+  assert.equal((await post(base,path,{kind:'texture',prompt:'水晶'})).status,400);assert.equal(calls.length,0);
+  let result=await post(base,path,{consent:provider.info.configurationId,kind:'texture',prompt:'水晶'});assert.equal(result.status,200);assert.deepEqual((await result.json()).data,output);
+  assert.deepEqual(JSON.parse(calls[0].body.messages[1].content),{prompt:'水晶'});
+  output={elements:[{from:[4,0,4],to:[12,16,12]}]};result=await post(base,path,{consent:provider.info.configurationId,kind:'model',prompt:'柱子'});assert.equal(result.status,200);assert.equal((await result.json()).data.elements.length,1);
+  output={elements:[{from:[4,0,4],to:[0,0,0]}]};result=await post(base,path,{consent:provider.info.configurationId,kind:'model',prompt:'非法'});assert.equal(result.status,422);assert.equal((await result.json()).error.code,'PROVIDER_INVALID_ASSET');
+  output={width:16,height:16,pixels:['fixture-key-never-real']};result=await post(base,path,{consent:provider.info.configurationId,kind:'texture',prompt:'非法'});assert.equal(result.status,422);assert.ok(!(await result.text()).includes('fixture-key'));
+});

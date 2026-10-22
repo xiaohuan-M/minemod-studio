@@ -2,9 +2,9 @@
 
 ## 当前任务边界
 
-- 仓库是 MineMod Studio 的 M1 开发版，不是完整模组生成器。
+- 仓库是 MineMod Studio 0.2：Fabric 1.21.1 创作工坊，具有工程生成、素材编辑与真实 Docker 构建。
 - 先读 `README.md`、`docs/ROADMAP.md`、`docs/DEVELOPMENT.md` 和修改涉及的接口文档。
-- ModSpec v1 已实现；Chat Completions provider 已实现；继续真实模型联调与固定模板验证。不要跳过真实模板验证去宣称全版本兼容。
+- ModSpec v1、Chat Completions、固定模板与 runner 已实现；模板经过真实构建。真实模型联调按用户要求跳过，游戏实测未完成。不要宣称全版本兼容。
 
 ## 工程规则
 

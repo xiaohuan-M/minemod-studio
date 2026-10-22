@@ -1,44 +1,36 @@
-# 开发交接
+# 开发与验证
 
-## 本地环境
+Node.js >=24.5，ES modules，没有第三方运行依赖。`npm ci` 后 `npm start`。前端为原生浏览器模块，不需要构建。`.env` 仅由 CLI 加载，不要提交个人配置。开发约定见 AGENTS.md。
 
-1. 安装 Node.js 24.5+，在仓库根目录运行 `npm ci`。
-2. 运行 `npm start`，打开 `http://127.0.0.1:4310`。
-3. 新建项目，保存演示计划，停止并重启，确认项目仍存在。
-4. 运行 `npm run verify`。内置测试使用临时目录，不接触个人项目。
+## 代码结构
 
-没有 npm 前端构建步骤、云账号、数据库服务或 API Key 要求。可离线编辑规格，或显式选择服务端配置的模型规划；不需要 JDK。`.env` 仅被 CLI 读取，测试通过参数传入临时目录；不要把个人密钥用于测试。
+- `src/core`：ModSpec、素材、ZIP、错误、能力声明；不依赖 HTTP。
+- `src/engineering/generator.mjs`：固定 Fabric 工程生成；只接受验证后的声明式规格和素材。
+- `templates/fabric-1.21.1`：版本锁、官方 wrapper、校验哈希和许可证。
+- `src/storage`：项目历史、不可变素材和工程快照，原子 JSON 替换与完整性检查。
+- `src/providers`：Chat Completions 规格/素材适配，大小/超时/取消/脱敏。
+- `src/runner/manager.mjs`：真实 Docker 构建、日志、取消、状态恢复、产物校验。
+- `src/server.mjs` / `src/workshop-routes.mjs`：Host/Origin 检查与 HTTP 接口。
+- `web`：项目、内容、配方、素材、工程与构建界面；`model-preview.js` 为立方体几何预览。
 
-## 已实现：ModSpec v1
+## 检查
 
-已提供 `schemas/mod-spec.v1.schema.json`、语义校验、离线示例、编辑预览、确认和导出。`examples/project-spec.json` 是 API 可接受的规格。详见 `docs/MODSPEC.md`。以下约束已纳入测试。
+`npm run verify` 执行语法检查和 Node 内置自动化测试，使用临时目录与本机模拟模型服务，不需要真实 API 或 Docker。模型模拟测试不能替代实际服务测试。CI 配置在三种桌面平台执行这组检查。
 
-- 文件建议：`src/core/mod-spec.mjs`、`schemas/mod-spec.v1.schema.json` 与 `test/mod-spec.test.mjs`。
-- 首先支持普通物品、中文名称、基础属性及 shaped / shapeless 配方；对命名空间、注册 ID、路径和配方数量设限。
-- 未确定的数据放 assumptions；任何可执行脚本都不属于规格字段。
-- 覆盖非法路径、版本不匹配、重复 ID、无效配方引用与不受支持能力。
-- 更新接口契约后再暴露新的 API；旧项目需要显式迁移或保留 M0 兼容读取。
+`npm run doctor` 仅读取 Docker 与 provider 配置状态。`npm run setup:builder` 显式授权下载固定镜像。
 
-已满足：合法样例通过、非法字段报错、mock 受验证、UI 待确认；仍不执行代码。
+`npm run test:build` 是独立的联网集成检查：使用专用 `.minemod/validation-*` 数据目录创建完整工程，真实构建并下载验证 JAR 和 bundle，检查取消与旧产物保留。可用 `MINEMOD_TEST_GRADLE_CACHE` 指向已有缓存以复制到独立测试目录，不能把不受信任缓存用于生产。首次无缓存验证也已通过，见模板记录。
 
-## 已实现：Chat Completions provider；待真实联调
+构建变更必须记录 Minecraft/Loader/API/Yarn/Loom/Gradle/JDK、模板提交与镜像摘要。新增支持的内容要进入 `examples/full-workshop.json` 并实际编译；扩展其他版本须独立模板与实际验证，不能仅修改能力标记。
 
-已按 `src/providers/README.md` 实现配置读取、连接验证、超时与取消、输出校验及错误脱敏。默认维持 mock，不能仅因为环境中存在通用 API Key 就自动向外发送需求。实测由用户明确选择的服务商完成，记录服务名称、模型和日期，不提交凭据。
+## 数据与边界
 
-## 第三项：模板与 runner 调研
+JSON 存储面向单进程，不提供跨进程写锁或断电事务。只有服务进程可写同一个数据目录；诊断命令不构造会恢复运行任务的 manager。构建镜像准备脚本使用独立临时记录目录。
 
-先手工验证固定模板，再开发自动生成。记录 MC、Loader、Fabric API、映射、Loom、Gradle、JDK 与模板提交号，核验 wrapper 完整性和许可证。构建 runner 需要单独 ADR，评估 Windows / macOS / Linux 的隔离与取消行为；缺少隔离时仅导出，不自动执行。
+规格确认、工程审查批准、构建联网选择分别生效。任何规格编辑/恢复使当前工程引用与批准失效，旧快照和产物仍可读取。构建工作区由生成器物化，API 不允许上传任意 Gradle/Java 文件或指定命令。素材保存创建新 ID，原资源不会被覆盖。
 
-## 验证策略
+工作区、日志和产物会占用磁盘。当前没有自动清理器；不要在构建运行时删除目录。源码和交付 ZIP 不包含 `.env`、密钥或完整项目需求文本。
 
-`npm run check` 对源码、界面脚本、检查脚本及测试运行语法检查。`npm test` 运行 Node 内置测试：输入验证、持久化、损坏记录、符号链接、完整 HTTP 流程、跨站请求、Host、静态文件范围及请求大小。当前测试验证应用骨架，不能证明 Minecraft 模组可用。
+## 尚需验证
 
-`.github/workflows/ci.yml` 在三种桌面系统配置 Node 24 运行 `npm ci` 和 `npm run verify`。Windows 符号链接用例因权限要求跳过，POSIX 分支执行；必须读实际 CI 结果后才能宣称跨平台通过。
-
-## 已知限制
-
-- 本机应用没有用户账户、token 鉴权、远程模式与局域网访问。
-- JSON 存储只面向单进程，项目不能同时由多个服务实例写入；临时文件替换不提供断电事务保证。
-- 演示规划重复执行会覆盖同一条演示计划；演示计划尚无历史；规格支持最近 20 个版本查看、恢复和 JSON 导出。
-- 数据记录只验证基础版本与 ID，未来导入/迁移必须先增加完整数据验证。
-- provider 已通过本机 HTTP 假服务和浏览器流程验证，尚无真实模型验证、模板、Gradle runner、游戏测试或资产编辑能力。
+真实 `newapi.nowrise.cn` / `gpt-6-luna` 调用按用户要求跳过。Minecraft 客户端游戏实测、Windows/macOS Docker Desktop 构建、复杂第三方 bbmodel 互通尚未验证。几何预览不是实际持有姿态渲染器，导入不支持的模型类型会报错。

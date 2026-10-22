@@ -32,14 +32,17 @@ export function validateModel(input){
 }
 export function importBlockbench(input){
   if(!input||!Array.isArray(input.elements)||input.elements.some(e=>e.type&&e.type!=='cube')||(input.animations?.length??0)>0)fail('仅可导入静态立方体 bbmodel；网格、骨骼动画暂不适用于 Java 物品模型。');
-  if(input.groups?.length||input.outliner?.some(entry=>typeof entry==='object'&&(entry.rotation?.some(n=>n!==0))))fail('请先在 Blockbench 展平带旋转的组。');
+  if((input.groups?.length??0)>0||(Array.isArray(input.outliner)&&input.outliner.some(entry=>entry&&typeof entry==='object')))fail('请先在 Blockbench 展平模型组后导出。');
+  if((input.textures?.length??0)>1)fail('当前模型只支持单张贴图，请先合并贴图。');
   const width=input.resolution?.width??16,height=input.resolution?.height??16;
   if(![width,height].every(n=>Number.isFinite(n)&&n>0&&n<=4096))fail('模型纹理分辨率不正确。');
   return validateModel({elements:input.elements.map(e=>{
+    if(e.faces&&Object.values(e.faces).some(face=>face.texture===null||face.texture===false||(face.rotation??0)!==0))fail('请先烘焙 UV 旋转并显示模型所有立方体面。');
+    if(e.rotation&&(!Array.isArray(e.rotation)||e.rotation.length!==3))fail('模型旋转必须为三个数值。');
     const nonzero=(e.rotation??[0,0,0]).map((n,i)=>({n,i})).filter(v=>v.n!==0);if(nonzero.length>1)fail('多轴旋转不能直接导入 Java 物品模型，请先烘焙旋转。');
     return {from:e.from,to:e.to,...(nonzero.length?{rotation:{origin:e.origin??[8,8,8],axis:['x','y','z'][nonzero[0].i],angle:nonzero[0].n}}:{}),faces:Object.fromEntries(Object.entries(e.faces??{}).map(([face,value])=>[face,{uv:value.uv?.map((n,i)=>n*16/(i%2?height:width))}]))};
   })});
 }
 export function exportBlockbench(model,name,texture){
-  const clean=validateModel(model);return {meta:{format_version:'4.10',model_format:'java_block',box_uv:false},name,resolution:{width:16,height:16},elements:clean.elements.map((e,index)=>({name:'cube_'+index,type:'cube',uuid:'cube-'+index,from:e.from,to:e.to,origin:e.rotation?.origin??[8,8,8],rotation:['x','y','z'].map(axis=>axis===e.rotation?.axis?e.rotation.angle:0),faces:Object.fromEntries(Object.entries(e.faces).map(([face,v])=>[face,{uv:v.uv,texture:0}]))})),outliner:clean.elements.map((_,index)=>'cube-'+index),textures:[{name:'texture.png',id:'0',uuid:'texture-0',source:'data:image/png;base64,'+pngTexture(texture??placeholderTexture()).toString('base64')}]};
+  const clean=validateModel(model);return {meta:{format_version:'4.10',model_format:'java_block',box_uv:false},name,resolution:{width:16,height:16},elements:clean.elements.map((e,index)=>({name:'cube_'+index,type:'cube',uuid:'00000000-0000-4000-8000-'+String(index+1).padStart(12,'0'),from:e.from,to:e.to,origin:e.rotation?.origin??[8,8,8],rotation:['x','y','z'].map(axis=>axis===e.rotation?.axis?e.rotation.angle:0),faces:Object.fromEntries(Object.entries(e.faces).map(([face,v])=>[face,{uv:v.uv,texture:0}]))})),outliner:clean.elements.map((_,index)=>'00000000-0000-4000-8000-'+String(index+1).padStart(12,'0')),textures:[{name:'texture.png',id:'0',uuid:'00000000-0000-4000-8000-999999999999',source:'data:image/png;base64,'+pngTexture(texture??placeholderTexture()).toString('base64')}]};
 }

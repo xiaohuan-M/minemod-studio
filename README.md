@@ -1,24 +1,27 @@
 # MineMod Studio · 本地模组工坊
 
-**开源、本地优先的 AI Minecraft 模组创作工具。** 用自然语言表达玩法，逐步完成规划、工程生成、资源制作、真实构建和导出；工程与模型配置由用户掌握。
+**完全开源、本地优先、自带 LLM API 的 Minecraft 创作工具。** 从自然语言与可视化内容编辑，到贴图、立方体模型、源码审查、真实 Gradle 编译和 JAR 交付，代码采用 MIT 许可，无平台账号、积分或订阅依赖。
 
-> **当前阶段：M1 开发中，版本 0.1.0。** 已支持本地项目、离线规划与 ModSpec v1 规格编辑、验证、确认和 JSON 导出。可接入自带的 Chat Completions 兼容 LLM 生成经过校验的规格；尚不能生成模组工程、编译 JAR 或操作 Blockbench。
+当前版本 **0.2.0**，已打通 **Java / Fabric / Minecraft 1.21.1** 创作流程。模板和完整内容样例经过真实 Docker 构建；编译成功不代表游戏实测。Forge、NeoForge、Bedrock、其他 Minecraft 版本、任意 Java 行为、实体和动画尚未实现，不能把它称作这些平台的完整支持。
 
-本项目参考 [AutoMods 的公开产品流程](https://automods.cn/#faq)，独立编写代码、文档和界面。不是其源码开源版或官方客户端，不复制其品牌、界面素材或私有实现。与 Mojang、Microsoft 无关联。
+参考 [AutoMods 公开产品流程](https://automods.cn/#faq)，独立实现。不是其源码或官方客户端，与 Mojang、Microsoft 无关联。具体能力和证据见 [功能清单](docs/FEATURES.md) 与 [编译记录](docs/TEMPLATE-VALIDATION.md)。
 
-## 现在可以做什么
+## 可以做什么
 
-- 在本机创建、保存和重新打开项目；JSON 数据默认保存在 `.minemod/projects/`。
-- 查看离线演示计划，理解后续制作步骤；演示不会调用模型或产生费用。
-- 显式选择自定义 LLM，确认目标服务与发送内容后生成规格；支持连接测试、取消、超时和错误提示。
-- 编辑普通物品与有序/无序配方，预览规格、确认当前版本并导出 JSON；修改后自动取消旧确认。
-- 自动保留最近 20 个被替换的规格版本，可查看和恢复；恢复后重新确认，不调用模型。
-- 使用能力接口核对实现状态；构建、贴图、模型与 JAR 导出均标记为未实现。
-- 运行核心验证、持久化测试和 HTTP 边界测试。
+- **需求与持续修改**：自带 Chat Completions API；发送当前规格与修改要求，输出经严格校验；取消、超时、限流提示、连接检查；失败日志可在用户选择后交给模型分析。
+- **内容编辑**：普通物品、食物、剑/镐/斧/锹/锄、闪电法杖、方块；中文/英文名称、堆叠、材质、伤害、冷却、硬度、抗爆性、亮度。
+- **库存与配方**：内容卡片、3×3 有序/无序合成编辑；本地引用、产物数量和 ID 校验。
+- **贴图工坊**：16/32/64 像素绘制、橡皮、填充、撤销、PNG 导入导出；文本 LLM 可生成 16×16 像素数组草稿。
+- **模型工坊**：立方体编辑、拖动旋转与缩放预览、多个查看角度；静态 bbmodel 导入导出；文本 LLM 可生成立方体草稿。贴图单独导入绑定；不支持任意网格、骨骼或动画。
+- **资源库**：本地保存来源与许可、重复利用、绑定物品/方块；保存修改创建新资源，旧工程继续引用旧资源。
+- **版本与工程**：规格导入导出、复制项目、最近 20 个规格版本恢复；确定性工程快照、文件差异、源码预览、完整源码 ZIP（含 Gradle wrapper）。
+- **构建与交付**：固定摘要的 Docker 镜像、快照批准、联网选择、真实日志、取消与超时、重启中断记录；校验 JAR 后提供 JAR/源码/报告交付包；失败不覆盖旧成功产物。
 
-## 快速开始
+未配置 API 时，手动编辑、素材制作、工程生成和构建都可使用；离线示例是固定样例，不会冒充 AI 理解需求。
 
-需要 **Node.js 24.5 或更高版本（推荐最新 Node 24 LTS）**，Windows / macOS / Linux 均为计划支持平台。当前已在 Linux + Node.js 24 验证；跨平台 CI 配置随仓库提供，需等待远程执行结果。
+## 启动
+
+安装 **Node.js 24.5+（推荐 Node 24 LTS）**：
 
 ```sh
 git clone https://github.com/xiaohuan-M/minemod-studio.git
@@ -27,67 +30,61 @@ npm ci
 npm start
 ```
 
-浏览器打开 **http://127.0.0.1:4310**。`npm ci` 当前没有第三方依赖要下载。按 Ctrl+C 停止服务。必须使用 `127.0.0.1`，当前不接受 `localhost`、局域网地址或反向代理。
+浏览器打开 `http://127.0.0.1:4310`。服务只接受本机 127.0.0.1；没有远程部署/多用户功能。数据默认保存在 `.minemod/`。不要同时运行多个服务进程访问同一数据目录。没有第三方运行依赖，也没有前端打包步骤。
 
-可选：复制 `.env.example` 为 `.env`，修改端口或数据目录。macOS / Linux 使用 `cp .env.example .env`；PowerShell 使用 `Copy-Item .env.example .env`。首次启动自动创建数据目录。不要把 `.env` 和个人工程提交进 Git。
+Linux / macOS 可运行 `./start.sh`；Windows 可双击 `start.cmd`。两者均要求先安装 Node；不会静默安装 Docker 或调用模型。
 
-```sh
-npm run verify
-```
+## 配置自己的模型
 
-JDK 和 Gradle **不是运行当前开发骨架的前提**。后续模组构建目标是 Fabric / Minecraft 1.21.1 / JDK 21；只有经模板构建和游戏实测后才能标记为支持。
-
-## 接入自己的 LLM API
-
-复制 `.env.example` 为 `.env`，设置并重启服务：
+复制 `.env.example` 为 `.env`，填写并重启：
 
 ```dotenv
 MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
-MINEMOD_LLM_MODEL=your-model-name
-MINEMOD_LLM_API_KEY=your-api-key
+MINEMOD_LLM_MODEL=your-model
+MINEMOD_LLM_API_KEY=your-key
 ```
 
-在项目中选择“我的 LLM API”，核对目标地址、模型和发送内容，勾选本次调用确认，再点击连接测试或生成规格。默认保持离线模式；填入配置不会自动调用。密钥只由服务端读取，不进入网页或项目文件。
+本次用户选用的配置是 `https://newapi.nowrise.cn/v1` + `gpt-6-luna`；真实调用按用户要求暂时跳过。程序不写死这家服务；可更换兼容基址和模型。本机模型可使用 `http://127.0.0.1:11434/v1`，本机端点可不设密钥。
 
-支持 Chat Completions 非流式文本协议，保留 JSON 校验；本机兼容端点可用 `http://127.0.0.1:11434/v1`，密钥可省略。具体模型/服务尚待真实联调，不能据此承诺所有 OpenAI-compatible 服务兼容。完整配置、限制及排错见 [模型接入](src/providers/README.md)。
+在页面选择“我的 LLM API”，核对地址和发送内容，再确认调用。配置本身不会发出请求。密钥只由服务端读取，不进入浏览器、项目或导出。JSON 模式、token 参数和超时配置见 [模型接入](src/providers/README.md)。模型素材是文本生成的结构化像素/立方体草稿，不能等同于专业图像模型或任意 3D 生成服务。
 
-## 接下来怎么开发
+## 制作第一个模组
 
-建议按下面顺序阅读，直接从 [开发交接](docs/DEVELOPMENT.md) 中的第一个任务开始。
+1. 新建项目，载入完整功能示例或使用自己的模型生成规格。
+2. 用内容表单和 3×3 配方编辑器修改；制作或导入贴图/模型，并绑定到内容。
+3. 点击“校验并保存修改”，核对后“确认当前规格”。
+4. 点击“从已确认规格生成工程”，检查差异和源码。此时可直接下载源码 ZIP。
+5. 需要应用内构建时，先安装并启动 **Docker（Linux 容器）**。在页面准备镜像，或显式运行 `npm run setup:builder` 下载固定镜像。
+6. 批准此工程快照，首次构建勾选允许下载依赖；点击构建，查看真实日志。
+7. 成功后下载 JAR 或交付包；安装匹配的 Fabric Loader 和 Fabric API，在独立游戏实例中实测。
+
+构建容器提供 JDK 21 和 Gradle，无需在宿主安装 JDK。源码包也可用本机 JDK 21 执行 `./gradlew build`（Windows：`gradlew.bat build`）。首次会下载 Minecraft/Maven 依赖。缓存齐全后可尝试禁网构建；不能保证未缓存依赖的离线构建成功。
+
+`npm run doctor` 只检查配置和 Docker，不调用模型、不下载镜像。
+
+## 验证与开发
+
+```sh
+npm run verify        # 语法与 Node 自动化测试，不需要 Docker/API
+npm run test:build    # 显式真实 Docker 集成构建，会下载依赖，需先准备镜像
+```
+
+真实集成检查生成全部支持内容并绑定自定义素材，校验 JAR 内容和 SHA-256、交付 ZIP、取消任务及旧产物保留。保留结果于 `.minemod/validation-*`。常规 CI 不运行这个联网构建。
+
+Linux 的实际构建已验证；Windows/macOS 的应用测试与 Docker Desktop 构建应分别核对，不能由 Linux 结果推断全部平台已通过。游戏实测和真实模型测试尚未完成。
 
 | 文档 | 内容 |
 | --- | --- |
-| [产品需求](docs/PRD.md) | 用户、首个闭环、MVP 范围与验收 |
-| [参考与范围判断](docs/REFERENCE.md) | 公开来源、哪些值得借鉴、哪些推迟 |
-| [架构](docs/ARCHITECTURE.md) | 当前模块、目标架构、工程边界 |
-| [接口契约](docs/API.md) | 已实现 HTTP API、错误与数据约定 |
-| [路线图](docs/ROADMAP.md) | 里程碑、依赖、退出标准 |
-| [开发交接](docs/DEVELOPMENT.md) | 环境、任务拆解、下一步实现说明 |
-| [模型接入契约](src/providers/README.md) | 自带 API、本地模型与费用确认设计 |
-| [决策记录](docs/adr/0001-local-first.md) | 为什么先做本地服务和单一版本 |
-| [规格契约](docs/MODSPEC.md) | ModSpec v1 约束、确认与导出 |
-| [工程示例](examples/project-spec.json) | 可校验的规格示例；不是已生成模组 |
+| [功能清单](docs/FEATURES.md) | 实现范围、明确限制 |
+| [开发说明](docs/DEVELOPMENT.md) | 环境、结构、验证与维护 |
+| [接口契约](docs/API.md) | 项目、资源、工程、构建、模型接口 |
+| [规格契约](docs/MODSPEC.md) | 数据约束和历史 |
+| [构建决策](docs/adr/0002-fixed-container-builder.md) | 隔离、权限、网络和产物验证 |
+| [模板编译证据](docs/TEMPLATE-VALIDATION.md) | 固定依赖和真实构建记录 |
+| [路线图](docs/ROADMAP.md) | 已实现与待验证工作 |
 
-## 目录
+## 许可证与数据
 
-```text
-src/core/       项目领域规则、能力声明、错误
-src/storage/    本地 JSON 持久化
-src/providers/  离线演示规划器、后续模型适配契约
-src/server.mjs  仅监听回环地址的 HTTP 服务
-src/cli.mjs     本地启动入口
-web/           无构建步骤的界面壳
-test/          Node 内置测试
-docs/          产品、架构、路线图和开发说明
-examples/      非可执行的规格样例
-```
+代码 [MIT](LICENSE)，第三方模板与 Gradle wrapper 保留各自许可证。Minecraft 依赖需要从其合法来源下载，项目许可证不覆盖 Minecraft 代码/资产。素材来源与许可随工程写入 `ASSETS.json`。
 
-## 本地与离线的边界
-
-本地优先表示工程保存在本机。默认离线示例不发出模型请求。选择云模型会把用户明确提交的需求和必要上下文发给指定服务商，并由该服务商计费；选择本地模型也不保证模型质量或模组构建完全离线。JDK、Gradle、Minecraft 依赖首次安装通常需要联网。
-
-构建脚本属于可执行代码。未来构建必须经过差异审查和明确授权，并使用独立运行目录、资源上限和受限环境。当前不执行任何生成代码，也不读写真实游戏目录。详见 [安全说明](SECURITY.md)。
-
-## 参与与许可证
-
-代码采用 [MIT](LICENSE)。贡献前阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [AGENTS.md](AGENTS.md)。第三方模板、依赖、素材保留各自许可证；项目许可证不覆盖 Minecraft 的代码与资产，也不保证模型输出的权利归属。
+备份整个 `.minemod/` 可保留项目、资源、工程和构建记录；`.env` 另行安全保管。没有遥测或自动上传。安全边界见 [SECURITY.md](SECURITY.md)。
