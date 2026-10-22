@@ -140,3 +140,23 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 `GET /api/targets` 返回 `id/label/target/artifact/features/validation/enabled`。新建项目可传 `targetId`；省略时保持 `fabric-1.21.1`。可用目标：`fabric-1.21.1`、`fabric-1.20.1`、`bedrock-1.21.60`（java=0 表示不适用）。版本、加载器与 Java 必须成套匹配。`GET /api/examples/full-workshop?target=<id>` 返回该目标的内置示例。
 
 构建接口沿用快照批准流程。Bedrock 在本机打包，无需 Docker、镜像或联网。`GET /api/builds/:id/artifact` 下载该任务的 JAR 或 MCADDON；旧 `/jar` 保留，仅接受 JAR。报告的 `artifact.format` 明确类型，`gameTested` 保持 false。`bundle` 包含目标对应安装说明。
+
+## 持续创作与项目管理
+
+`POST /api/projects/:id/proposals` 接受 `{revision,provider,consent?}`，返回保存了 2–4 个方案的项目，每个方案含玩法、美术、验收与后续修改指令。真实服务遵循相同逐次授权、取消与并发限制。采用方案只填入修改文本，不静默调用 API。
+
+成功的规格生成在同一次原子项目写入中追加 `conversation`（最近 100 条），保存用户要求、校验后摘要、来源、token 用量、版本和 specHash。后续 LLM 调用只附加最近 12 条的需求与摘要，不发送任意本地字段。失败或过期响应不能覆盖当前规格或聊天记录。
+
+`PATCH /api/projects/:id` 接受 `{revision,name?,archived?}`。归档可恢复，不删除历史或产物。
+
+## 项目备份
+
+`GET /api/projects/:id/backup` 下载版本 1 的 `.minemod.json`（最多 32 MiB），包含当前规格、20 个规格历史、100 次创作记录、关联素材、工程快照和构建记录/成功产物。包含需求和对话，请自行决定是否分享；不包含服务密钥、.env、缓存或依赖。
+
+`POST /api/projects/import-backup` 上传该 JSON，校验 checksum、每个素材/工程/产物哈希和引用，然后在临时目录完成验证、以新项目 ID 提交。同 ID 素材仅在内容与归属信息一致时复用；不覆盖已有项目。当前确认与批准清除。导入构建标记 imported，并且不能直接执行导入工程：必须重新确认规格、经本机生成器生成并审查后才可构建。外部报告并非本机编译证明。
+
+## 独立图像服务
+
+`GET /api/image-provider` 仅返回公开配置；`POST /api/image-provider/generate` 接受 `{consent,prompt,view,referenceId?}`，view 为 concept/three_view/detail/texture。只会发送选中的本地图片作为参考，使用 Images generations 或 multipart edits。返回经过 PNG 尺寸/CRC 校验的图片；响应 URL 不自动访问。不与文本 LLM 共用或隐式推断凭据。
+
+资源新增 kind=image，data={png:base64}，要求 16–2048 像素且原 PNG 不超过 6 MiB。图片请求体上限 9 MiB，其他素材仍为 1 MiB。`GET /api/assets/:id/png` 下载；`POST /api/assets/:id/pixelize` 接受 `{size:16|32|64,colors:4|8|16|32|64}`，在本地缩放、量化调色板并创建可继续编辑的贴图，沿用原来源和许可。

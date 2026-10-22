@@ -116,6 +116,12 @@ export class BuildManager {
     if (this.active.size)
       throw new AppError(409, 'BUILD_ACTIVE', '已有构建任务运行，请等待或取消后再开始。');
     const snapshot = this.workspaces.get(projectId, snapshotHash);
+    if (snapshot.imported)
+      throw new AppError(
+        409,
+        'IMPORTED_WORKSPACE',
+        '导入工程可查看和下载；请从规格重新生成并审查后再构建。',
+      );
     if (approval !== snapshotHash)
       throw new AppError(400, 'BUILD_APPROVAL_REQUIRED', '请审查此工程快照，并明确批准构建。');
     if (typeof allowNetwork !== 'boolean')

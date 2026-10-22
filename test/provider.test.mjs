@@ -336,3 +336,65 @@ test('structured texture and cube generation validates outputs and requires fres
   assert.equal(result.status, 422);
   assert.ok(!(await result.text()).includes('fixture-key'));
 });
+
+test('proposals are validated, saved with revision protection, and iteration context retains only bounded conversation fields', async (t) => {
+  const options = {
+    proposals: [0, 1, 2].map((i) => ({
+      title: '方向' + i,
+      summary: '内容方案',
+      gameplay: ['食物与方块'],
+      artDirection: '像素风',
+      acceptance: ['验证配方'],
+      instruction: '保留内容，增加食物',
+    })),
+  };
+  let mode = 'proposals';
+  const { provider, calls } = await modelFixture(t, (response) =>
+    send(response, envelope(mode === 'proposals' ? options : spec)),
+  );
+  const { base } = await appFixture(t, provider);
+  let p = await (
+    await post(base, '/api/projects', { name: '持久创作', prompt: '自然主题' })
+  ).json();
+  const root = '/api/projects/' + p.id;
+  assert.equal(
+    (await post(base, root + '/proposals', { revision: p.revision, provider: 'openai-compatible' }))
+      .status,
+    400,
+  );
+  p = await (
+    await post(base, root + '/proposals', {
+      revision: p.revision,
+      provider: 'openai-compatible',
+      consent: provider.info.configurationId,
+    })
+  ).json();
+  assert.equal(p.proposals.options.length, 3);
+  assert.equal(p.spec, null);
+  assert.equal(p.proposals.source.demo, false);
+  mode = 'spec';
+  for (const instruction of ['制作第一版', '保留第一版，调整配方']) {
+    const response = await post(base, root + '/spec/generate', {
+      revision: p.revision,
+      provider: 'openai-compatible',
+      consent: provider.info.configurationId,
+      instruction,
+    });
+    assert.equal(response.status, 200);
+    p = await response.json();
+  }
+  assert.equal(p.conversation.length, 2);
+  assert.equal(p.conversation[0].instruction, '制作第一版');
+  assert.equal(p.conversation[1].specHash, p.specHash);
+  const data = JSON.parse(calls.at(-1).body.messages[1].content);
+  assert.deepEqual(Object.keys(data.recentConversation[0]).sort(), ['instruction', 'reply']);
+  const stale = await post(base, root + '/proposals', { revision: 0, provider: 'mock' });
+  assert.equal(stale.status, 409);
+  const invalid = await modelFixture(t, (response) =>
+    send(response, envelope({ proposals: [{ title: 'incomplete' }] })),
+  );
+  await assert.rejects(
+    invalid.provider.planProposals(project),
+    (e) => e.code === 'INVALID_PROPOSALS',
+  );
+});

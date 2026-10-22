@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { makeServer } from './server.mjs';
+import { createImageProvider } from './providers/image-compatible.mjs';
 import { createOpenAIProvider } from './providers/openai-compatible.mjs';
 
 const rawPort = process.env.MINEMOD_PORT ?? '4310';
@@ -11,6 +12,7 @@ if (!/^\d+$/.test(rawPort) || !Number.isInteger(port) || port < 1024 || port > 6
 const server = makeServer({
   dataDir: resolve(process.env.MINEMOD_DATA_DIR ?? '.minemod'),
   llmProvider: createOpenAIProvider(),
+  imageProvider: createImageProvider(),
 });
 server.on('error', (error) => {
   console.error(
@@ -22,7 +24,7 @@ server.on('error', (error) => {
 });
 server.listen(port, '127.0.0.1', () => {
   console.log(`MineMod Studio · http://127.0.0.1:${port}`);
-  console.log('Fabric 1.21.1 工坊 / 内容与素材编辑 / 真实 Docker 构建 / 自定义 LLM 可选');
+  console.log('多目标本地工坊 / 内容与素材编辑 / 真实构建 / 自定义模型可选');
 });
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.on(signal, async () => {

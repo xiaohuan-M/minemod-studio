@@ -48,7 +48,12 @@
         </section>
         <section class="panel">
           <h2>我的项目</h2>
+          <label class="file-button"
+            >导入项目备份<input id="backup-import" type="file" accept=".json,.minemod"
+          /></label>
           <p id="empty">还没有项目。写下第一个想法吧。</p>
+          <label>搜索项目<input id="project-search" type="search" placeholder="名称或需求" /></label
+          ><label class="consent"><input id="show-archived" type="checkbox" />显示归档项目</label>
           <ul id="projects" class="projects"></ul>
         </section>
       </div>
@@ -56,6 +61,15 @@
         <p class="eyebrow">项目详情</p>
         <h2 id="project-title"></h2>
         <p id="project-prompt" class="preserve"></p>
+        <details>
+          <summary>项目管理</summary>
+          <label>项目名称<input id="rename-value" maxlength="80" /></label>
+          <div class="actions">
+            <button id="rename-project" class="secondary">重命名</button
+            ><a id="backup-export" download>下载完整项目备份</a
+            ><button id="archive-project" class="secondary">归档项目</button>
+          </div>
+        </details>
         <section class="provider-panel" aria-labelledby="provider-title">
           <h3 id="provider-title">规划方式</h3>
           <label for="provider-select">选择模型来源</label>
@@ -66,8 +80,9 @@
           <div id="model-details" hidden>
             <p id="provider-info" class="preserve"></p>
             <p>
-              生成规格会发送本项目的名称、需求文本、目标版本、当前规格和修改要求；若选择构建修复，还会发送选定失败日志末尾最多
-              6000 字。连接测试只发送固定样例。服务商可能计费，程序不估算费用，也不自动重试。
+              生成规格会发送本项目的名称、需求文本、目标版本、当前规格、最近 12
+              条已完成修改的需求与摘要和修改要求；若选择构建修复，还会发送选定失败日志末尾最多 6000
+              字。连接测试只发送固定样例。服务商可能计费，程序不估算费用，也不自动重试。
             </p>
             <label class="consent"
               ><input
@@ -111,6 +126,16 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
           ><button type="button" id="cancel-model" class="secondary" hidden>取消当前请求</button
           ><button type="button" id="plan-button" class="secondary">查看流程演示</button>
         </div>
+        <details id="proposal-panel">
+          <summary>方案比较 · 玩法、美术与验收</summary>
+          <button id="proposal-button" class="secondary">生成可比较方案</button>
+          <p class="target">使用上方选定来源；离线模式返回固定样例，真实模型需勾选本次调用。</p>
+          <div id="proposals-list" class="inventory"></div>
+        </details>
+        <details id="conversation-panel" open>
+          <summary>持续创作记录 · 最近 100 次</summary>
+          <div id="conversation-list" class="conversation"></div>
+        </details>
         <section id="spec-panel" hidden>
           <h3>模组规格 · 审查与确认</h3>
           <p id="spec-state" class="demo-label"></p>
@@ -342,6 +367,70 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
               <button id="ai-asset-generate">生成素材草稿</button
               ><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button>
             </div>
+          </details>
+          <details id="image-studio">
+            <summary>美术工坊 · 参考图、概念图、三视图与细节图</summary>
+            <p id="image-provider-info" class="target"></p>
+            <label
+              >画面描述<textarea
+                id="image-prompt"
+                rows="3"
+                maxlength="2000"
+                placeholder="描述风格、轮廓、材料与颜色"
+              ></textarea>
+            </label>
+            <div class="form-grid">
+              <label
+                >图像类型<select id="image-view">
+                  <option value="concept">概念设计</option>
+                  <option value="three_view">三视图</option>
+                  <option value="detail">细节设计</option>
+                  <option value="texture">平面贴图</option>
+                </select></label
+              ><label
+                >参考图<select id="image-reference">
+                  <option value="">不发送参考图</option>
+                </select></label
+              >
+            </div>
+            <label class="consent"
+              ><input
+                id="image-consent"
+                type="checkbox"
+              />同意将本次描述和所选参考图发送给上方图像服务（可能计费）。</label
+            >
+            <div class="actions">
+              <button id="image-generate">生成图片</button
+              ><button id="image-cancel" class="secondary" hidden>取消图片请求</button
+              ><label class="file-button"
+                >导入本地 PNG<input id="image-import" type="file" accept="image/png"
+              /></label>
+            </div>
+            <img id="image-preview" class="art-preview" alt="当前图片结果" hidden />
+            <label>图片名称<input id="image-name" value="我的概念图" maxlength="80" /></label
+            ><button id="image-save" class="secondary" disabled>保存图片到资源库</button>
+            <p class="target">
+              图片生成依赖独立 Images API，不将文本 LLM
+              当作图像模型。三视图一致性和美术质量需要人工审核。图片转像素在本机执行。
+            </p>
+            <div class="form-grid">
+              <label
+                >转换尺寸<select id="image-pixel-size">
+                  <option>16</option>
+                  <option selected>32</option>
+                  <option>64</option>
+                </select></label
+              ><label
+                >调色板颜色数<select id="image-palette">
+                  <option>4</option>
+                  <option>8</option>
+                  <option selected>16</option>
+                  <option>32</option>
+                  <option>64</option>
+                </select></label
+              >
+            </div>
+            <div id="image-library" class="inventory"></div>
           </details>
           <div class="workshop-columns">
             <details open>

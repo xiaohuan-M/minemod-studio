@@ -39,3 +39,9 @@ CI 使用本机假服务验证真实 HTTP 请求形状、认证头、JSON 模式
 ## 素材与诊断的限制
 
 像素和立方体生成不是专业图像/3D 服务；验证确保数据形状可用，不保证美术质量或许可。导入/编辑仍可离线完成。失败日志分析只能生成受支持的规格修正，不会自动改 Gradle、安装依赖或修补模板。模板错误应由开发者修复后重新真实编译验证。
+
+## 图像服务（独立可选配置）
+
+设置 `MINEMOD_IMAGE_BASE_URL`、`MINEMOD_IMAGE_MODEL`、`MINEMOD_IMAGE_API_KEY` 并重启。支持 OpenAI 风格的 `/images/generations` 和 `/images/edits`，单张 1024×1024、base64 PNG。默认发送 response_format=b64_json；不接受该参数的模型可设 `MINEMOD_IMAGE_RESPONSE_FORMAT=auto`，但响应仍必须含 b64_json PNG。超时默认 120 秒，可用 `MINEMOD_IMAGE_TIMEOUT_MS` 在 1000–180000 范围调整。
+
+这是明确的兼容协议范围，不能保证所有厂商私有图像 API 可用。没有真实图像密钥时只验证本地模拟协议；生成质量、三视图一致性及参考还原度需要实际模型与人工审查。PNG 导入、资源保存与像素转换无需图像 API。

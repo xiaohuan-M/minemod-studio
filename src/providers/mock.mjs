@@ -3,6 +3,28 @@ import example from '../../examples/project-spec.json' with { type: 'json' };
 // Offline contract fixture. It must never claim to generate, compile or test a mod.
 export const mockProvider = {
   id: 'mock',
+  planProposals(project) {
+    return {
+      proposals: ['轻量入门', '探索收集', '建造装饰'].map((title, index) => ({
+        title: '离线固定方案 · ' + title,
+        summary: '这是用于比较流程的固定样例，不代表模型理解了需求。',
+        gameplay: [
+          ['一种材料与一种食物', '收集材料并通过配方制作新物品', '围绕发光方块设计装饰配方'][index],
+        ],
+        artDirection: ['简洁的双色像素轮廓', '冷色晶体与金色边缘', '低饱和度自然材质'][index],
+        acceptance: ['在创造模式检查内容名称', '验证配方与贴图', '在独立测试世界记录实际表现'],
+        instruction:
+          '目标 ' +
+          project.target.loader +
+          ' ' +
+          project.target.minecraft +
+          '。保留现有内容，采用' +
+          title +
+          '方向；仅使用该目标支持的内容。',
+      })),
+      source: { provider: 'mock', demo: true },
+    };
+  },
   planSpec(project) {
     const spec = structuredClone(example);
     spec.displayName = project.name;

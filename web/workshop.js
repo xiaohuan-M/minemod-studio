@@ -1,3 +1,4 @@
+import { initImageStudio } from './studio/image-studio.js';
 import { initModelEditor } from './studio/model-editor.js';
 const $ = (id) => document.getElementById(id);
 const tools = new Set(['sword', 'pickaxe', 'axe', 'shovel', 'hoe']);
@@ -496,6 +497,7 @@ export function initWorkshop({
     feedback,
     getPixels: () => ({ width: size, height: size, pixels }),
   });
+  initImageStudio({ api, request, run, assetPayload, refreshAssets, feedback });
   let assetAbort = null;
   $('ai-asset-cancel').onclick = () => assetAbort?.abort();
   $('ai-asset-generate').onclick = run(async () => {
@@ -538,6 +540,7 @@ export function initWorkshop({
   });
   async function refreshAssets() {
     assets = (await api('/api/assets')).assets;
+    document.dispatchEvent(new CustomEvent('assets-loaded', { detail: assets }));
     for (const [id, kind, label] of [
       ['content-texture', 'texture', '使用占位贴图'],
       ['content-model', 'model', '使用默认模型'],
@@ -550,51 +553,53 @@ export function initWorkshop({
       $(id).value = selected;
     }
     $('asset-library').replaceChildren(
-      ...assets.map((asset) => {
-        const card = el('div', undefined, 'card');
-        if (asset.kind === 'texture') {
-          const img = el('img');
-          img.src = '/api/assets/' + asset.id + '/png';
-          img.alt = asset.name;
-          card.append(img);
-        }
-        card.append(
-          el('strong', asset.name),
-          el(
-            'small',
-            asset.kind === 'texture'
-              ? asset.width + ' × ' + asset.height
-              : asset.cubes + ' 个立方体',
-          ),
-          el('small', asset.source + ' · ' + asset.license),
-        );
-        const edit = el('button', '载入编辑', 'secondary');
-        edit.onclick = run(async () => {
-          const data = await api('/api/assets/' + asset.id);
-          $('asset-source').value = asset.source;
-          $('asset-license').value = asset.license;
+      ...assets
+        .filter((asset) => asset.kind !== 'image')
+        .map((asset) => {
+          const card = el('div', undefined, 'card');
           if (asset.kind === 'texture') {
-            size = data.data.width;
-            pixels = [...data.data.pixels];
-            undo = [];
-            $('texture-size').value = String(size);
-            $('texture-name').value = asset.name;
-            drawPixels();
-          } else {
-            modelEditor.set(data.data);
-            $('model-name').value = asset.name;
+            const img = el('img');
+            img.src = '/api/assets/' + asset.id + '/png';
+            img.alt = asset.name;
+            card.append(img);
           }
-          feedback('已载入；再次保存会创建新资源，保留旧工程引用。');
-        });
-        card.append(
-          edit,
-          download(
-            '/api/assets/' + asset.id + '/' + (asset.kind === 'texture' ? 'png' : 'bbmodel'),
-            '导出 ' + (asset.kind === 'texture' ? 'PNG' : 'bbmodel'),
-          ),
-        );
-        return card;
-      }),
+          card.append(
+            el('strong', asset.name),
+            el(
+              'small',
+              asset.kind === 'texture'
+                ? asset.width + ' × ' + asset.height
+                : asset.cubes + ' 个立方体',
+            ),
+            el('small', asset.source + ' · ' + asset.license),
+          );
+          const edit = el('button', '载入编辑', 'secondary');
+          edit.onclick = run(async () => {
+            const data = await api('/api/assets/' + asset.id);
+            $('asset-source').value = asset.source;
+            $('asset-license').value = asset.license;
+            if (asset.kind === 'texture') {
+              size = data.data.width;
+              pixels = [...data.data.pixels];
+              undo = [];
+              $('texture-size').value = String(size);
+              $('texture-name').value = asset.name;
+              drawPixels();
+            } else {
+              modelEditor.set(data.data);
+              $('model-name').value = asset.name;
+            }
+            feedback('已载入；再次保存会创建新资源，保留旧工程引用。');
+          });
+          card.append(
+            edit,
+            download(
+              '/api/assets/' + asset.id + '/' + (asset.kind === 'texture' ? 'png' : 'bbmodel'),
+              '导出 ' + (asset.kind === 'texture' ? 'PNG' : 'bbmodel'),
+            ),
+          );
+          return card;
+        }),
     );
   }
   // Immutable source snapshots and explicit build permission.
@@ -703,7 +708,11 @@ export function initWorkshop({
   };
   function displayBuild(record) {
     $('build-state').textContent =
-      (record.type === 'prepare' ? '镜像准备' : '构建') +
+      (record.imported
+        ? '外部导入记录 · 未本机重验证'
+        : record.type === 'prepare'
+          ? '镜像准备'
+          : '构建') +
       ' · ' +
       (statusName[record.status] ?? record.status) +
       ' · ' +

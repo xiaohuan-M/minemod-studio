@@ -32,6 +32,12 @@ try {
   await page.selectOption('#target-select', 'bedrock-1.21.60');
   await page.click('#create-button');
   await page.locator('#project-title').filter({ hasText: '浏览器附加包' }).waitFor();
+  await page.locator('#proposal-panel summary').click();
+  await page.click('#proposal-button');
+  await page.waitForFunction(() => document.querySelectorAll('#proposals-list .card').length === 3);
+  await page.locator('#proposals-list button').first().click();
+  await page.click('#spec-button');
+  await page.waitForFunction(() => document.querySelectorAll('.conversation-entry').length === 1);
   await page.click('#load-full-example');
   await page.click('#save-spec');
   await page.waitForFunction(() => !document.querySelector('#confirm-spec').disabled);
@@ -63,6 +69,23 @@ try {
   await page.click('#model-screenshot');
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), 'model-preview.png');
+  const projectId = await page.evaluate(
+    () => document.querySelector('#export-spec').getAttribute('href').split('/')[3],
+  );
+  const backup = await page.evaluate(
+    (id) => fetch('/api/projects/' + id + '/backup').then((r) => r.json()),
+    projectId,
+  );
+  await page.setInputFiles('#backup-import', {
+    name: 'project.minemod.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  });
+  await page.waitForFunction(
+    (old) => document.querySelector('#export-spec').getAttribute('href').split('/')[3] !== old,
+    projectId,
+  );
+  assert.equal(await page.locator('.conversation-entry').count(), 1);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);
   assert.equal(

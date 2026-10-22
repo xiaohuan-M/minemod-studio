@@ -1,3 +1,4 @@
+import { initProjectHub } from './studio/project-hub.js';
 import { initWorkshop } from './workshop.js';
 const $ = (id) => document.getElementById(id);
 let selected = null;
@@ -126,7 +127,13 @@ function show(project) {
   document.dispatchEvent(new CustomEvent('project-shown', { detail: project }));
 }
 async function refresh() {
-  const { projects } = await api('/api/projects');
+  const result = await api('/api/projects');
+  const query = $('project-search').value.trim().toLowerCase();
+  const projects = result.projects.filter(
+    (p) =>
+      ($('show-archived').checked || !p.archived) &&
+      (p.name + ' ' + p.prompt).toLowerCase().includes(query),
+  );
   $('empty').hidden = projects.length > 0;
   $('projects').replaceChildren(
     ...projects.map((project) => {
@@ -461,3 +468,27 @@ api('/api/targets')
     describe();
   })
   .catch((error) => feedback(error.message, true));
+
+initProjectHub({
+  api,
+  getProject: () => selected,
+  show,
+  refresh,
+  feedback,
+  isBusy: () => busy,
+  isDirty: () => dirty,
+  generateProposals: () => {
+    if (!selected || busy || !canReplace()) return;
+    const provider = $('provider-select').value,
+      cloud = provider === 'openai-compatible';
+    if (cloud && (!llm?.configured || !$('model-consent').checked))
+      return feedback('请先选择有效模型并确认本次调用。', true);
+    void updateProject(
+      '/proposals',
+      'POST',
+      { revision: selected.revision, provider, ...(cloud ? { consent: llm.configurationId } : {}) },
+      '方案已保存。采用方案后可继续编辑修改要求，再生成规格。',
+      cloud,
+    );
+  },
+});

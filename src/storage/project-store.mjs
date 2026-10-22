@@ -12,6 +12,7 @@ import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { assertProjectId, createProject } from '../core/project.mjs';
 import { AppError } from '../core/errors.mjs';
+import { validateProposals } from '../core/proposals.mjs';
 import { validateModSpec, specHash } from '../core/mod-spec.mjs';
 
 const HISTORY_LIMIT = 20;
@@ -54,6 +55,9 @@ export class ProjectStore {
         specHash: null,
         confirmedSpecHash: null,
         specHistory: [],
+        conversation: [],
+        proposals: null,
+        archived: false,
         ...value,
       };
       if (!Number.isSafeInteger(project.revision) || project.revision < 0)
@@ -130,7 +134,7 @@ export class ProjectStore {
       throw new AppError(409, 'PROJECT_CHANGED', '项目已更新，请重新打开项目后再操作。');
   }
 
-  setSpec(id, input, revision, source = { provider: 'manual', demo: false }) {
+  setSpec(id, input, revision, source = { provider: 'manual', demo: false }, exchange = null) {
     const project = this.get(id);
     this.assertRevision(project, revision);
     const spec = validateModSpec(input);
@@ -155,7 +159,56 @@ export class ProjectStore {
       workspaceHash: null,
       approvedWorkspaceHash: null,
       specHistory: specHistory.slice(-HISTORY_LIMIT),
+      conversation: exchange
+        ? [
+            ...(project.conversation ?? []),
+            {
+              id: randomUUID(),
+              at: new Date().toISOString(),
+              instruction: exchange.instruction.slice(0, 4000),
+              reply: exchange.reply.slice(0, 4000),
+              source,
+              specHash: specHash(spec),
+              revision: project.revision + 1,
+            },
+          ].slice(-100)
+        : (project.conversation ?? []),
       status: 'awaiting_review',
+      revision: project.revision + 1,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  setProposals(id, value, revision, source) {
+    const project = this.get(id);
+    this.assertRevision(project, revision);
+    const proposals = {
+      options: validateProposals(value),
+      source,
+      basedOnRevision: revision,
+      createdAt: new Date().toISOString(),
+    };
+    return this.save({
+      ...project,
+      proposals,
+      revision: revision + 1,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  updateDetails(id, input) {
+    const project = this.get(id);
+    this.assertRevision(project, input.revision);
+    if (
+      input.name !== undefined &&
+      (typeof input.name !== 'string' || !input.name.trim() || input.name.trim().length > 80)
+    )
+      throw new AppError(422, 'INVALID_INPUT', '名称必须为 1–80 字。');
+    if (input.archived !== undefined && typeof input.archived !== 'boolean')
+      throw new AppError(422, 'INVALID_INPUT', '归档状态必须为布尔值。');
+    return this.save({
+      ...project,
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.archived !== undefined ? { archived: input.archived } : {}),
       revision: project.revision + 1,
       updatedAt: new Date().toISOString(),
     });

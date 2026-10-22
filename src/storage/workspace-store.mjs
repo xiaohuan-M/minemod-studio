@@ -37,7 +37,11 @@ export class WorkspaceStore {
       changes: diffWorkspaces(previous, generated),
     };
     const ids = records.ids();
-    if (ids.includes(snapshot.hash)) return this.get(project.id, snapshot.hash);
+    if (ids.includes(snapshot.hash)) {
+      const existing = this.get(project.id, snapshot.hash);
+      if (!existing.imported) return existing;
+      // Identical regeneration establishes trusted generator provenance again.
+    }
     if (ids.length >= 100)
       throw new AppError(409, 'WORKSPACE_LIMIT', '工程达到 100 个快照，请导出备份后整理数据。');
     return records.write(snapshot.hash, snapshot);

@@ -1,3 +1,4 @@
+import { acquireDataLock } from './storage/data-lock.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -20,9 +21,11 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/image-studio.js', ['studio/image-studio.js', 'text/javascript; charset=utf-8']],
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/workshop.js', ['workshop.js', 'text/javascript; charset=utf-8']],
+  ['/studio/project-hub.js', ['studio/project-hub.js', 'text/javascript; charset=utf-8']],
   ['/studio/model-editor.js', ['studio/model-editor.js', 'text/javascript; charset=utf-8']],
   ['/model-preview.js', ['model-preview.js', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
@@ -69,10 +72,18 @@ async function body(request, limit = MAX_BODY) {
   }
 }
 
-export function makeServer({ dataDir, llmProvider = null }) {
-  const store = new ProjectStore(dataDir);
+export function makeServer({ dataDir, llmProvider = null, imageProvider = null }) {
+  const releaseLock = acquireDataLock(dataDir);
+  let store, workshop;
+  try {
+    store = new ProjectStore(dataDir);
+    workshop = workshopServices(dataDir, store);
+  } catch (error) {
+    releaseLock();
+    throw error;
+  }
   const active = new Map();
-  const workshop = workshopServices(dataDir, store);
+
   function requireConsent(input) {
     if (!llmProvider?.info.configured)
       throw new AppError(
@@ -135,6 +146,39 @@ export function makeServer({ dataDir, llmProvider = null }) {
           const content = await readFile(fileURLToPath(new URL(`../web/${file}`, import.meta.url)));
           response.writeHead(200, { 'Content-Type': type });
           response.end(content);
+        } else if (request.method === 'GET' && pathname === '/api/image-provider') {
+          json(response, 200, imageProvider?.info ?? { id: 'image-compatible', configured: false });
+        } else if (request.method === 'POST' && pathname === '/api/image-provider/generate') {
+          const input = fields(await body(request), ['prompt', 'view', 'referenceId', 'consent']);
+          if (!imageProvider?.info.configured)
+            throw new AppError(409, 'IMAGE_NOT_CONFIGURED', '请先配置独立图像服务并重启。');
+          if (input.consent !== imageProvider.info.configurationId)
+            throw new AppError(400, 'CONSENT_REQUIRED', '请核对图像服务并确认本次发送内容。');
+          if (active.has('image-generation'))
+            throw new AppError(409, 'PLANNING_ACTIVE', '已有图像请求正在运行。');
+          let reference = null;
+          if (input.referenceId) {
+            const asset = workshop.assets.get(input.referenceId);
+            if (asset.kind !== 'image')
+              throw new AppError(422, 'ASSET_TYPE', '参考图需要图片资源。');
+            reference = asset.data;
+          }
+          const controller = new AbortController();
+          active.set('image-generation', controller);
+          const disconnect = () => {
+            if (!response.writableEnded) controller.abort();
+          };
+          response.once('close', disconnect);
+          try {
+            json(
+              response,
+              200,
+              await imageProvider.generate({ ...input, reference }, { signal: controller.signal }),
+            );
+          } finally {
+            active.delete('image-generation');
+            response.off('close', disconnect);
+          }
         } else if (request.method === 'GET' && pathname === '/api/health') {
           json(response, 200, { ok: true, version: pkg.version, stage: capabilities().stage });
         } else if (request.method === 'GET' && pathname === '/api/targets') {
@@ -219,6 +263,28 @@ export function makeServer({ dataDir, llmProvider = null }) {
           json(response, 200, { projects: store.list().map(publicProject) });
         } else if (request.method === 'POST' && pathname === '/api/projects') {
           json(response, 201, publicProject(store.create(await body(request))));
+        } else if (request.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(pathname)) {
+          const input = fields(await body(request), ['revision', 'name', 'archived']);
+          json(response, 200, publicProject(store.updateDetails(pathname.split('/')[3], input)));
+        } else if (
+          request.method === 'POST' &&
+          /^\/api\/projects\/[^/]+\/proposals$/.test(pathname)
+        ) {
+          const input = fields(await body(request), ['revision', 'provider', 'consent']);
+          const project = store.get(pathname.split('/')[3]);
+          store.assertRevision(project, input.revision);
+          if (!['mock', 'openai-compatible'].includes(input.provider))
+            throw new AppError(400, 'INVALID_PROVIDER', '请选择模型来源。');
+          if (input.provider !== 'mock') requireConsent(input);
+          const result =
+            input.provider === 'mock'
+              ? mockProvider.planProposals(project)
+              : await callModel(project.id, project, response, 'planProposals');
+          json(
+            response,
+            200,
+            publicProject(store.setProposals(project.id, result, input.revision, result.source)),
+          );
         } else if (request.method === 'POST' && /^\/api\/projects\/[^/]+\/plan$/.test(pathname)) {
           const input = await body(request);
           if (
@@ -265,7 +331,21 @@ export function makeServer({ dataDir, llmProvider = null }) {
           json(
             response,
             200,
-            publicProject(store.setSpec(project.id, result.spec, input.revision, result.source)),
+            publicProject(
+              store.setSpec(project.id, result.spec, input.revision, result.source, {
+                instruction: input.instruction || project.prompt,
+                reply:
+                  (result.source.demo ? '离线固定示例。' : '模型规格已通过结构校验，等待审查。') +
+                  '包含 ' +
+                  result.spec.items.length +
+                  ' 个物品、' +
+                  (result.spec.blocks?.length ?? 0) +
+                  ' 个方块、' +
+                  result.spec.recipes.length +
+                  ' 个配方。' +
+                  result.spec.assumptions.join('；'),
+              }),
+            ),
           );
         } else if (
           request.method === 'POST' &&
@@ -349,9 +429,10 @@ export function makeServer({ dataDir, llmProvider = null }) {
       }
     },
   );
+  server.once('error', releaseLock);
   server.on('close', () => {
     for (const controller of active.values()) controller.abort();
-    void workshop.builds.close();
+    void workshop.builds.close().finally(releaseLock);
   });
   server.workshop = workshop;
   return server;
