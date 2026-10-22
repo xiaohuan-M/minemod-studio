@@ -5,6 +5,7 @@ let dirty = false;
 let llm = null;
 let activeFetch = null;
 let historyRequest = 0;
+let historyPreviewRequest = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json' }, signal: options.signal ?? AbortSignal.timeout(10000) });
@@ -181,9 +182,11 @@ async function refreshHistory(id) {
       const view = document.createElement('button'); view.type = 'button'; view.className = 'secondary'; view.textContent = '查看版本 ' + entry.revision;
       view.addEventListener('click', async () => {
         if (busy) return;
+        const previewRequest = ++historyPreviewRequest;
+        $('history-preview').hidden = true;
         try {
           const snapshot = await api('/api/projects/' + id + '/spec/history/' + entry.revision);
-          if (selected?.id !== id || requestId !== historyRequest) return;
+          if (selected?.id !== id || requestId !== historyRequest || previewRequest !== historyPreviewRequest) return;
           $('history-preview').textContent = JSON.stringify(snapshot.spec,null,2);
           $('history-preview').hidden = false;
         } catch (error) { feedback(error.message,true); }
