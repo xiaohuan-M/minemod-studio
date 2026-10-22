@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "modId": "full_workshop",
+  "displayName": "完整工坊验证",
+  "target": {
+    "edition": "java",
+    "loader": "fabric",
+    "minecraft": "1.21.1",
+    "java": 21
+  },
+  "items": [
+    {
+      "id": "crystal",
+      "kind": "basic_item",
+      "displayName": {
+        "zh_cn": "水晶",
+        "en_us": "Crystal"
+      },
+      "maxStackSize": 64
+    },
+    {
+      "id": "crystal_sword",
+      "kind": "sword",
+      "displayName": {
+        "zh_cn": "水晶工具",
+        "en_us": "Crystal sword"
+      },
+      "maxStackSize": 1,
+      "tool": {
+        "material": "diamond",
+        "attackDamage": 4,
+        "attackSpeed": -2.4
+      }
+    },
+    {
+      "id": "crystal_pickaxe",
+      "kind": "pickaxe",
+      "displayName": {
+        "zh_cn": "水晶工具",
+        "en_us": "Crystal pickaxe"
+      },
+      "maxStackSize": 1,
+      "tool": {
+        "material": "diamond",
+        "attackDamage": 4,
+        "attackSpeed": -2.4
+      }
+    },
+    {
+      "id": "crystal_axe",
+      "kind": "axe",
+      "displayName": {
+        "zh_cn": "水晶工具",
+        "en_us": "Crystal axe"
+      },
+      "maxStackSize": 1,
+      "tool": {
+        "material": "diamond",
+        "attackDamage": 4,
+        "attackSpeed": -2.4
+      }
+    },
+    {
+      "id": "crystal_shovel",
+      "kind": "shovel",
+      "displayName": {
+        "zh_cn": "水晶工具",
+        "en_us": "Crystal shovel"
+      },
+      "maxStackSize": 1,
+      "tool": {
+        "material": "diamond",
+        "attackDamage": 4,
+        "attackSpeed": -2.4
+      }
+    },
+    {
+      "id": "crystal_hoe",
+      "kind": "hoe",
+      "displayName": {
+        "zh_cn": "水晶工具",
+        "en_us": "Crystal hoe"
+      },
+      "maxStackSize": 1,
+      "tool": {
+        "material": "diamond",
+        "attackDamage": 4,
+        "attackSpeed": -2.4
+      }
+    },
+    {
+      "id": "food",
+      "kind": "food",
+      "displayName": {
+        "zh_cn": "点心",
+        "en_us": "Snack"
+      },
+      "maxStackSize": 16,
+      "food": {
+        "nutrition": 5,
+        "saturation": 0.6
+      }
+    },
+    {
+      "id": "wand",
+      "kind": "lightning_wand",
+      "displayName": {
+        "zh_cn": "闪电杖",
+        "en_us": "Lightning Wand"
+      },
+      "maxStackSize": 1,
+      "cooldownSeconds": 3
+    }
+  ],
+  "recipes": [
+    {
+      "id": "glow_block",
+      "type": "crafting_shaped",
+      "pattern": [
+        "CC",
+        "CC"
+      ],
+      "key": {
+        "C": "full_workshop:crystal"
+      },
+      "result": {
+        "item": "full_workshop:glow_block",
+        "count": 1
+      }
+    },
+    {
+      "id": "crystals",
+      "type": "crafting_shapeless",
+      "ingredients": [
+        "full_workshop:glow_block"
+      ],
+      "result": {
+        "item": "full_workshop:crystal",
+        "count": 4
+      }
+    }
+  ],
+  "assumptions": [
+    "普通物品及合成规格，不含武器攻击或右键行为。",
+    "规格验证不等于 Fabric 编译或游戏实测；原版物品引用尚未核对注册表。"
+  ],
+  "blocks": [
+    {
+      "id": "glow_block",
+      "displayName": {
+        "zh_cn": "发光方块",
+        "en_us": "Glow Block"
+      },
+      "hardness": 2,
+      "resistance": 6,
+      "luminance": 15
+    }
+  ]
+}

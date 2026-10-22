@@ -22,6 +22,7 @@ function check(value, rule, path) {
     return;
   }
   if ('const' in rule && value !== rule.const) invalid(path, '必须为 ' + JSON.stringify(rule.const));
+  if (rule.enum && !rule.enum.includes(value)) invalid(path, '不是支持的选项。');
   const type = rule.type;
   if (type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) invalid(path, '必须为对象。');
@@ -42,8 +43,8 @@ function check(value, rule, path) {
     if (typeof value !== 'string') invalid(path, '必须为文本。');
     if ((rule.minLength && !value.trim()) || value.length < (rule.minLength ?? 0) || value.length > (rule.maxLength ?? Infinity)) invalid(path, '文本长度超出限制。');
     if (rule.pattern && !new RegExp(rule.pattern).test(value)) invalid(path, '标识或内容格式不正确。');
-  } else if (type === 'integer') {
-    if (!Number.isInteger(value) || value < rule.minimum || value > rule.maximum) invalid(path, '整数超出允许范围。');
+  } else if (type === 'integer' || type === 'number') {
+    if (typeof value !== 'number' || !Number.isFinite(value) || (type === 'integer' && !Number.isInteger(value)) || value < rule.minimum || value > rule.maximum) invalid(path, '数值超出允许范围。');
   }
 }
 
@@ -54,6 +55,15 @@ export function validateModSpec(value) {
   for (const [index, item] of value.items.entries()) {
     if (itemIds.has(item.id)) invalid('spec.items[' + index + '].id', '物品 ID 重复。');
     itemIds.add(item.id);
+    const tool = ['sword','pickaxe','axe','shovel','hoe'].includes(item.kind);
+    if (tool !== !!item.tool) invalid('spec.items[' + index + '].tool', '工具必须且只能配置工具属性。');
+    if ((item.kind === 'food') !== !!item.food) invalid('spec.items[' + index + '].food', '食物必须且只能配置食物属性。');
+    if (item.cooldownSeconds !== undefined && item.kind !== 'lightning_wand') invalid('spec.items[' + index + '].cooldownSeconds', '只有闪电法杖支持冷却配置。');
+    if ((tool || item.kind === 'lightning_wand') && item.maxStackSize !== 1) invalid('spec.items[' + index + '].maxStackSize', '工具和法杖只能单个堆叠。');
+  }
+  for (const [index, block] of (value.blocks ?? []).entries()) {
+    if (itemIds.has(block.id)) invalid('spec.blocks[' + index + '].id', '物品与方块 ID 必须全局唯一。');
+    itemIds.add(block.id);
   }
   const recipeIds = new Set();
   function reference(ref, path, localOnly = false) {
@@ -67,7 +77,7 @@ export function validateModSpec(value) {
     if (recipeIds.has(recipe.id)) invalid(path + '.id', '配方 ID 重复。');
     recipeIds.add(recipe.id);
     reference(recipe.result.item, path + '.result.item', true);
-    const output = value.items.find((item) => value.modId + ':' + item.id === recipe.result.item);
+    const output = [...value.items, ...(value.blocks ?? []).map(block=>({...block,maxStackSize:64}))].find((item) => value.modId + ':' + item.id === recipe.result.item);
     if (recipe.result.count > output.maxStackSize) invalid(path + '.result.count', '不能超过产物的最大堆叠数。');
     if (recipe.type === 'crafting_shaped') {
       if (recipe.pattern.some((row) => row.length !== recipe.pattern[0].length)) invalid(path + '.pattern', '每行宽度必须一致。');

@@ -2,12 +2,14 @@
 
 规范文件：`schemas/mod-spec.v1.schema.json`；可执行示例：`examples/project-spec.json`。结构检查直接读取该 schema，引用/唯一性等跨字段约束由 `src/core/mod-spec.mjs` 验证。
 
-首轮固定目标为 Java / Fabric / Minecraft 1.21.1 / JDK 21。这里只声明目标，不保证模板编译或游戏兼容。
+首轮固定目标为 Java / Fabric / Minecraft 1.21.1 / JDK 21。模板已通过真实 Gradle 编译，详见 TEMPLATE-VALIDATION.md；游戏实测仍需独立完成。
 
 - 一个自定义 modId，2–48 个小写字母、数字或下划线，以字母开头；不能使用 minecraft、fabric、java。
-- 1–32 个 basic_item，ID 唯一，提供 zh_cn/en_us 名称，最大堆叠 1–64。
+- 1–32 个物品：basic_item、food、sword、pickaxe、axe、shovel、hoe、lightning_wand。提供 zh_cn/en_us 名称，堆叠 1–64；工具与法杖必须为 1。food 必须填写 nutrition/saturation；工具必须填写材质、attackDamage、attackSpeed；法杖可设置 1–120 秒冷却。
+- 可选 0–32 个方块，提供名称、硬度、抗爆性和 0–15 亮度；物品与方块 ID 共同唯一。
+- 物品和方块可引用资源库中的 textureAsset；物品另可引用 modelAsset（UUID）。资源必须存在且类型正确。textureColor 为没有资源时的程序占位图颜色。
 - 0–64 个配方，ID 唯一。有序配方为 1–3 行、每行 1–3 格且同宽；字符与 key 完全对应。无序配方包含 1–9 个原料。
-- 引用仅接受已声明的本模组物品和 minecraft 命名空间；原版物品是否真实存在尚未对照游戏注册表。产物必须是本模组物品，数量不超过其最大堆叠数。
+- 引用仅接受已声明的本模组物品/方块和 minecraft 命名空间；原版物品是否真实存在尚未对照游戏注册表。产物必须是本模组物品/方块，数量不超过其最大堆叠数。
 - 0–20 条假设，每条最多 500 字。所有对象拒绝未知字段；不接受脚本、命令、自定义文件路径、行为代码。
 - HTTP 请求仍受 24 KiB 总大小限制。超限应拆分规格；条目上限不意味着最大组合都能提交。
 

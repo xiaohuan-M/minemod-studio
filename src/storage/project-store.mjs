@@ -94,6 +94,7 @@ export class ProjectStore {
     if (project.spec) specHistory.push({revision:project.revision,spec:project.spec,specHash:project.specHash,
       specSource:project.specSource,confirmedSpecHash:project.confirmedSpecHash,savedAt:project.updatedAt});
     return this.save({ ...project, spec, specHash: specHash(spec), specSource: source, confirmedSpecHash: null,
+      lastWorkspaceHash: project.workspaceHash ?? project.lastWorkspaceHash ?? null, workspaceHash: null, approvedWorkspaceHash: null,
       specHistory: specHistory.slice(-HISTORY_LIMIT),
       status: 'awaiting_review', revision: project.revision + 1, updatedAt: new Date().toISOString() });
   }
@@ -124,5 +125,18 @@ export class ProjectStore {
     if (!project.spec) throw new AppError(409, 'SPEC_REQUIRED', '请先生成或保存规格。');
     return this.save({ ...project, confirmedSpecHash: specHash(project.spec), status: 'spec_confirmed',
       revision: project.revision + 1, updatedAt: new Date().toISOString() });
+  }
+
+  attachWorkspace(id, snapshot, revision) {
+    const project = this.get(id); this.assertRevision(project, revision);
+    if (snapshot.projectId !== id || snapshot.specHash !== project.specHash || project.confirmedSpecHash !== project.specHash) throw new AppError(409, 'PROJECT_CHANGED', '当前规格与工程快照不一致，请重新生成。');
+    return this.save({...project, workspaceHash:snapshot.hash, lastWorkspaceHash:snapshot.hash, approvedWorkspaceHash:null,
+      status:'generated',revision:project.revision+1,updatedAt:new Date().toISOString()});
+  }
+
+  approveWorkspace(id, hash, revision) {
+    const project=this.get(id); this.assertRevision(project,revision);
+    if (!hash || project.workspaceHash!==hash || !project.confirmedSpecHash) throw new AppError(409,'WORKSPACE_CHANGED','请先生成并审查当前工程。');
+    return this.save({...project,approvedWorkspaceHash:hash,status:'approved',revision:project.revision+1,updatedAt:new Date().toISOString()});
   }
 }
