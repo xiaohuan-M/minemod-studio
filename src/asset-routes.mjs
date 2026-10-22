@@ -8,7 +8,13 @@ import { zipFiles } from './core/archive.mjs';
 import catalog from '../community/catalog.json' with { type: 'json' };
 import { sha256 } from './core/archive.mjs';
 import { pixelizeImage, decodePNG } from './core/images.mjs';
-import { pngTexture, exportBlockbench, importBlockbench, validateTexture } from './core/assets.mjs';
+import {
+  pngTexture,
+  placeholderTexture,
+  exportBlockbench,
+  importBlockbench,
+  validateTexture,
+} from './core/assets.mjs';
 import { AppError } from './core/errors.mjs';
 export function createAssetRoutes(assets) {
   return async function route({ request, response, url, json, body, fields, send }) {

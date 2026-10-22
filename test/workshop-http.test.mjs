@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { once } from 'node:events';
 import { makeServer } from '../src/server.mjs';
 import { readZipEntry } from '../src/core/archive.mjs';
+import { defaultEntityAnimation } from '../src/core/animation.mjs';
 import spec from '../examples/full-workshop.json' with { type: 'json' };
 async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'minemod-workshop-'));
@@ -155,4 +156,43 @@ test('unavailable builder fails honestly without a JAR; explicit network and sna
   assert.equal(result.artifact, null);
   assert.equal((await call('/api/builds/' + started.id + '/jar')).status, 409);
   assert.equal((await call('/api/builds/' + started.id + '/bundle')).status, 409);
+});
+
+test('animated asset downloads contain valid Bedrock resources and reimportable embedded bbmodel textures', async (t) => {
+  const { call } = await fixture(t);
+  const data = defaultEntityAnimation('cow');
+  const response = await call('/api/assets', 'POST', {
+    name: '动画牛',
+    kind: 'animated_model',
+    source: '原创',
+    license: 'CC0',
+    data,
+  });
+  assert.equal(response.status, 201);
+  const asset = await response.json();
+  const exported = await call('/api/assets/' + asset.id + '/bedrock');
+  assert.equal(exported.status, 200);
+  const zip = Buffer.from(await exported.arrayBuffer());
+  assert.equal(
+    JSON.parse(readZipEntry(zip, 'model.geo.json'))['minecraft:geometry'][0].bones.length,
+    6,
+  );
+  assert.ok(
+    JSON.parse(readZipEntry(zip, 'model.animation.json')).animations[
+      'animation.minemod.export.walk'
+    ],
+  );
+  assert.equal(readZipEntry(zip, 'texture.png').subarray(1, 4).toString(), 'PNG');
+  const bbmodel = await call('/api/assets/' + asset.id + '/bbmodel');
+  assert.equal(bbmodel.status, 200);
+  const imported = await call('/api/blockbench/import', 'POST', {
+    model: await bbmodel.json(),
+    name: '重新导入',
+    source: '原创',
+    license: 'CC0',
+  });
+  assert.equal(imported.status, 201);
+  const { assets } = await imported.json();
+  assert.equal(assets.length, 2);
+  assert.deepEqual(assets.find((a) => a.kind === 'animated_model').data, data);
 });
