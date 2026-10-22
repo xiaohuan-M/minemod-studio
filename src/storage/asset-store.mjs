@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { JsonDirectory } from './json-directory.mjs';
 import { validateTexture, validateModel, importBlockbench } from '../core/assets.mjs';
+import { validateAnimation } from '../core/animation.mjs';
 import { validateImage } from '../core/images.mjs';
 import { sha256 } from '../core/archive.mjs';
 import { AppError } from '../core/errors.mjs';
@@ -27,17 +28,19 @@ export class AssetStore {
     ])
       if (typeof input[field] !== 'string' || !input[field].trim() || input[field].length > max)
         throw new AppError(422, 'INVALID_ASSET', '请填写资源名称、来源和许可说明。');
-    if (!['texture', 'model', 'image'].includes(input.kind))
+    if (!['texture', 'model', 'image', 'animated_model'].includes(input.kind))
       throw new AppError(422, 'INVALID_ASSET', '请选择贴图、模型或图片。');
 
     const data =
-      input.kind === 'image'
-        ? validateImage(input.data)
-        : input.kind === 'texture'
-          ? validateTexture(input.data)
-          : input.format === 'bbmodel'
-            ? importBlockbench(input.data)
-            : validateModel(input.data);
+      input.kind === 'animated_model'
+        ? validateAnimation(input.data)
+        : input.kind === 'image'
+          ? validateImage(input.data)
+          : input.kind === 'texture'
+            ? validateTexture(input.data)
+            : input.format === 'bbmodel'
+              ? importBlockbench(input.data)
+              : validateModel(input.data);
     const record = {
       id: randomUUID(),
       name: input.name.trim(),
@@ -97,11 +100,13 @@ export class AssetStore {
     if (record.id !== id || sha256(JSON.stringify(record.data)) !== record.sha256)
       throw new AppError(500, 'ASSET_CORRUPT', '资源校验失败。');
     record.data =
-      record.kind === 'image'
-        ? validateImage(record.data)
-        : record.kind === 'texture'
-          ? validateTexture(record.data)
-          : validateModel(record.data);
+      record.kind === 'animated_model'
+        ? validateAnimation(record.data)
+        : record.kind === 'image'
+          ? validateImage(record.data)
+          : record.kind === 'texture'
+            ? validateTexture(record.data)
+            : validateModel(record.data);
     return record;
   }
   list() {

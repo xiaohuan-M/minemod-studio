@@ -22,6 +22,11 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/animation-editor.js', ['studio/animation-editor.js', 'text/javascript; charset=utf-8']],
+  [
+    '/studio/animation-timeline.js',
+    ['studio/animation-timeline.js', 'text/javascript; charset=utf-8'],
+  ],
   ['/studio/entity-editor.js', ['studio/entity-editor.js', 'text/javascript; charset=utf-8']],
   ['/studio/image-studio.js', ['studio/image-studio.js', 'text/javascript; charset=utf-8']],
   ['/', ['index.html', 'text/html; charset=utf-8']],
@@ -200,7 +205,6 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           const example = structuredClone(fullExample);
           example.target = { ...target.target };
           if (target.target.edition === 'bedrock') {
-            delete example.entities;
             example.items = example.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
             const ids = new Set(
               [...example.items, ...example.blocks].map((i) => example.modId + ':' + i.id),
@@ -213,7 +217,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
                 ),
             );
             example.assumptions.push(
-              'Bedrock 样例仅包含此适配器支持的普通物品、食物、方块和配方；尚未游戏实测。',
+              'Bedrock 样例仅包含此适配器支持的普通物品、食物、方块、配方和实体；尚未游戏实测。',
             );
           }
           json(response, 200, example);
@@ -234,7 +238,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           request.method === 'POST' &&
           pathname === '/api/providers/openai-compatible/asset'
         ) {
-          const input = fields(await body(request), ['consent', 'kind', 'prompt']);
+          const input = fields(await body(request), ['consent', 'kind', 'prompt', 'referenceId']);
           requireConsent(input);
           if (
             !['texture', 'model'].includes(input.kind) ||
@@ -243,12 +247,19 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
             input.prompt.length > 2000
           )
             throw new AppError(400, 'INVALID_INPUT', '请选择素材类型并填写 1–2000 字描述。');
+          let reference;
+          if (input.referenceId) {
+            const asset = workshop.assets.get(input.referenceId);
+            if (asset.kind !== 'image')
+              throw new AppError(422, 'ASSET_TYPE', '请选择图片作为参考。');
+            reference = asset.data;
+          }
           json(
             response,
             200,
             await callModel(
               'asset-generation',
-              { kind: input.kind, prompt: input.prompt },
+              { kind: input.kind, prompt: input.prompt, reference },
               response,
               'planAsset',
             ),

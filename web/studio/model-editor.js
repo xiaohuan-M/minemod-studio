@@ -102,6 +102,7 @@ export function initModelEditor({
     if (!file) return;
     if (file.size > 800 * 1024) throw new Error('模型文件最多 800 KiB。');
     const data = JSON.parse(await file.text());
+    if (data.animations?.length) throw new Error('动画文件请使用动画工坊的导入入口。');
     if (data.meta || file.name.endsWith('.bbmodel')) {
       const result = await request('/api/blockbench/import', 'POST', {
         model: data,

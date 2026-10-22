@@ -51,6 +51,7 @@ try {
   await page.selectOption('#model-view', 'hand');
   await page.fill('#display-scale', '0.5,0.5,0.5');
   await page.click('#display-update');
+  await page.click('#pixel-fill');
   await page.click('#model-texture-pixels');
   await page.fill('#model-name', 'UV与姿态');
   await page.click('#model-save');
@@ -65,6 +66,43 @@ try {
   );
   assert.equal(model.data.elements[0].faces.north.rotation, 90);
   assert.deepEqual(model.data.display.thirdperson_righthand.scale, [0.5, 0.5, 0.5]);
+  await page.selectOption('#uv-rotation', '0');
+  await page.click('#uv-update');
+  await page.locator('#animation-studio summary').click();
+  await page.click('#animation-create');
+  await page.click('#animation-save-key');
+  await page.locator('#animation-time').fill('1');
+  await page.locator('#animation-time').dispatchEvent('input');
+  await page.fill('#animation-rotation', '0,90,0');
+  await page.click('#animation-save-key');
+  await page.fill('#animation-name', '浏览器关键帧动画');
+  await page.click('#animation-save');
+  await page.waitForFunction(() =>
+    document.querySelector('#asset-library').textContent.includes('浏览器关键帧动画'),
+  );
+  await page.click('#animation-play');
+  await page.waitForTimeout(150);
+  await page.click('#animation-play');
+  await page.locator('#entity-editor summary').click();
+  await page.fill('#entity-id', 'animated_actor');
+  await page.fill('#entity-zh', '动画角色');
+  await page.fill('#entity-en', 'Animated Actor');
+  await page.selectOption('#entity-model', { label: '浏览器关键帧动画' });
+  await page.fill('#entity-clip', 'walk');
+  await page.click('#entity-save');
+  await page.click('#save-spec');
+  await page.waitForFunction(() => !document.querySelector('#confirm-spec').disabled);
+  await page.click('#confirm-spec');
+  await page.waitForFunction(() => !document.querySelector('#generate-workspace').disabled);
+  await page.click('#generate-workspace');
+  await page.waitForFunction(() => !document.querySelector('#approve-workspace').disabled);
+  await page.click('#approve-workspace');
+  await page.waitForFunction(() => !document.querySelector('#start-build').disabled);
+  await page.click('#start-build');
+  await page.locator('#build-downloads a').filter({ hasText: '下载 MCADDON' }).waitFor();
+  const artifactDownload = page.waitForEvent('download');
+  await page.locator('#build-downloads a').filter({ hasText: '下载 MCADDON' }).click();
+  assert.match((await artifactDownload).suggestedFilename(), /\.mcaddon$/);
   const downloadPromise = page.waitForEvent('download');
   await page.click('#model-screenshot');
   const download = await downloadPromise;
@@ -76,11 +114,16 @@ try {
     (id) => fetch('/api/projects/' + id + '/backup').then((r) => r.json()),
     projectId,
   );
+  const importResponse = page.waitForResponse((r) =>
+    r.url().endsWith('/api/projects/import-backup'),
+  );
   await page.setInputFiles('#backup-import', {
     name: 'project.minemod.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(backup)),
   });
+  const imported = await importResponse;
+  assert.equal(imported.status(), 201, await imported.text());
   await page.waitForFunction(
     (old) => document.querySelector('#export-spec').getAttribute('href').split('/')[3] !== old,
     projectId,
@@ -95,7 +138,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    'Browser passed: target selection, Bedrock editing, textured WebGL, UV/display persistence, screenshot, mobile layout.',
+    'Browser passed: proposals/conversation, targets, WebGL/UV, animated entity editing, MCADDON export, portable backup and mobile layout.',
   );
 } finally {
   await browser?.close();

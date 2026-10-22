@@ -1,3 +1,10 @@
+import {
+  validateAnimation,
+  exportAnimatedBlockbench,
+  importAnimatedBlockbench,
+  bedrockAnimationResources,
+} from './core/animation.mjs';
+import { zipFiles } from './core/archive.mjs';
 import catalog from '../community/catalog.json' with { type: 'json' };
 import { sha256 } from './core/archive.mjs';
 import { pixelizeImage, decodePNG } from './core/images.mjs';
@@ -8,10 +15,16 @@ export function createAssetRoutes(assets) {
     const path = url.pathname,
       method = request.method;
     if (path === '/api/blockbench/export' && method === 'POST') {
-      const input = fields(await body(request, 1024 * 1024), ['model', 'texture', 'name']);
+      const input = fields(await body(request, 1024 * 1024), ['model', 'texture', 'name', 'kind']);
       if (typeof input.name !== 'string' || input.name.length > 80)
         throw new AppError(422, 'INVALID_INPUT', '请填写模型名称。');
-      json(response, 200, exportBlockbench(input.model, input.name, input.texture));
+      json(
+        response,
+        200,
+        input.kind === 'animated_model'
+          ? exportAnimatedBlockbench(input.model, input.name, input.texture)
+          : exportBlockbench(input.model, input.name, input.texture),
+      );
       return true;
     }
     if (path === '/api/blockbench/import' && method === 'POST') {
@@ -21,11 +34,14 @@ export function createAssetRoutes(assets) {
         'source',
         'license',
       ]);
-      const model = importBlockbench(input.model),
+      const animated = !!input.model?.animations?.length;
+      const model = animated
+          ? importAnimatedBlockbench(input.model)
+          : importBlockbench(input.model),
         entries = [
           {
             name: input.name,
-            kind: 'model',
+            kind: animated ? 'animated_model' : 'model',
             data: model,
             source: input.source,
             license: input.license,
@@ -104,7 +120,7 @@ export function createAssetRoutes(assets) {
       } else return false;
       return true;
     }
-    let match = path.match(/^\/api\/assets\/([^/]+)(?:\/(png|bbmodel|pixelize|package))?$/);
+    let match = path.match(/^\/api\/assets\/([^/]+)(?:\/(png|bbmodel|pixelize|package|bedrock))?$/);
     if (match && method === 'POST' && match[2] === 'pixelize') {
       const asset = assets.get(match[1]);
       if (asset.kind !== 'image') throw new AppError(422, 'ASSET_TYPE', '请选择图片资源。');
@@ -137,9 +153,27 @@ export function createAssetRoutes(assets) {
           'image/png',
           'texture-' + asset.id + '.png',
         );
-      else if (match[2] === 'bbmodel' && asset.kind === 'model')
+      else if (match[2] === 'bedrock' && asset.kind === 'animated_model') {
+        const data = bedrockAnimationResources(asset.data, 'minemod.export', 16, 16);
         send(
-          JSON.stringify(exportBlockbench(asset.data, asset.name), null, 2),
+          zipFiles({
+            'model.geo.json': JSON.stringify(data.geometry, null, 2),
+            'model.animation.json': JSON.stringify(data.animations, null, 2),
+            'texture.png': pngTexture(placeholderTexture()),
+            'SOURCE.json': JSON.stringify({ source: asset.source, license: asset.license }),
+          }),
+          'application/zip',
+          'animation-' + asset.id + '.zip',
+        );
+      } else if (match[2] === 'bbmodel' && ['model', 'animated_model'].includes(asset.kind))
+        send(
+          JSON.stringify(
+            asset.kind === 'animated_model'
+              ? exportAnimatedBlockbench(asset.data, asset.name)
+              : exportBlockbench(asset.data, asset.name),
+            null,
+            2,
+          ),
           'application/json',
           'model-' + asset.id + '.bbmodel',
         );

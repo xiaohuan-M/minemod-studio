@@ -1,3 +1,4 @@
+import { initAnimationEditor } from './studio/animation-editor.js';
 import { initEntityEditor } from './studio/entity-editor.js';
 import { initImageStudio } from './studio/image-studio.js';
 import { initModelEditor } from './studio/model-editor.js';
@@ -492,6 +493,15 @@ export function initWorkshop({
     feedback,
     getPixels: () => ({ width: size, height: size, pixels }),
   });
+  const animationEditor = initAnimationEditor({
+    request,
+    run,
+    assetPayload,
+    refreshAssets,
+    feedback,
+    getModel: () => modelEditor.get(),
+    getPixels: () => ({ width: size, height: size, pixels }),
+  });
   initImageStudio({ api, request, run, assetPayload, refreshAssets, feedback });
   let assetAbort = null;
   $('ai-asset-cancel').onclick = () => assetAbort?.abort();
@@ -510,6 +520,7 @@ export function initWorkshop({
           consent: provider.configurationId,
           kind: $('ai-asset-kind').value,
           prompt: $('ai-asset-prompt').value,
+          referenceId: $('ai-asset-reference').value || undefined,
         }),
         signal: assetAbort.signal,
       });
@@ -539,6 +550,7 @@ export function initWorkshop({
     for (const [id, kind, label] of [
       ['content-texture', 'texture', '使用占位贴图'],
       ['content-model', 'model', '使用默认模型'],
+      ['ai-asset-reference', 'image', '不发送参考图'],
     ]) {
       const selected = $(id).value;
       $(id).replaceChildren(
@@ -571,7 +583,7 @@ export function initWorkshop({
               'small',
               asset.kind === 'texture'
                 ? asset.width + ' × ' + asset.height
-                : asset.cubes + ' 个立方体',
+                : asset.cubes + (asset.kind === 'animated_model' ? ' 个立方体骨骼' : ' 个立方体'),
             ),
             el('small', asset.source + ' · ' + asset.license),
           );
@@ -587,6 +599,9 @@ export function initWorkshop({
               $('texture-size').value = String(size);
               $('texture-name').value = asset.name;
               drawPixels();
+            } else if (asset.kind === 'animated_model') {
+              animationEditor.set(data.data);
+              $('animation-name').value = asset.name;
             } else {
               modelEditor.set(data.data);
               $('model-name').value = asset.name;
@@ -861,6 +876,10 @@ export function initWorkshop({
     $('build-downloads').replaceChildren();
     $('source-panel').hidden = true;
     $('workshop').hidden = false;
+    for (const option of $('content-kind').options)
+      option.disabled =
+        event.detail.target.edition === 'bedrock' &&
+        !['basic_item', 'food', 'block'].includes(option.value);
     const target = event.detail.target;
     api('/api/registries/items?target=' + target.loader + '-' + target.minecraft)
       .then((result) => {

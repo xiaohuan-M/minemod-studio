@@ -8,6 +8,7 @@ import { workshopServices } from '../src/workshop-routes.mjs';
 import { acquireDataLock } from '../src/storage/data-lock.mjs';
 import { sha256 } from '../src/core/archive.mjs';
 import { placeholderTexture } from '../src/core/assets.mjs';
+import { defaultEntityAnimation } from '../src/core/animation.mjs';
 import specFixture from '../examples/project-spec.json' with { type: 'json' };
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'minemod-backup-'));
@@ -37,6 +38,24 @@ test('portable project backup includes assets, history, source and artifacts; im
   const spec = structuredClone(specFixture);
   spec.target = { edition: 'bedrock', loader: 'bedrock', minecraft: '1.21.60', java: 0 };
   spec.items[0].textureAsset = asset.id;
+  const animated = a.assets.create({
+    kind: 'animated_model',
+    name: '可迁移动画',
+    source: '原创',
+    license: 'CC0',
+    data: defaultEntityAnimation('cow'),
+  });
+  spec.entities = [
+    {
+      id: 'actor',
+      displayName: { zh_cn: '角色', en_us: 'Actor' },
+      archetype: 'cow',
+      health: 10,
+      movementSpeed: 0.2,
+      attackDamage: 0,
+      modelAsset: animated.id,
+    },
+  ];
   let p = a.store.create({ name: '备份测试', prompt: '物品与贴图', targetId: 'bedrock-1.21.60' });
   p = a.store.setSpec(p.id, spec, p.revision);
   p = a.store.confirmSpec(p.id, p.revision);
@@ -66,7 +85,7 @@ test('portable project backup includes assets, history, source and artifacts; im
   assert.equal(regenerated.imported, undefined);
   const duplicate = b.backup.import(exported);
   assert.notEqual(duplicate.id, imported.id);
-  assert.equal(b.assets.list().length, 1);
+  assert.equal(b.assets.list().length, 2);
   const corrupt = structuredClone(exported);
   corrupt.project.name = 'changed';
   assert.throws(() => b.backup.import(corrupt), /校验/);

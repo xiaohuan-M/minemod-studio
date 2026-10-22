@@ -38,7 +38,7 @@ const descriptors: readonly TargetDescriptor[] = [
     artifact: 'mcaddon',
     validation: 'package-checked',
     enabled: true,
-    features: ['items', 'food', 'blocks', 'recipes', 'textures'],
+    features: ['items', 'food', 'blocks', 'recipes', 'textures', 'entities', 'cube_animation'],
   },
   {
     id: 'fabric-1.20.1',

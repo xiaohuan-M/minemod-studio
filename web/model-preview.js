@@ -20,6 +20,25 @@ export function modelPreview(canvas, onSelect = () => {}) {
       texture() {},
       view() {},
       select() {},
+      animate() {},
+      animate(poses) {
+        for (const [index, mesh] of meshes.entries()) {
+          const pivot = mesh.parent,
+            pose = poses[index] ?? {};
+          pivot.position
+            .copy(pivot.userData.bindPosition)
+            .add(new THREE.Vector3(...(pose.translation ?? [0, 0, 0])));
+          pivot.rotation.copy(pivot.userData.bindRotation);
+          for (const [i, axis] of ['x', 'y', 'z'].entries())
+            pivot.rotation[axis] += THREE.MathUtils.degToRad((pose.rotation ?? [0, 0, 0])[i]);
+          pivot.scale
+            .copy(pivot.userData.bindScale)
+            .multiply(new THREE.Vector3(...(pose.scale ?? [1, 1, 1])));
+        }
+        root.updateMatrixWorld(true);
+        helper?.update();
+        draw();
+      },
       capture() {
         throw new Error('WebGL 不可用。');
       },
@@ -51,11 +70,15 @@ export function modelPreview(canvas, onSelect = () => {}) {
     mode = 'orbit',
     meshes = [],
     helper = null;
+  let lastSize = [0, 0];
   function draw() {
     if (canvas.clientWidth && canvas.clientHeight) {
       const w = canvas.clientWidth,
         h = canvas.clientHeight;
-      renderer.setSize(w, h, false);
+      if (lastSize[0] !== w || lastSize[1] !== h) {
+        renderer.setSize(w, h, false);
+        lastSize = [w, h];
+      }
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
@@ -175,6 +198,9 @@ export function modelPreview(canvas, onSelect = () => {}) {
             if (axis !== e.rotation.axis) pivot.scale[axis] = factor;
         }
       }
+      pivot.userData.bindPosition = pivot.position.clone();
+      pivot.userData.bindRotation = pivot.rotation.clone();
+      pivot.userData.bindScale = pivot.scale.clone();
       pivot.add(mesh);
       root.add(pivot);
       meshes.push(mesh);
@@ -235,6 +261,24 @@ export function modelPreview(canvas, onSelect = () => {}) {
       controls.update();
       pose();
       highlight();
+      draw();
+    },
+    animate(poses) {
+      for (const [index, mesh] of meshes.entries()) {
+        const pivot = mesh.parent,
+          pose = poses[index] ?? {};
+        pivot.position
+          .copy(pivot.userData.bindPosition)
+          .add(new THREE.Vector3(...(pose.translation ?? [0, 0, 0])));
+        pivot.rotation.copy(pivot.userData.bindRotation);
+        for (const [i, axis] of ['x', 'y', 'z'].entries())
+          pivot.rotation[axis] += THREE.MathUtils.degToRad((pose.rotation ?? [0, 0, 0])[i]);
+        pivot.scale
+          .copy(pivot.userData.bindScale)
+          .multiply(new THREE.Vector3(...(pose.scale ?? [1, 1, 1])));
+      }
+      root.updateMatrixWorld(true);
+      helper?.update();
       draw();
     },
     capture() {

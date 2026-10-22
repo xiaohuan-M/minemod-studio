@@ -63,9 +63,10 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
     itemIds.add(block.id);
   }
   const entityIds = new Set();
-  if (value.target.edition === 'bedrock' && value.entities?.length)
-    invalid('spec.entities', '此 Bedrock 适配器尚不支持实体，请使用 Fabric。');
+
   for (const entity of value.entities ?? []) {
+    if (value.target.edition !== 'bedrock' && (entity.modelAsset || entity.animationClip))
+      invalid('spec.entities', '自定义实体模型/动画当前只接入 Bedrock；Java 实体使用原版模型。');
     if (entityIds.has(entity.id) || itemIds.has(entity.id + '_spawn_egg'))
       invalid('spec.entities', '实体 ID 重复或刷怪蛋 ID 与物品冲突。');
     if (entity.archetype === 'cow' && entity.attackDamage !== 0)

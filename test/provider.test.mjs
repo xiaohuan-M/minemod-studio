@@ -398,3 +398,33 @@ test('proposals are validated, saved with revision protection, and iteration con
     (e) => e.code === 'INVALID_PROPOSALS',
   );
 });
+
+test('asset vision context sends only the explicitly selected PNG and preserves the text-only request format otherwise', async (t) => {
+  const { provider, calls } = await modelFixture(t, (response) =>
+    send(response, envelope({ elements: [{ from: [4, 0, 4], to: [12, 16, 12] }] })),
+  );
+  const { base } = await appFixture(t, provider);
+  const { pngTexture, placeholderTexture } = await import('../src/core/assets.mjs');
+  const img = await (
+    await post(base, '/api/assets', {
+      kind: 'image',
+      name: '参考',
+      source: '原创',
+      license: 'CC0',
+      data: { png: pngTexture(placeholderTexture()).toString('base64') },
+    })
+  ).json();
+  const result = await post(base, '/api/providers/openai-compatible/asset', {
+    consent: provider.info.configurationId,
+    kind: 'model',
+    prompt: '按轮廓制作',
+    referenceId: img.id,
+  });
+  assert.equal(result.status, 200);
+  const content = calls[0].body.messages[1].content;
+  assert.equal(content[0].type, 'text');
+  assert.equal(content[1].type, 'image_url');
+  assert.match(content[1].image_url.url, /^data:image\/png;base64,/);
+  await provider.planAsset({ kind: 'model', prompt: '无参考' });
+  assert.equal(typeof calls[1].body.messages[1].content, 'string');
+});

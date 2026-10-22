@@ -1,3 +1,8 @@
+import {
+  defaultEntityAnimation,
+  validateAnimation,
+  bedrockAnimationResources,
+} from '../../core/animation.mjs';
 import { readFileSync } from 'node:fs';
 import { validateModSpec } from '../../core/mod-spec.mjs';
 import { pngTexture, placeholderTexture } from '../../core/assets.mjs';
@@ -41,7 +46,7 @@ export function generateBedrock(input, assets = []) {
     blocks = { format_version: [1, 1, 0] };
   const langs = { zh_CN: [], en_US: [] };
   const texture = (item, folder) => {
-    let data = placeholderTexture(item.textureColor ?? '#678f71', folder === 'blocks');
+    let data = placeholderTexture(item.textureColor ?? '#678f71', folder !== 'items');
     if (item.textureAsset) {
       const asset = assets.find((a) => a.id === item.textureAsset && a.kind === 'texture');
       if (!asset) throw new AppError(422, 'ASSET_MISSING', '贴图资源不存在或类型错误。');
@@ -112,6 +117,115 @@ export function generateBedrock(input, assets = []) {
     });
     localize('tile.' + id + '.name', block.displayName);
   }
+  for (const entity of spec.entities ?? []) {
+    const id = ns + ':' + entity.id,
+      identifier = ns + '.' + entity.id,
+      zombie = entity.archetype === 'zombie';
+    const tex = texture(entity, 'entity');
+    const textureData = entity.textureAsset
+      ? assets.find((a) => a.id === entity.textureAsset).data
+      : null;
+    let rig = defaultEntityAnimation(entity.archetype);
+    if (entity.modelAsset) {
+      const asset = assets.find(
+        (a) => a.id === entity.modelAsset && ['model', 'animated_model'].includes(a.kind),
+      );
+      if (!asset) throw new AppError(422, 'ASSET_MISSING', '实体模型资源不存在或类型不匹配。');
+      used.set(asset.id, asset);
+      rig =
+        asset.kind === 'animated_model'
+          ? validateAnimation(asset.data)
+          : validateAnimation({
+              ...asset.data,
+              clips: [{ name: 'idle', duration: 1, loop: true, tracks: [] }],
+            });
+    }
+    const clip = entity.animationClip ?? rig.clips[0].name;
+    if (!rig.clips.some((c) => c.name === clip))
+      throw new AppError(422, 'ANIMATION_MISSING', '实体选择的动画片段不存在。');
+    const generated = bedrockAnimationResources(
+      rig,
+      identifier,
+      textureData?.width ?? 16,
+      textureData?.height ?? 16,
+    );
+    json('resource_pack/models/entity/' + entity.id + '.geo.json', generated.geometry);
+    json('resource_pack/animations/' + entity.id + '.animation.json', generated.animations);
+    json('behavior_pack/entities/' + entity.id + '.json', {
+      format_version: '1.21.60',
+      'minecraft:entity': {
+        description: {
+          identifier: id,
+          is_spawnable: true,
+          is_summonable: true,
+          is_experimental: false,
+        },
+        components: {
+          'minecraft:type_family': {
+            family: zombie ? ['monster', 'minemod'] : ['animal', 'minemod'],
+          },
+          'minecraft:health': { value: entity.health, max: entity.health },
+          'minecraft:movement': { value: entity.movementSpeed },
+          'minecraft:collision_box': { width: zombie ? 0.6 : 0.9, height: zombie ? 1.9 : 1.4 },
+          'minecraft:physics': { has_gravity: true, has_collision: true },
+          'minecraft:movement.basic': {},
+          'minecraft:navigation.walk': { can_path_over_water: true, avoid_water: true },
+          'minecraft:behavior.random_stroll': { priority: 7, speed_multiplier: 1 },
+          'minecraft:behavior.look_at_player': { priority: 8, look_distance: 6, probability: 0.02 },
+          ...(zombie
+            ? {
+                'minecraft:attack': { damage: entity.attackDamage },
+                'minecraft:behavior.nearest_attackable_target': {
+                  priority: 2,
+                  must_see: true,
+                  entity_types: [
+                    {
+                      filters: { test: 'is_family', subject: 'other', value: 'player' },
+                      max_dist: 16,
+                    },
+                  ],
+                },
+                'minecraft:behavior.melee_attack': {
+                  priority: 3,
+                  speed_multiplier: 1.2,
+                  track_target: true,
+                },
+              }
+            : {}),
+        },
+      },
+    });
+    json('resource_pack/entity/' + entity.id + '.entity.json', {
+      format_version: '1.10.0',
+      'minecraft:client_entity': {
+        description: {
+          identifier: id,
+          materials: { default: 'entity_alphatest' },
+          textures: { default: tex.textures },
+          geometry: { default: 'geometry.' + identifier },
+          animations: Object.fromEntries(
+            rig.clips.map((c) => [c.name, 'animation.' + identifier + '.' + c.name]),
+          ),
+          scripts: {
+            animate: clip === 'walk' ? [{ [clip]: 'query.modified_move_speed > 0.01' }] : [clip],
+          },
+          render_controllers: ['controller.render.' + identifier],
+          spawn_egg: { base_color: entity.textureColor ?? '#8e62cf', overlay_color: '#ffffff' },
+        },
+      },
+    });
+    json('resource_pack/render_controllers/' + entity.id + '.json', {
+      format_version: '1.10.0',
+      render_controllers: {
+        ['controller.render.' + identifier]: {
+          geometry: 'Geometry.default',
+          materials: [{ '*': 'Material.default' }],
+          textures: ['Texture.default'],
+        },
+      },
+    });
+    localize('entity.' + id + '.name', entity.displayName);
+  }
   for (const recipe of spec.recipes) {
     const kind =
       recipe.type === 'crafting_shaped' ? 'minecraft:recipe_shaped' : 'minecraft:recipe_shapeless';
@@ -174,6 +288,50 @@ export function generateBedrock(input, assets = []) {
 export function packageBedrock(snapshot) {
   if (snapshot.targetId !== 'bedrock-1.21.60')
     throw new AppError(422, 'TARGET_UNAVAILABLE', '不是 Bedrock 工程。');
+  const all = new Map(
+    snapshot.files.map((file) => [file.path, Buffer.from(file.content, 'base64')]),
+  );
+  const parse = (path) => {
+    const bytes = all.get(path);
+    if (!bytes) throw new AppError(422, 'INVALID_PACK', '包缺少资源：' + path);
+    return JSON.parse(bytes);
+  };
+  const textures = new Set([...all.keys()].filter((path) => path.endsWith('.png')));
+  const geometryIds = new Set(),
+    animationIds = new Set();
+  for (const [path, bytes] of all) {
+    if (path.startsWith('resource_pack/models/entity/') && path.endsWith('.json'))
+      for (const model of JSON.parse(bytes)['minecraft:geometry'] ?? [])
+        geometryIds.add(model.description.identifier);
+    if (path.startsWith('resource_pack/animations/') && path.endsWith('.json'))
+      for (const id of Object.keys(JSON.parse(bytes).animations ?? {})) animationIds.add(id);
+  }
+  for (const [path, bytes] of all)
+    if (path.startsWith('resource_pack/entity/') && path.endsWith('.json')) {
+      const d = JSON.parse(bytes)['minecraft:client_entity']?.description;
+      if (
+        !d ||
+        !geometryIds.has(d.geometry?.default) ||
+        !textures.has('resource_pack/' + d.textures?.default + '.png') ||
+        Object.values(d.animations ?? {}).some((id) => !animationIds.has(id))
+      )
+        throw new AppError(422, 'INVALID_PACK', '实体几何、贴图或动画引用缺失。');
+      for (const id of d.render_controllers ?? [])
+        if (
+          ![...all].some(
+            ([p, b]) =>
+              p.startsWith('resource_pack/render_controllers/') &&
+              Object.hasOwn(JSON.parse(b).render_controllers ?? {}, id),
+          )
+        )
+          throw new AppError(422, 'INVALID_PACK', '实体渲染控制器缺失。');
+    }
+  for (const atlas of ['item_texture', 'terrain_texture'])
+    for (const entry of Object.values(
+      parse('resource_pack/textures/' + atlas + '.json').texture_data ?? {},
+    ))
+      if (!textures.has('resource_pack/' + entry.textures + '.png'))
+        throw new AppError(422, 'INVALID_PACK', '贴图集引用缺失。');
   const archives = {},
     manifests = [];
   for (const pack of ['behavior_pack', 'resource_pack']) {

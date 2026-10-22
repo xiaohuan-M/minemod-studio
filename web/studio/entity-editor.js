@@ -16,6 +16,8 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     attackDamage: 'entity-damage',
     textureAsset: 'entity-texture',
     textureColor: 'entity-color',
+    modelAsset: 'entity-model',
+    animationClip: 'entity-clip',
   };
   const reset = () => {
     editing = null;
@@ -23,9 +25,10 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
   };
   function render() {
     const bedrock = getProject()?.target.edition === 'bedrock';
-    $('entity-form').hidden = bedrock;
+    $('entity-form').hidden = false;
+    $('entity-animation-fields').hidden = !bedrock;
     $('entity-limit').textContent = bedrock
-      ? '当前 Bedrock 适配器不提供实体；切换到 Fabric 项目可编辑。'
+      ? 'Bedrock 提供简单敌对/被动行为，可绑定立方体模型或动画素材。walk 片段随移动播放，其余选中片段持续播放；包结构已校验，未游戏实测。'
       : '僵尸/牛保留原版行为和动画，不自动加入自然生成。用创造模式刷怪蛋验证。64×64 贴图需匹配所选原版模型 UV；牛的原始 64×32 布局请纵向放大两倍。';
     let spec;
     try {
@@ -88,6 +91,10 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
         textureColor: $('entity-color').value,
       };
     if ($('entity-texture').value) entity.textureAsset = $('entity-texture').value;
+    if (getProject().target.edition === 'bedrock') {
+      if ($('entity-model').value) entity.modelAsset = $('entity-model').value;
+      if ($('entity-clip').value.trim()) entity.animationClip = $('entity-clip').value.trim();
+    }
     spec.entities ??= [];
     if (editing === null) {
       if (spec.entities.length >= 8) throw new Error('每个规格最多 8 种实体。');
@@ -118,6 +125,20 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
       }),
     );
     $('entity-texture').value = selected;
+  });
+  document.addEventListener('assets-loaded', ({ detail }) => {
+    const selected = $('entity-model').value;
+    $('entity-model').replaceChildren(
+      ...[
+        { id: '', name: '原创默认模型与步行动画' },
+        ...detail.filter((a) => ['model', 'animated_model'].includes(a.kind)),
+      ].map((a) => {
+        const o = el('option', a.name);
+        o.value = a.id;
+        return o;
+      }),
+    );
+    $('entity-model').value = selected;
   });
   return { render };
 }

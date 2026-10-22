@@ -167,6 +167,14 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 
 `GET /api/asset-packages` 导出整个资源库；`GET /api/assets/:id/package` 导出单项资源。`POST /api/asset-packages` 导入版本化 JSON，验证所有记录与 checksum 后创建新资源 ID；保留来源/许可，不覆盖本机素材。
 
-`POST /api/blockbench/export` 接受 `{model,texture?,name}`，返回含嵌入 PNG 的 bbmodel。`POST /api/blockbench/import` 接受 `{model,name,source,license}`，在同一操作中验证并导入静态立方体与嵌入 PNG；拒绝外部纹理路径，纹理限 16/32/64 方形。模型组、网格、骨骼动画不在该接口范围内。
+`POST /api/blockbench/export` 接受 `{model,texture?,name,kind?}`，kind 默认 model，可选 animated_model，返回含嵌入 PNG 的 bbmodel。`POST /api/blockbench/import` 接受 `{model,name,source,license}`，根据动画内容导入静态或动画立方体与嵌入 PNG；拒绝外部纹理路径，纹理限 16/32/64 方形。动画只接受每个根骨骼一个立方体、数字线性关键帧；嵌套骨骼、网格、表达式和组旋转不在该接口范围内。
 
 目标新增 `forge-1.20.1` 与 `neoforge-1.21.1`，均通过完整内容样例编译。`GET /api/builder?target=<id>` 检查该目标的固定镜像；准备镜像 POST 可传 `targetId`。Forge 使用 JDK17，其他当前 Java 目标使用 JDK21 编译器。`GET /api/registries/items?target=<id>` 返回该游戏版本的原版物品 ID；保存/生成时拒绝未知原料。旧项目仍可打开并修正旧引用，不因为新增规则丢失历史。
+
+## 动画与视觉参考
+
+素材新增 kind=animated_model，data 为 `{elements,clips}`。每个立方体对应一个独立根骨骼；最多 8 个片段、每段 0.1–30 秒、每段合计 512 个线性关键帧。片段轨道按 bone 索引保存 rotation/translation/scale；规范化须幂等，以保持备份与哈希一致。`GET /api/assets/:id/bedrock` 导出 geometry、animation、来源信息和占位贴图 ZIP。`/bbmodel` 同时支持动画模型。
+
+Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationClip；未绑定时使用原创立方体角色与 walk 动画。生成器输出实体行为、client entity、几何、动画、渲染控制器和刷怪蛋，打包时检查引用。Java 实体仍使用原版原型，不接受这些自定义模型/动画字段。Bedrock 不接受 Java rescale 和 UV 面旋转。
+
+`POST /api/providers/openai-compatible/asset` 可增加 `referenceId`。只发送用户明确选中的 image 资源，以 Chat Completions image_url/data URI 传递；需要供应商模型支持视觉输入。未选择图片时保持纯文本协议；真实视觉服务按用户要求未联调。

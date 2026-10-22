@@ -178,7 +178,13 @@ export class BuildManager {
     void this.run(job, snapshot).catch(async () => {
       job.child?.kill('SIGTERM');
       if (job.record.type === 'build') await this.removeContainer(job.record.id);
-      this.finish(job, 'failed', '构建启动失败，请检查 Docker、镜像与数据目录权限。');
+      this.finish(
+        job,
+        'failed',
+        record.targetId?.startsWith('bedrock-')
+          ? '本地包校验失败，请检查工程文件与资源引用。'
+          : '构建启动失败，请检查 Docker、镜像与数据目录权限。',
+      );
     });
     return record;
   }

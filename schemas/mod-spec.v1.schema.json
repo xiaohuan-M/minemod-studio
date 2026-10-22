@@ -393,6 +393,12 @@
           },
           "textureAsset": {
             "$ref": "#/$defs/uuid"
+          },
+          "modelAsset": {
+            "$ref": "#/$defs/uuid"
+          },
+          "animationClip": {
+            "$ref": "#/$defs/id"
           }
         }
       }
