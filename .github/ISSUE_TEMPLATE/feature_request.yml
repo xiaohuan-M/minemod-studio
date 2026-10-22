@@ -1,0 +1,15 @@
+name: Feature request
+description: 提议具体场景与可验证的能力。
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: 谁在什么情况下需要这个能力？
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 怎样确认它完成了？
+    validations:
+      required: true

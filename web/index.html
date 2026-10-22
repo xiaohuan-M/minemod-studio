@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MineMod Studio · 本地模组工坊</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header><a class="brand" href="/">▦ MineMod Studio</a><span class="badge">LOCAL · M0</span></header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">你的想法，你的工程</p>
+      <h1>从一个点子，<br>开始创造方块世界。</h1>
+      <p>开源、本地优先的 AI 模组工坊。先记录想法，再逐步构建可玩的作品。</p>
+      <aside><strong>当前是开发基础版</strong><br>可创建本地项目和查看演示计划。AI 接入、代码生成、真实编译和 JAR 导出尚未实现。无需 API Key，不向外部发送请求。</aside>
+    </section>
+    <div class="workspace">
+      <section class="panel">
+        <h2>新建项目</h2>
+        <form id="create-form">
+          <label for="name">项目名称</label>
+          <input id="name" name="name" placeholder="例如：雷霆工坊" maxlength="80" required>
+          <label for="prompt">你想做什么？</label>
+          <textarea id="prompt" name="prompt" placeholder="描述物品、方块和玩法，以及你希望玩家获得的体验……" maxlength="4000" rows="5" required></textarea>
+          <p class="target">计划首发目标 · Fabric / Minecraft 1.21.1 / Java 21</p>
+          <button type="submit" id="create-button">保存到本地</button>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>我的项目</h2>
+        <p id="empty">还没有项目。写下第一个想法吧。</p>
+        <ul id="projects" class="projects"></ul>
+      </section>
+    </div>
+    <section id="detail" class="panel detail" hidden>
+      <p class="eyebrow">项目详情</p>
+      <h2 id="project-title"></h2>
+      <p id="project-prompt" class="preserve"></p>
+      <button type="button" id="plan-button">查看离线演示计划</button>
+      <div id="plan" hidden><p class="demo-label">流程演示 · 未调用大模型 · 未构建</p><p id="plan-summary" class="preserve"></p><ol id="steps"></ol><ul id="assumptions"></ul></div>
+    </section>
+    <p id="feedback" role="status" aria-live="polite"></p>
+  </main>
+  <footer>MineMod Studio · 独立开源项目，与 AutoMods、Mojang 或 Microsoft 无关联。</footer>
+</body>
+</html>

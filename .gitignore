@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.minemod/
+coverage/
+dist/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.jar
+*.class
+.gradle/
+build/
