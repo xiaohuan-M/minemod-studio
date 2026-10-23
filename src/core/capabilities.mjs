@@ -13,6 +13,8 @@ export function capabilities() {
       specExport: true,
       specHistory: true,
       llmPlanning: true,
+      providerProfiles: true,
+      liveProviderSwitching: true,
       codeGeneration: true,
       textureGeneration: true,
       textureEditor: true,

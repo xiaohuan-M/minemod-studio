@@ -24,6 +24,26 @@ try {
     errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('http://127.0.0.1:' + server.address().port);
+  await page.locator('#provider-settings > summary').click();
+  await page.fill('#profile-name', '浏览器服务');
+  await page.fill('#profile-base-url', 'http://127.0.0.1:9/v1');
+  await page.fill('#profile-model', 'browser-fixture');
+  await page.fill('#profile-key', 'browser-fixture-secret-not-real');
+  const saveProfile = page.waitForResponse(
+    (r) => r.url().endsWith('/api/settings/providers') && r.request().method() === 'POST',
+  );
+  await page.click('#profile-save');
+  const savedProfileResponse = await saveProfile;
+  assert.equal(savedProfileResponse.status(), 201);
+  const profileState = await savedProfileResponse.json();
+  const profileId = profileState.profiles[0].id;
+  assert.equal(profileState.profiles[0].hasApiKey, true);
+  assert.ok(!JSON.stringify(profileState).includes('browser-fixture-secret-not-real'));
+  await page.selectOption('#active-text-profile', profileId);
+  await page.click('#activate-text-profile');
+  await page.waitForFunction(() =>
+    document.querySelector('#provider-info').textContent.includes('browser-fixture'),
+  );
   await page
     .locator('#target-select option[value="bedrock-1.21.60"]')
     .waitFor({ state: 'attached' });
@@ -32,6 +52,32 @@ try {
   await page.selectOption('#target-select', 'bedrock-1.21.60');
   await page.click('#create-button');
   await page.locator('#project-title').filter({ hasText: '浏览器附加包' }).waitFor();
+  await page.selectOption('#provider-select', 'openai-compatible');
+  await page.check('#model-consent');
+  await page.locator('#provider-profiles-list button').filter({ hasText: '编辑配置' }).click();
+  assert.equal(await page.inputValue('#profile-key'), '');
+  await page.fill('#profile-name', '浏览器保留密钥');
+  const editProfile = page.waitForResponse(
+    (r) =>
+      r.url().endsWith('/api/settings/providers/' + profileId) && r.request().method() === 'PUT',
+  );
+  await page.click('#profile-save');
+  assert.equal((await (await editProfile).json()).profiles[0].hasApiKey, true);
+  await page.waitForFunction(() => !document.querySelector('#model-consent').checked);
+  await page.selectOption('#active-text-profile', '');
+  await page.click('#activate-text-profile');
+  await page.waitForFunction(
+    () => !document.querySelector('#provider-info').textContent.includes('browser-fixture'),
+  );
+  await page.selectOption('#provider-select', 'mock');
+  assert.equal(
+    await page.evaluate(() =>
+      JSON.stringify({ local: localStorage, session: sessionStorage }).includes(
+        'browser-fixture-secret-not-real',
+      ),
+    ),
+    false,
+  );
   await page.locator('#proposal-panel summary').click();
   await page.click('#proposal-button');
   await page.waitForFunction(() => document.querySelectorAll('#proposals-list .card').length === 3);
@@ -114,6 +160,7 @@ try {
     (id) => fetch('/api/projects/' + id + '/backup').then((r) => r.json()),
     projectId,
   );
+  assert.ok(!JSON.stringify(backup).includes('browser-fixture-secret-not-real'));
   const importResponse = page.waitForResponse((r) =>
     r.url().endsWith('/api/projects/import-backup'),
   );
@@ -161,7 +208,7 @@ try {
   assert.deepEqual(fallbackErrors, []);
   await fallback.close();
   console.log(
-    'Browser passed: proposals/conversation, targets, WebGL/UV, animated entity editing, MCADDON export, portable backup, mobile layout and editing without WebGL.',
+    'Browser passed: provider settings and consent reset, proposals/conversation, targets, WebGL/UV, animated entities, MCADDON, secret-free backups, mobile layout and editing without WebGL.',
   );
 } finally {
   await browser?.close();

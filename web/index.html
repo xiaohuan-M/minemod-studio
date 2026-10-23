@@ -10,7 +10,7 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.3</span>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.4</span>
     </header>
     <main>
       <section class="intro">
@@ -23,6 +23,127 @@
           实体。选择 Fabric、Forge、NeoForge 或 Bedrock 目标，导出源码与作品。 Java 编译需要
           Docker，Bedrock 本地打包无需 Docker；支持范围随目标显示。
         </aside>
+      </section>
+      <section class="panel settings-panel">
+        <details id="provider-settings">
+          <summary>模型与 API 设置</summary>
+          <p>
+            保存多个文本或图像服务并即时切换。保存和切换不会发送模型请求。密钥保存在本机服务的数据目录，不会回传、写入浏览器存储或随项目备份导出；它与
+            .env 一样是本机私有配置文件。
+          </p>
+          <fieldset id="provider-settings-fields">
+            <div class="workspace">
+              <div>
+                <label for="active-text-profile">当前文本服务</label
+                ><select id="active-text-profile"></select
+                ><button id="activate-text-profile" type="button">启用文本服务</button>
+              </div>
+              <div>
+                <label for="active-image-profile">当前图像服务</label
+                ><select id="active-image-profile"></select
+                ><button id="activate-image-profile" type="button">启用图像服务</button>
+              </div>
+            </div>
+            <h3 id="profile-form-title">新增服务配置</h3>
+            <form id="provider-profile-form" autocomplete="off">
+              <div class="workspace">
+                <div>
+                  <label for="profile-name">配置名称</label
+                  ><input
+                    id="profile-name"
+                    maxlength="60"
+                    placeholder="例如：我的日常模型"
+                    required
+                  />
+                  <label for="profile-kind">服务类型</label
+                  ><select id="profile-kind">
+                    <option value="text">文本 / 视觉 · Chat Completions</option>
+                    <option value="image">图像 · Images API</option>
+                  </select>
+                  <label for="profile-base-url">API Base URL</label
+                  ><input
+                    id="profile-base-url"
+                    type="url"
+                    maxlength="2048"
+                    placeholder="https://your-provider.example/v1"
+                    required
+                  />
+                  <label for="profile-model">模型名称</label
+                  ><input
+                    id="profile-model"
+                    maxlength="200"
+                    placeholder="服务商提供的模型 ID"
+                    required
+                  />
+                  <label for="profile-key">API Key</label
+                  ><input
+                    id="profile-key"
+                    type="password"
+                    autocomplete="new-password"
+                    maxlength="8192"
+                    placeholder="仅提交到本机服务；编辑时留空保留"
+                  />
+                  <label class="consent"
+                    ><input
+                      id="profile-clear-key"
+                      type="checkbox"
+                    />清除已保存密钥（本机免密端点）</label
+                  >
+                </div>
+                <div>
+                  <label for="profile-timeout">超时（毫秒）</label
+                  ><input
+                    id="profile-timeout"
+                    type="number"
+                    min="1000"
+                    max="120000"
+                    value="45000"
+                    required
+                  />
+                  <div id="profile-text-options">
+                    <label for="profile-max-tokens">最大输出 token</label
+                    ><input
+                      id="profile-max-tokens"
+                      type="number"
+                      min="256"
+                      max="8192"
+                      value="4096"
+                    />
+                    <label for="profile-token-field">Token 参数</label
+                    ><select id="profile-token-field">
+                      <option value="max_tokens">max_tokens</option>
+                      <option value="max_completion_tokens">max_completion_tokens</option>
+                    </select>
+                    <label class="consent"
+                      ><input id="profile-json-mode" type="checkbox" checked />发送 JSON
+                      模式参数</label
+                    >
+                  </div>
+                  <div id="profile-image-options" hidden>
+                    <label for="profile-response-format">图片响应参数</label
+                    ><select id="profile-response-format">
+                      <option value="b64_json">发送 response_format=b64_json</option>
+                      <option value="auto">省略参数，仍要求 base64 PNG 返回</option>
+                    </select>
+                  </div>
+                  <p>
+                    远程地址必须使用 HTTPS；本机可以使用 http://127.0.0.1:11434/v1
+                    并省略密钥。文本与图像协议独立配置。
+                  </p>
+                </div>
+              </div>
+              <div class="actions">
+                <button id="profile-save" type="submit">保存配置</button
+                ><button id="profile-reset" type="button" class="secondary">取消编辑 / 新建</button>
+              </div>
+            </form>
+            <h3>已保存配置</h3>
+            <p id="provider-profiles-empty">尚无网页配置；现有环境变量继续有效。</p>
+            <div id="provider-profiles-list" class="inventory"></div>
+            <button id="settings-refresh" type="button" class="secondary">刷新设置</button>
+          </fieldset>
+          <p id="settings-status" role="status" aria-live="polite"></p>
+        </details>
       </section>
       <div class="workspace">
         <section class="panel">
@@ -97,8 +218,9 @@
             <details>
               <summary>配置我的 API</summary>
               <p>
-                在运行服务的电脑上，将 .env.example 复制为
-                .env，填写以下配置并重启。密钥只保存在服务端文件中，不填入网页。
+                可直接使用页面上方“模型与 API
+                设置”保存并启用服务，无需重启。也可以在运行服务的电脑上，将 .env.example 复制为
+                .env，填写以下配置并重启；网页配置优先，切回“环境变量”即可恢复原配置。
               </p>
               <pre>
 MINEMOD_LLM_BASE_URL=https://your-provider.example/v1

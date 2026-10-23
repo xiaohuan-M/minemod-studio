@@ -1,4 +1,5 @@
 import { initProjectHub } from './studio/project-hub.js';
+import { initProviderSettings } from './studio/provider-settings.js';
 import { initWorkshop } from './workshop.js';
 const $ = (id) => document.getElementById(id);
 let selected = null;
@@ -337,16 +338,26 @@ window.addEventListener('beforeunload', (event) => {
   }
 });
 
-async function initialize() {
+async function refreshProviderState() {
   const { providers } = await api('/api/providers');
   llm = providers.find((provider) => provider.id === 'openai-compatible');
   $('provider-info').textContent = llm?.configured
     ? '目标：' + llm.baseUrl + '\n模型：' + llm.model + '\n超时：' + llm.timeoutMs / 1000 + ' 秒'
-    : (llm?.configurationError ?? '尚未配置自定义模型。请按下方说明填写服务端 .env 并重启。');
+    : (llm?.configurationError ?? '尚未配置自定义模型，请在页面上方模型设置中保存并启用服务。');
+  $('model-consent').checked = false;
+  $('ai-asset-consent').checked = false;
+  actions();
+}
+async function initialize() {
+  await refreshProviderState();
   await refresh();
   actions();
 }
 initialize().catch((error) => feedback('初始化失败：' + error.message, true));
+document.addEventListener('providers-changed', () => {
+  void refreshProviderState().catch((error) => feedback(error.message, true));
+});
+initProviderSettings({ api });
 
 async function refreshHistory(id) {
   const requestId = ++historyRequest;

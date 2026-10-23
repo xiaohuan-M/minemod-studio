@@ -1,10 +1,10 @@
-# HTTP API · 0.3
+# HTTP API · 0.4
 
 Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发服务，非公共服务 API；没有远程认证或权限管理，不支持反向代理。JSON 请求上限 24 KiB；创建时名称 1–80 字符、需求 1–4000 字符（按 JavaScript string.length）。字段会去除两端空白。
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.3.0",stage:"multi-target-workshop-preview"}` |
+| GET | `/api/health` | `{ok:true,version:"0.4.0",stage:"multi-target-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt,targetId?}` → 201，返回 Project |
@@ -178,3 +178,19 @@ texture data 为 `{width,height,pixels}`，边长 16/32/64，每个像素 `#RRGG
 Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationClip；未绑定时使用原创立方体角色与 walk 动画。生成器输出实体行为、client entity、几何、动画、渲染控制器和刷怪蛋，打包时检查引用。Java 实体仍使用原版原型，不接受这些自定义模型/动画字段。Bedrock 不接受 Java rescale 和 UV 面旋转。
 
 `POST /api/providers/openai-compatible/asset` 可增加 `referenceId`。只发送用户明确选中的 image 资源，以 Chat Completions image_url/data URI 传递；需要供应商模型支持视觉输入。未选择图片时保持纯文本协议；真实视觉服务按用户要求未联调。
+
+## 网页服务设置 · 0.4
+
+| 方法 | 路径 | 请求与结果 |
+| --- | --- | --- |
+| GET | `/api/settings/providers` | revision、active.text/image、脱敏 profiles、environment 回退公开信息、limit=20 |
+| POST | `/api/settings/providers` | `{revision,name,kind,baseUrl,model,apiKey?,options?}`，新建配置 → 201；不自动启用 |
+| PUT | `/api/settings/providers/:id` | 同上；kind 不可改，apiKey 省略保留原值，空字符串清除 |
+| POST | `/api/settings/providers/activate` | `{revision,kind,profileId}`，kind=text/image；profileId=null 切回启动环境 |
+| DELETE | `/api/settings/providers/:id` | `{revision}`；禁止删除正在启用的配置 |
+
+公开 profile 为 id/name/kind/baseUrl/model/options/updatedAt/hasApiKey，不包含密钥。文本 options 为 timeoutMs=1000–120000、maxTokens=256–8192、jsonMode:boolean、tokenField=max_tokens|max_completion_tokens；图像 options 为 timeoutMs=1000–180000、responseFormat=b64_json|auto。未填写采用默认值，编辑省略 options 保留原选项。远程 HTTPS 需密钥，本机 HTTP 可免密。
+
+所有写操作都需当前设置 revision，与项目 revision 独立。409 SETTINGS_CHANGED 表示其他页面已修改；409 PROVIDER_REQUEST_ACTIVE 表示模型请求运行中；409 PROFILE_IN_USE 表示不可删除启用项；422 INVALID_PROVIDER_PROFILE / PROFILE_LIMIT / PROFILE_NOT_FOUND 表示数据或选择不正确。所有成功设置修改都更新调用配置标识，旧 consent 返回 400。更改/保存不会调用服务，也不覆盖 .env。
+
+设置为本机私有文件，重启保留；不在项目/资源备份、源码或发行包中。首次输入密钥经本机 HTTP 提交，后续 GET 从不回传；此服务仍仅允许回环使用，不能直接作为公开站点后端。

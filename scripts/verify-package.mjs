@@ -86,11 +86,13 @@ try {
     '/workshop.js',
     '/model-preview.js',
     '/studio/animation-editor.js',
+    '/studio/provider-settings.js',
     '/vendor/three.js',
     '/vendor/three.core.js',
     '/vendor/OrbitControls.js',
   ])
     await get(path);
+  assert.deepEqual((await (await get('/api/settings/providers')).json()).profiles, []);
   const made = await fetch(base + '/api/projects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

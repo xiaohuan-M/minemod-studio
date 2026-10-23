@@ -4,7 +4,9 @@
 
 ## 服务端配置
 
-将 `.env.example` 复制为未跟踪的 `.env`，填写并重启 `npm start`。
+推荐使用页面上方“模型与 API 设置”：保存文本/图像服务，分别选择并启用，立即生效，无需重启。最多 20 个配置；保存或启用均不调用外部模型。编辑时密钥留空表示保留，勾选清除可用于免密本机端点。环境变量配置继续支持：将 `.env.example` 复制为未跟踪的 `.env`，填写并重启 `npm start`。
+
+网页配置存于数据目录的 `settings/`，文件权限在 POSIX 系统为 0600；这是本机私有明文文件，Windows 依赖用户目录 ACL，不是系统钥匙串。接口仅返回 hasApiKey，不返回密钥内容，浏览器不写 localStorage/sessionStorage，项目/资源备份不包含设置。复制整个数据目录时须将它当作含密钥的私人备份。切回“环境变量”恢复启动时配置，不覆盖用户 .env。
 
 | 变量 | 含义 / 默认 |
 | --- | --- |
@@ -20,7 +22,7 @@
 
 ## 调用与确认
 
-网页只显示脱敏的配置元信息，不接受 URL/密钥覆盖，也不保存 API Key。切换到“我的 LLM API”后显示目的地址、模型以及将发送的项目名称、需求文本、目标版本、当前规格和修改要求；勾选确认后才能发起生成。每次调用结束会重置确认。服务重启会变更 configurationId，旧页面须刷新。
+模型调用接口只接受已启用配置的 configurationId，不接受逐次 URL/密钥覆盖。专用本机设置接口可保存服务地址/密钥；更改设置会更新 configurationId，之前的确认立即失效。任何文本/图像请求运行时禁止修改设置，多个页面通过设置 revision 防止互相覆盖。切换到“我的 LLM API”后显示目的地址、模型以及将发送的项目名称、需求文本、目标版本、当前规格和修改要求；勾选确认后才能发起生成。每次调用结束会重置确认。服务重启会变更 configurationId，旧页面须刷新。
 
 连接测试同样需要确认，会向所选模型发送固定样例，验证返回的 ModSpec，不包含项目内容，也可能计费。测试通过不代表玩法质量、全协议或其他模型兼容。
 
@@ -42,6 +44,6 @@ CI 使用本机假服务验证真实 HTTP 请求形状、认证头、JSON 模式
 
 ## 图像服务（独立可选配置）
 
-设置 `MINEMOD_IMAGE_BASE_URL`、`MINEMOD_IMAGE_MODEL`、`MINEMOD_IMAGE_API_KEY` 并重启。支持 OpenAI 风格的 `/images/generations` 和 `/images/edits`，单张 1024×1024、base64 PNG。默认发送 response_format=b64_json；不接受该参数的模型可设 `MINEMOD_IMAGE_RESPONSE_FORMAT=auto`，但响应仍必须含 b64_json PNG。超时默认 120 秒，可用 `MINEMOD_IMAGE_TIMEOUT_MS` 在 1000–180000 范围调整。
+可在设置页创建并启用图像配置，或设置 `MINEMOD_IMAGE_BASE_URL`、`MINEMOD_IMAGE_MODEL`、`MINEMOD_IMAGE_API_KEY` 并重启。支持 OpenAI 风格的 `/images/generations` 和 `/images/edits`，单张 1024×1024、base64 PNG。默认发送 response_format=b64_json；不接受该参数的模型可设 `MINEMOD_IMAGE_RESPONSE_FORMAT=auto`，但响应仍必须含 b64_json PNG。超时默认 120 秒，可用 `MINEMOD_IMAGE_TIMEOUT_MS` 在 1000–180000 范围调整。
 
 这是明确的兼容协议范围，不能保证所有厂商私有图像 API 可用。没有真实图像密钥时只验证本地模拟协议；生成质量、三视图一致性及参考还原度需要实际模型与人工审查。PNG 导入、资源保存与像素转换无需图像 API。

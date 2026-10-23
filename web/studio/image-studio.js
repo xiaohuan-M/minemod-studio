@@ -8,14 +8,18 @@ export function initImageStudio({ api, request, run, assetPayload, refreshAssets
   let provider = null,
     pending = null,
     controller = null;
-  api('/api/image-provider')
-    .then((info) => {
-      provider = info;
-      $('image-provider-info').textContent = info.configured
-        ? info.baseUrl + ' · ' + info.model
-        : '尚未配置图像服务；PNG 导入、保存、像素转换均可离线使用。配置独立 MINEMOD_IMAGE_BASE_URL / MODEL / API_KEY 后重启。';
-    })
-    .catch((e) => feedback(e.message, true));
+  const reloadProvider = () =>
+    api('/api/image-provider')
+      .then((info) => {
+        provider = info;
+        $('image-consent').checked = false;
+        $('image-provider-info').textContent = info.configured
+          ? info.baseUrl + ' · ' + info.model
+          : '尚未配置图像服务；请在页面上方模型设置中启用。PNG 导入、保存、像素转换均可离线使用。';
+      })
+      .catch((e) => feedback(e.message, true));
+  void reloadProvider();
+  document.addEventListener('providers-changed', reloadProvider);
   const show = (data) => {
     pending = data;
     $('image-preview').src = 'data:image/png;base64,' + data.png;
@@ -43,7 +47,7 @@ export function initImageStudio({ api, request, run, assetPayload, refreshAssets
     feedback('PNG 已校验并保存到本地图片库。');
   });
   $('image-generate').onclick = run(async () => {
-    if (!provider?.configured) throw new Error('请先配置独立图像服务并重启。');
+    if (!provider?.configured) throw new Error('请在模型设置中启用独立图像服务。');
     if (!$('image-consent').checked) throw new Error('请确认本次发送描述和所选参考图。');
     if (controller) throw new Error('已有图片请求。');
     controller = new AbortController();

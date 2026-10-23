@@ -1,4 +1,8 @@
 import { acquireDataLock } from './storage/data-lock.mjs';
+import { randomUUID } from 'node:crypto';
+import { ProviderProfileStore } from './storage/provider-profile-store.mjs';
+import { providerFromProfile } from './providers/profile-runtime.mjs';
+import { providerSettingsRoutes } from './provider-settings-routes.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +26,10 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  [
+    '/studio/provider-settings.js',
+    ['studio/provider-settings.js', 'text/javascript; charset=utf-8'],
+  ],
   ['/studio/animation-editor.js', ['studio/animation-editor.js', 'text/javascript; charset=utf-8']],
   [
     '/studio/animation-timeline.js',
@@ -81,8 +89,9 @@ async function body(request, limit = MAX_BODY) {
 
 export function makeServer({ dataDir, llmProvider = null, imageProvider = null }) {
   const releaseLock = acquireDataLock(dataDir);
-  let store, workshop;
+  let store, workshop, profiles;
   try {
+    profiles = new ProviderProfileStore(dataDir);
     store = new ProjectStore(dataDir);
     workshop = workshopServices(dataDir, store);
   } catch (error) {
@@ -90,13 +99,34 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
     throw error;
   }
   const active = new Map();
+  const fallback = { text: llmProvider, image: imageProvider };
+  function configureProviders(rotate = false) {
+    const resolve = (kind) => {
+      const selected = profiles.selected(kind);
+      if (selected) return providerFromProfile(selected);
+      const p = fallback[kind];
+      return p && rotate ? { ...p, info: { ...p.info, configurationId: randomUUID() } } : p;
+    };
+    llmProvider = resolve('text');
+    imageProvider = resolve('image');
+  }
+  configureProviders();
+  const settingsRoute = providerSettingsRoutes({
+    profiles,
+    isActive: () => active.size > 0,
+    onChanged: () => configureProviders(true),
+    environment: {
+      text: fallback.text?.info ?? { configured: false },
+      image: fallback.image?.info ?? { configured: false },
+    },
+  });
 
   function requireConsent(input) {
     if (!llmProvider?.info.configured)
       throw new AppError(
         409,
         'PROVIDER_NOT_CONFIGURED',
-        '请先在服务端 .env 中配置 LLM 基址、模型和密钥，然后重启服务。',
+        '请在模型设置中保存并启用文本服务，或通过服务端 .env 配置。',
       );
     if (input.consent !== llmProvider.info.configurationId)
       throw new AppError(400, 'CONSENT_REQUIRED', '请先核对当前服务商、模型和发送内容并明确确认。');
@@ -139,6 +169,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           throw new AppError(403, 'ORIGIN_DENIED', '不允许跨站请求。');
         const url = new URL(request.url, origin);
         const pathname = url.pathname;
+        if (await settingsRoute({ request, response, url, json, body, fields })) return;
         if (await workshop.route({ request, response, url, json, body, fields, publicProject }))
           return;
         if (request.method === 'GET' && VENDORS.has(pathname)) {
@@ -158,11 +189,13 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
         } else if (request.method === 'POST' && pathname === '/api/image-provider/generate') {
           const input = fields(await body(request), ['prompt', 'view', 'referenceId', 'consent']);
           if (!imageProvider?.info.configured)
-            throw new AppError(409, 'IMAGE_NOT_CONFIGURED', '请先配置独立图像服务并重启。');
+            throw new AppError(409, 'IMAGE_NOT_CONFIGURED', '请在模型设置中启用独立图像服务。');
           if (input.consent !== imageProvider.info.configurationId)
             throw new AppError(400, 'CONSENT_REQUIRED', '请核对图像服务并确认本次发送内容。');
           if (active.has('image-generation'))
             throw new AppError(409, 'PLANNING_ACTIVE', '已有图像请求正在运行。');
+          if (active.size >= 2)
+            throw new AppError(429, 'PLANNING_LIMIT', '最多同时运行两个模型请求，请稍后再试。');
           let reference = null;
           if (input.referenceId) {
             const asset = workshop.assets.get(input.referenceId);

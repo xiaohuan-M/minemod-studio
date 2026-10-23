@@ -2,7 +2,7 @@
 
 **完全公开源码、自带 AI 服务、数据保存在自己电脑上的 Minecraft 创作工具。** 用自然语言或表单设计内容，制作贴图与模型，审查源码，编译 Java 模组或打包 Bedrock 附加包。代码采用 MIT 许可，无强制账号、积分、订阅或遥测。
 
-当前版本 **0.3.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
+当前版本 **0.4.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
 
 ## 支持目标
 
@@ -20,7 +20,7 @@
 
 需要 **Node.js 24.5+**。选择一种方式：
 
-- **便携 ZIP**：解压 `minemod-studio-0.3.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
+- **便携 ZIP**：解压 `minemod-studio-0.4.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
 - **从源码启动**：
 
 ```sh
@@ -47,7 +47,9 @@ Java 使用锁版本的 Gradle/JDK 容器；也可在源码包中用匹配 JDK �
 
 ## 自带模型与图片服务
 
-复制 `.env.example` 为 `.env`，填写服务端配置并重启：
+推荐直接打开页面上方 **“模型与 API 设置”**，填写名称、Base URL、模型和密钥，保存后选择启用。支持最多 20 个文本/图像配置，即时切换，无需重启；保存本身不调用模型。编辑时密钥留空保留原值，接口只返回是否已保存密钥。
+
+也可以复制 `.env.example` 为 `.env`，填写服务端配置并重启：
 
 ```dotenv
 MINEMOD_LLM_BASE_URL=https://your-provider.example/v1
@@ -55,7 +57,7 @@ MINEMOD_LLM_MODEL=your-model
 MINEMOD_LLM_API_KEY=your-key
 ```
 
-支持 OpenAI-compatible Chat Completions。可以接本机 `http://127.0.0.1:11434/v1`，本机端点允许无密钥；远程服务需 HTTPS 和密钥。文本、图像服务独立配置，`MINEMOD_IMAGE_*` 可接兼容 Images API。参考图生成模型需要文本服务支持视觉输入；图片接口要求返回 base64 PNG。每次调用前可核对目的地与发送内容；密钥不进入浏览器、项目或导出。
+支持 OpenAI-compatible Chat Completions。可以接本机 `http://127.0.0.1:11434/v1`，本机端点允许无密钥；远程服务需 HTTPS 和密钥。文本、图像服务独立配置，`MINEMOD_IMAGE_*` 可接兼容 Images API。参考图生成模型需要文本服务支持视觉输入；图片接口要求返回 base64 PNG。每次调用前可核对目的地与发送内容；网页设置只将用户输入的密钥提交给本机服务，不回传或保存到浏览器存储；密钥不进入项目或导出。
 
 当前指定服务 `https://newapi.nowrise.cn/v1`、模型 `gpt-6-luna` 的真实调用按要求跳过。协议、取消、超时和错误处理通过本机模拟服务测试，不能据此保证该服务当前支持所有接口或模型效果。详见 [模型接入](src/providers/README.md)。
 
@@ -88,5 +90,7 @@ npm run test:package # 解压后独立启动与文件校验
 ## 数据与许可
 
 应用代码 [MIT](LICENSE)；便携包保留第三方依赖及其许可证，`RELEASE-MANIFEST.json` 列出源提交、运行依赖与文件哈希。Minecraft、加载器和用户素材保留各自许可，本站 MIT 不为其重新授权。独立原创目录见 [community](community/README.md)。
+
+网页服务配置保存在 `.minemod/settings/` 私有文件中，不包含在项目备份和资源包中；复制整个数据目录时应作为含密钥的私人备份保管。
 
 项目备份包含需求/会话、规格、关联素材、源码快照与产物，最多 32 MiB；分享前自行确认内容。升级前停止服务并备份 `.minemod/`，新目录解压程序后迁移数据和 `.env`，不要覆盖运行中的数据。无数据库级断电事务保证。接口、规格与安全边界见 [API](docs/API.md)、[ModSpec](docs/MODSPEC.md)、[SECURITY](SECURITY.md)。
