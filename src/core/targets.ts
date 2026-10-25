@@ -11,6 +11,7 @@ const features = [
   'textures',
   'static_models',
   'vanilla_entity_archetypes',
+  'server_game_tests',
 ];
 const descriptors: readonly TargetDescriptor[] = [
   {

@@ -182,6 +182,10 @@
                 ><input id="creation-code" type="checkbox" checked />生成并修复 Java
                 玩法代码（可下载审查源码；本流程不启动游戏）</label
               >
+              <label class="consent"
+                ><input id="creation-game-tests" type="checkbox" checked />编译后运行支持目标的临时
+                Minecraft 服务器检查（游戏阶段断网）</label
+              >
               <label
                 >本轮模型调用上限<input
                   id="creation-max-calls"
@@ -201,7 +205,7 @@
                 ><input
                   id="creation-approved"
                   type="checkbox"
-                />我已核对模型服务，允许在上述限额内发送需求、当前内容及失败日志，生成素材并自动构建本轮工程。</label
+                />我已核对模型服务，允许在上述限额内发送需求、当前内容及失败日志，生成素材、自动构建，并按所选范围运行临时游戏服务器检查。</label
               >
               <button type="button" id="create-automatically">从这句话开始制作</button>
             </details>
@@ -1037,6 +1041,7 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
           >
           <div class="actions">
             <button id="start-build">构建已批准的当前工程</button
+            ><button id="run-server-tests" class="secondary">运行临时 Minecraft 服务器检查</button
             ><button id="cancel-build" class="secondary" hidden>取消任务</button>
           </div>
           <p id="build-state" role="status"></p>

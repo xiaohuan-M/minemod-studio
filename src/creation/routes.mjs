@@ -8,6 +8,7 @@ const options = [
   'textures',
   'models',
   'code',
+  'gameTests',
   'maxCalls',
   'maxRepairs',
   'allowNetwork',

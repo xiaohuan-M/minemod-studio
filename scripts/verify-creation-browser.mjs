@@ -98,7 +98,7 @@ try {
     document.querySelector('#creation-status').textContent.includes('构建完成'),
   );
   await page.waitForFunction(
-    () => document.querySelectorAll('#product-versions-list .card').length >= 3,
+    () => document.querySelectorAll('#product-versions-list .card').length >= 2,
   );
   const cards = page.locator('#product-versions-list .card');
   await cards

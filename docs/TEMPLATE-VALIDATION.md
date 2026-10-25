@@ -123,3 +123,23 @@ Chromium 实际编辑实体及方块掉落，再修改生命/硬度，确认掉�
 五目标资源回归实际比较模型内 PNG 与 Java 物品/Bedrock 实体包资源的字节一致性；实际 HTTP 验证一句模型需求触发几何和贴图两次调用、后续几何修改保留贴图，以及 bbmodel 内 PNG 和重新导入后的完整纹理模型。动画校验仍通过幂等和旧记录回归。
 
 Fabric 1.21.1 自动创作重新真实编译通过，21 次本机测试模型调用、19 项素材。工程 SHA-256 `be4558214ff43658857c89e892bbcdb4a3a5c4b51c11986ae34e34ee3a5d6596`；JAR 24,964 字节，SHA-256 `c8b659c98679a52b3f2731ed83822549e8ba6ebbe043030d512b437a3d30d7b3`。显式内容贴图未改变，所以本次 JAR 与前一轮相同；源工程的内置素材数据和关联不同。不是游戏视觉验证。
+
+
+## 2026-10-25 · 0.9 真实服务端 GameTest
+
+四目标通过应用的自动创作入口：固定本机模型样例 → 19 个素材 → 受控 Java 扩展 → 实际 Gradle 构建 → 准备运行依赖 → 独立断网临时 Minecraft 服务器 → 完整作品版本。每目标 21 次样例模型调用，0 轮修复；没有商业 API 请求。模型是样例，编译和游戏进程是真实执行。
+
+每目标检查注册/堆叠、资源加载后的配方、实体创建/生命/移动、方块放置与五次掉落的允许引用和数量范围，共四组。未验证掉落概率分布、客户端渲染、任意新玩法、多人和 Bedrock 游戏导入。`scope=headless-server`，`clientVisualTested=false`。
+
+| 目标 | 工程 SHA-256 | JAR SHA-256 / 字节 | 原始检查报告 SHA-256 |
+| --- | --- | --- | --- |
+| fabric-1.21.1 | `5664a40a5a249fcb08285d60bf39ce4322a85963136e6f215035c1533437a2ec` | `720f7430df66c06fd263cc4128a4af434493198c7e3711bd9d4703ec0ce79b46` / 29508 | `d3849a0a668af1c643d403ef6d82c77c97c82e51e97102eb55a62d25ad4cbb27` |
+| fabric-1.20.1 | `31b094fbbdd9ec62ea0f1592ba2730f3ce81fe037c52c199ad69a205ad821246` | `7e0d2b59ab9ce3e09f3faf70397124350da8f81ad1f3453d04d11ef335f6494d` / 29401 | `bb2819299651aa55e0a3b2d59bd755eb5f6d724ed2e9a86b765b5f68f5ac6136` |
+| forge-1.20.1 | `29dc4ca8701a7283fffeafd25bb007c73c6f4364ec11a6a153f229691ae06941` | `8c4fb0715e04fa66b2dadeb248ce97b35cac5a0bb00cbb3e90d26f51716307a1` / 31954 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+| neoforge-1.21.1 | `d607684b670d3cff0590f5e5834e3807780ed5e05f95f5a349c3cc7a5c97b6a4` | `b23bcf7c3a95e8a6b6e4bb330f9d8ab6430aa6d2995d269c3980181a20958024` / 30580 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+
+本机原始记录目录：`.minemod/creation-validation-LUPHg6`、`.minemod/creation-validation-uQNcZO`、`.minemod/creation-validation-pd5tlO`、`.minemod/creation-validation-7QNOCv`。目录属于独立验证数据，缓存会清理，日志/工程/报告/产物保留；不将游戏依赖或世界文件提交源码仓库。
+
+故障历史：首次 Forge 准备图会连带启动游戏，修复后准备阶段不启动；原默认堆预算造成退出 137，限制 JVM 堆/处理器后通过。NeoForge ModDev 的通用 PrepareRun 隐式下载客户端资产，为 headless 运行单独绑定标明 headless 的属性后，固定服务器库与真正 GameTest 均通过。失败记录未冒充成功。
+
+`npm run verify`：74 项通过；Chromium 两条完整流程通过，格式/语法/ESLint/TypeScript 检查通过。新增检查源保护、缺项/失败收据拒绝、完整版本检查引用和跨目录备份外部证明语义。

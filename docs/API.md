@@ -216,3 +216,13 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 ## 掉落编辑 · 0.8
 
 沿用 PUT spec、确认、工程生成和构建接口，无独立可执行脚本接口。blocks/entities 新增可选 loot 字段，约束见 MODSPEC.md。非法引用/概率/数量/方块击杀条件返回 422 INVALID_SPEC，字段路径定位至具体掉落条目。完整功能示例含方块晶体掉落、守卫玩家击杀概率掉落与牛皮掉落；目标能力列表增加 custom_loot。
+
+
+## 服务端验收（0.9）
+
+- `GET /api/projects/:id/game-tests`：当前项目的独立检查记录。
+- `POST /api/projects/:id/game-tests`：`{ revision, snapshotHash, allowNetwork, buildId }`，要求当前批准的本机工程与对应成功构建，返回异步检查任务。
+- `GET /api/builds/:id/test-report`：成功检查的原始 JSONL；导入备份可下载校验后的外部报告，仍标记未在本机执行。
+- 自动创作输入可带 `gameTests: true`。API 默认 false；网页 Java 创作默认勾选，明确包含临时服务器执行授权。
+
+检查先准备依赖，再在 `--network none` 容器运行 Minecraft。`scope: headless-server`，`clientGameTested: false`；不能把 `gameTested: true` 推断为视觉或任意玩法全部验收。环境失败使用 `GAME_ENVIRONMENT`，恢复后重新准备而不消耗模型修复额度。

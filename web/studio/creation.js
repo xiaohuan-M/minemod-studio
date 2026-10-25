@@ -43,6 +43,7 @@ export function initCreation({
       textures: $('creation-textures').checked,
       models: $('creation-models').checked,
       code: $('creation-code').checked,
+      gameTests: $('creation-game-tests').checked,
       maxCalls: Number($('creation-max-calls').value),
       maxRepairs: Number($('creation-repairs').value),
     };
@@ -94,6 +95,12 @@ export function initCreation({
         link.download = '';
         $('creation-downloads').append(link);
       }
+    if (task.gameTested && task.gameTestId) {
+      const report = node('a', '下载服务器检查报告');
+      report.href = '/api/builds/' + task.gameTestId + '/test-report';
+      report.download = '';
+      $('creation-downloads').append(report);
+    }
     $('creation-error').textContent = task.error?.message ?? '';
   }
   async function poll(id, request) {

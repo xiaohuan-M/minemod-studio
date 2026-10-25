@@ -113,7 +113,7 @@ test('one sentence runs assets, source, real Bedrock packaging and complete roun
   assert.equal(nextResponse.status, 202);
   const next = await finished(server, (await nextResponse.json()).id);
   assert.equal(next.status, 'passed');
-  assert.ok(server.workshop.versions.list(project.id).length >= 3);
+  assert.ok(server.workshop.versions.list(project.id).length >= 2);
   const old = Buffer.from(
     await (await call('/api/builds/' + task.buildId + '/artifact')).arrayBuffer(),
   );

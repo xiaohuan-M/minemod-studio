@@ -3,7 +3,19 @@ set -euo pipefail
 # Fixed entry point. Project input cannot select shell commands or Gradle tasks.
 mode="${1:-offline}"
 if [[ "$mode" != offline && "$mode" != online ]]; then exit 64; fi
-jvm_options=()
+phase="${2:-build}"
+loader="${3:-fabric}"
+case "$phase" in
+  build) task=build ;;
+  prepare-game) task=prepareGameTestRuntime ;;
+  game)
+    if [[ "$mode" != offline ]]; then exit 64; fi
+    case "$loader" in fabric) task=runGametest ;; forge|neoforge) task=runGameTestServer ;; *) exit 64 ;; esac
+    ;;
+  *) exit 64 ;;
+esac
+jvm_options=('-XX:ActiveProcessorCount=2')
+if [[ "$phase" != build ]]; then jvm_options+=('-Xmx1536m'); fi
 if [[ -f /run/minemod-proxy-ca.pem ]]; then
   cp "$JAVA_HOME/lib/security/cacerts" /tmp/minemod-cacerts
   keytool -importcert -noprompt -trustcacerts -alias minemod-session-proxy -file /run/minemod-proxy-ca.pem -keystore /tmp/minemod-cacerts -storepass changeit >/dev/null 2>&1
@@ -22,5 +34,6 @@ fi
 export JAVA_TOOL_OPTIONS="${jvm_options[*]}"
 export GRADLE_USER_HOME=/cache
 args=(--no-daemon --max-workers=2 --console=plain)
+if [[ "$phase" != build ]]; then args+=('-Dorg.gradle.jvmargs=-Xmx768m'); fi
 if [[ "$mode" == offline ]]; then args+=(--offline); fi
-exec gradle "${args[@]}" build
+exec gradle "${args[@]}" "$task"

@@ -63,6 +63,20 @@ export class ProductVersions {
         fail();
       if (build.status === 'passed') this.builds.artifact(id);
     }
+    if (record.checks !== undefined && !Array.isArray(record.checks)) fail();
+    for (const check of record.checks ?? []) {
+      const validation = this.builds.get(check.id),
+        proof = validation.imported ? validation.externalValidation : validation.tests;
+      if (
+        validation.projectId !== record.projectId ||
+        validation.snapshotHash !== record.workspaceHash ||
+        proof?.sha256 !== check.sha256 ||
+        (!validation.imported && validation.status !== 'passed') ||
+        (validation.imported && !record.imported)
+      )
+        fail();
+      this.builds.gameTestReport(check.id);
+    }
     return record;
   }
   get(projectId, id) {
@@ -88,6 +102,7 @@ export class ProductVersions {
       assetCount: record.assets.length,
       taskId: record.taskId ?? null,
       imported: !!record.imported,
+      serverChecks: record.checks ?? [],
     };
   }
   capture(projectId, { label = '保存作品版本', taskId = null } = {}) {
@@ -116,10 +131,27 @@ export class ProductVersions {
       project: structuredClone(project),
       workspaceHash,
       assets: [...ids].map((id) => ({ id, sha256: this.assets.get(id).sha256 })),
+      checks: workspaceHash
+        ? this.builds
+            .list(projectId)
+            .filter(
+              (b) =>
+                b.snapshotHash === workspaceHash &&
+                b.type === 'game-test' &&
+                b.status === 'passed' &&
+                b.tests,
+            )
+            .map((b) => ({
+              id: b.id,
+              scope: b.tests.scope,
+              passed: b.tests.passed,
+              sha256: b.tests.sha256,
+            }))
+        : [],
       buildIds: workspaceHash
         ? this.builds
             .list(projectId)
-            .filter((b) => b.snapshotHash === workspaceHash && b.status === 'passed')
+            .filter((b) => b.snapshotHash === workspaceHash && b.status === 'passed' && b.artifact)
             .map((b) => b.id)
         : [],
     });

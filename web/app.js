@@ -512,6 +512,7 @@ api('/api/targets')
         vanilla_entity_archetypes: '实体原型',
         entities: '实体',
         cube_animation: '立方体动画',
+        server_game_tests: '服务器运行检查',
       };
       $('target-features').textContent =
         labels[target.validation] +

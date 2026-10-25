@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ProjectStore } from '../src/storage/project-store.mjs';
 import { workshopServices } from '../src/workshop-routes.mjs';
 import { placeholderTexture } from '../src/core/assets.mjs';
 import { signVersion } from '../src/storage/product-versions.mjs';
-import { sha256 } from '../src/core/archive.mjs';
+import { sha256, zipFiles } from '../src/core/archive.mjs';
+import { workspaceFiles } from '../src/engineering/generator.mjs';
+import { parseGameTestReceipt } from '../src/engineering/game-tests.mjs';
 import example from '../examples/project-spec.json' with { type: 'json' };
 
 function setup(t) {
@@ -102,4 +105,64 @@ test('corrupt version manifests and missing backup references fail before restor
   backup.checksum = sha256(JSON.stringify(backup));
   assert.throws(() => b.backup.import(backup), { code: 'INVALID_BACKUP' });
   assert.equal(b.store.list().length, 0);
+});
+
+test('complete version distinguishes downloadable artifacts from server receipts and migrates proof without promoting external execution', (t) => {
+  const a = setup(t),
+    b = setup(t);
+  let p = a.store.create({ name: '服务器证据', prompt: '保留检查结果' });
+  p = a.store.setSpec(p.id, example, p.revision);
+  p = a.store.confirmSpec(p.id, p.revision);
+  const w = a.workspaces.generate(p);
+  p = a.store.attachWorkspace(p.id, w, p.revision);
+  const buildId = randomUUID(),
+    checkId = randomUUID(),
+    plan = JSON.parse(workspaceFiles(w)['GAME-TEST-PLAN.json']);
+  // A labelled archive fixture exercises migration; real Minecraft evidence is in test:game.
+  const bytes = zipFiles({ 'fabric.mod.json': Buffer.from(JSON.stringify({ id: example.modId })) });
+  const artifactPath = join(a.builds.root, 'artifacts', buildId);
+  mkdirSync(artifactPath, { recursive: true });
+  writeFileSync(join(artifactPath, 'mod.jar'), bytes);
+  const base = {
+    projectId: p.id,
+    snapshotHash: w.hash,
+    status: 'passed',
+    createdAt: new Date().toISOString(),
+    finishedAt: new Date().toISOString(),
+    log: 'unit migration fixture',
+    targetId: w.targetId,
+    template: w.template,
+  };
+  a.builds.records.write(buildId, {
+    ...base,
+    id: buildId,
+    type: 'unit-fixture',
+    artifact: { name: 'fixture.jar', format: 'jar', size: bytes.length, sha256: sha256(bytes) },
+  });
+  const report = Buffer.from(
+    plan.cases.map((c) => JSON.stringify({ name: c.name, passed: true })).join('\n'),
+  );
+  const reportDir = join(a.builds.root, 'runs', checkId, 'workspace', 'build');
+  mkdirSync(reportDir, { recursive: true });
+  writeFileSync(join(reportDir, 'minemod-game-tests.jsonl'), report);
+  a.builds.records.write(checkId, {
+    ...base,
+    id: checkId,
+    type: 'game-test',
+    artifact: null,
+    gameTested: true,
+    tests: parseGameTestReceipt(report, plan),
+  });
+  const version = a.versions.capture(p.id);
+  assert.deepEqual(version.buildIds, [buildId]);
+  assert.equal(version.checks[0].id, checkId);
+  const imported = b.backup.import(a.backup.export(p.id)),
+    v = b.versions.list(imported.id)[0];
+  assert.equal(v.imported, true);
+  assert.notEqual(v.checks[0].id, checkId);
+  const proof = b.builds.gameTestReport(v.checks[0].id);
+  assert.deepEqual(proof.bytes, report);
+  assert.equal(proof.record.gameTested, false);
+  assert.equal(proof.record.externalValidation.locallyExecuted, false);
+  assert.equal(b.versions.get(imported.id, v.id).checks[0].sha256, sha256(report));
 });

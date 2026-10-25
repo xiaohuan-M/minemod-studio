@@ -87,17 +87,20 @@ export function initWorkshop({
     $('generate-workspace').disabled = formBusy || isBusy() || isDirty() || !p?.confirmedSpecHash;
     $('approve-workspace').disabled =
       formBusy ||
+      isBusy() ||
       isDirty() ||
       !snapshot ||
       snapshot.hash !== p?.workspaceHash ||
       p?.approvedWorkspaceHash === snapshot.hash;
     $('start-build').disabled =
       formBusy ||
+      isBusy() ||
       isDirty() ||
       !snapshot ||
       snapshot.hash !== p?.approvedWorkspaceHash ||
       snapshot.hash !== p?.workspaceHash ||
       !!activeBuild;
+    $('run-server-tests').disabled = $('start-build').disabled || p?.target.edition !== 'java';
     $('engineering-state').textContent = p?.workspaceHash
       ? '当前工程 ' +
         p.workspaceHash.slice(0, 12) +
@@ -749,6 +752,23 @@ export function initWorkshop({
         : '构建任务已启动。日志来自真实 Docker / Gradle。',
     );
   });
+  $('run-server-tests').onclick = run(async () => {
+    const p = getProject(),
+      { builds } = await api(projectRoot() + '/builds');
+    const build = builds.find(
+      (b) => b.type === 'build' && b.status === 'passed' && b.snapshotHash === p.workspaceHash,
+    );
+    if (!build) throw new Error('请先成功编译当前工程。');
+    const check = await request(projectRoot() + '/game-tests', 'POST', {
+      revision: p.revision,
+      snapshotHash: p.workspaceHash,
+      buildId: build.id,
+      allowNetwork: $('build-network').checked,
+    });
+    $('build-network').checked = false;
+    watch(check.id);
+    feedback('临时 Minecraft 服务器检查已启动；游戏阶段关闭网络，不访问真实游戏目录。');
+  });
   $('cancel-build').onclick = run(async () => {
     if (activeBuild) await request('/api/builds/' + activeBuild + '/cancel');
     feedback('已请求取消构建，正在等待容器退出。');
@@ -769,16 +789,32 @@ export function initWorkshop({
         ? '外部导入记录 · 未本机重验证'
         : record.type === 'prepare'
           ? '镜像准备'
-          : '构建') +
+          : record.type === 'game-test'
+            ? '临时 Minecraft 服务器检查'
+            : '构建') +
       ' · ' +
       (statusName[record.status] ?? record.status) +
       ' · ' +
       (record.snapshotHash?.slice(0, 12) ?? '') +
-      (record.artifact ? ' · 产物 SHA-256 ' + record.artifact.sha256 + ' · 未做游戏实测' : '');
+      (record.artifact
+        ? ' · 产物 SHA-256 ' +
+          record.artifact.sha256 +
+          (record.latestServerCheck?.status === 'failed'
+            ? ' · 最近服务器检查失败'
+            : record.serverTests?.status === 'passed'
+              ? ' · 服务器检查通过，客户端未验'
+              : ' · 尚无服务器检查通过记录')
+        : '') +
+      (record.tests ? ' · ' + record.tests.passed + ' 项服务器检查通过，客户端未验' : '');
     $('build-log').textContent = record.log || '等待构建日志……';
     $('build-downloads').replaceChildren(
       download('/api/builds/' + record.id + '/report', '下载构建报告'),
     );
+    const reportId = record.tests || record.externalValidation ? record.id : record.serverTests?.id;
+    if (reportId)
+      $('build-downloads').append(
+        download('/api/builds/' + reportId + '/test-report', '下载原始服务器检查报告'),
+      );
     if (record.artifact && record.status === 'passed')
       $('build-downloads').append(
         download(

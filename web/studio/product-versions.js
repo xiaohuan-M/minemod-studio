@@ -24,6 +24,14 @@ export function initProductVersions({ api, getProject, isDirty, isBusy, show, re
               new Date(version.createdAt).toLocaleString() + ' · ' + version.assetCount + ' 项素材',
             ),
           );
+          if (version.imported) card.append(node('small', '外部导入版本，未在本机重新执行。'));
+          if (version.serverChecks?.length)
+            card.append(
+              node(
+                'small',
+                '保存了 ' + version.serverChecks.length + ' 份服务器检查报告；客户端视觉未验。',
+              ),
+            );
           if (version.workspaceHash) {
             const source = node('a', '下载该版源码');
             source.href =

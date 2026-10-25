@@ -58,6 +58,38 @@ export function workshopServices(dataDir, store) {
       return true;
     }
     if (await assetRoutes({ request, response, url, json, body, fields, send })) return true;
+    const gameMatch = path.match(/^\/api\/projects\/([^/]+)\/game-tests$/);
+    if (gameMatch) {
+      const project = store.get(gameMatch[1]);
+      if (method === 'GET')
+        json(response, 200, {
+          checks: builds.list(project.id).filter((r) => r.type === 'game-test'),
+        });
+      else if (method === 'POST') {
+        const input = fields(await body(request), [
+          'revision',
+          'snapshotHash',
+          'buildId',
+          'allowNetwork',
+        ]);
+        store.assertRevision(project, input.revision);
+        if (
+          project.workspaceHash !== input.snapshotHash ||
+          project.approvedWorkspaceHash !== input.snapshotHash
+        )
+          throw new AppError(409, 'BUILD_APPROVAL_REQUIRED', '请先审查并批准本轮工程。');
+        json(
+          response,
+          202,
+          await builds.startGameTests(project.id, input.snapshotHash, {
+            approval: project.approvedWorkspaceHash,
+            allowNetwork: input.allowNetwork,
+            buildId: input.buildId,
+          }),
+        );
+      } else return false;
+      return true;
+    }
     if (path === '/api/builder' && method === 'GET') {
       json(response, 200, await builds.status(url.searchParams.get('target') ?? undefined));
       return true;
@@ -67,7 +99,9 @@ export function workshopServices(dataDir, store) {
       json(response, 202, await builds.prepare(input.allowNetwork, input.targetId));
       return true;
     }
-    let match = path.match(/^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle))?$/);
+    let match = path.match(
+      /^\/api\/builds\/([^/]+)(?:\/(cancel|jar|artifact|report|bundle|test-report))?$/,
+    );
     if (match) {
       const record = builds.get(match[1]);
       if (!match[2] && method === 'GET') json(response, 200, record);
@@ -85,6 +119,9 @@ export function workshopServices(dataDir, store) {
             : 'application/java-archive',
           artifact.record.artifact.name,
         );
+      } else if (match[2] === 'test-report' && method === 'GET') {
+        const result = builds.gameTestReport(record.id);
+        send(result.bytes, 'application/x-ndjson', 'server-tests-' + record.id + '.jsonl');
       } else if (match[2] === 'report' && method === 'GET')
         send(JSON.stringify(record, null, 2), 'application/json', 'build-' + record.id + '.json');
       else if (match[2] === 'bundle' && method === 'GET') {

@@ -15,6 +15,7 @@ import { AssetStore } from './asset-store.mjs';
 import { WorkspaceStore } from './workspace-store.mjs';
 import { JsonDirectory } from './json-directory.mjs';
 import { signVersion } from './product-versions.mjs';
+import { parseGameTestReceipt } from '../engineering/game-tests.mjs';
 import { createProject, assertProjectId } from '../core/project.mjs';
 import { identifyTarget } from '../core/targets.ts';
 import { validateModel, validateTexture } from '../core/assets.mjs';
@@ -46,6 +47,9 @@ export class ProjectBackup {
         record,
         ...(record.status === 'passed' && record.artifact
           ? { artifact: this.builds.artifact(record.id).bytes.toString('base64') }
+          : {}),
+        ...((record.status === 'passed' && record.tests) || record.externalValidation
+          ? { testReport: this.builds.gameTestReport(record.id).bytes.toString('base64') }
           : {}),
       };
     });
@@ -79,7 +83,7 @@ export class ProjectBackup {
       !Array.isArray(input.workspaces) ||
       input.workspaces.length > 100 ||
       !Array.isArray(input.builds) ||
-      input.builds.length > 100
+      input.builds.length > 400
     )
       fail('备份记录数量超限。');
     if (
@@ -228,6 +232,21 @@ export class ProjectBackup {
           gameTested: false,
           artifact: null,
         };
+        if (item.testReport) {
+          const bytes = Buffer.from(item.testReport, 'base64');
+          const workspace = stagedWorkspaces.get(project.id, r.snapshotHash),
+            file = workspace.files.find((f) => f.path === 'GAME-TEST-PLAN.json');
+          if (!file || bytes.length > 1024 * 1024) fail('服务器检查报告缺少计划或超过大小限制。');
+          const plan = JSON.parse(Buffer.from(file.content, 'base64'));
+          const checked = parseGameTestReceipt(bytes, plan),
+            original = r.tests ?? r.externalValidation;
+          if (checked.sha256 !== original?.sha256) fail('服务器检查报告校验失败。');
+          record.externalValidation = { ...checked, locallyExecuted: false };
+          record.originalType = 'game-test';
+          const path = join(stage, 'builds', 'test-reports', id + '.jsonl');
+          mkdirSync(dirname(path), { recursive: true });
+          writeFileSync(path, bytes, { mode: 0o600 });
+        }
         if (item.artifact) {
           const bytes = Buffer.from(item.artifact, 'base64');
           if (
@@ -270,6 +289,16 @@ export class ProjectBackup {
       for (const version of input.versions ?? []) {
         const { checksum: versionChecksum, ...versionPayload } = version;
         if (
+          version.checks !== undefined &&
+          (!Array.isArray(version.checks) ||
+            version.checks.some(
+              (c) =>
+                !buildIds.has(c.id) ||
+                records.read(buildIds.get(c.id)).externalValidation?.sha256 !== c.sha256,
+            ))
+        )
+          fail('作品版本的服务器报告引用无效。');
+        if (
           sha256(JSON.stringify(versionPayload)) !== versionChecksum ||
           version.projectId !== old.id ||
           version.project?.id !== old.id ||
@@ -302,6 +331,7 @@ export class ProjectBackup {
             projectId: project.id,
             project: restoredProject,
             buildIds: version.buildIds.map((id) => buildIds.get(id)),
+            checks: (version.checks ?? []).map((c) => ({ ...c, id: buildIds.get(c.id) })),
             taskId: null,
             imported: true,
           }),
@@ -321,6 +351,11 @@ export class ProjectBackup {
       if (hashes.size)
         move(join(stage, 'workspaces', project.id), join(this.root, 'workspaces', project.id));
       for (const id of records.ids()) {
+        if (existsSync(join(stage, 'builds', 'test-reports', id + '.jsonl')))
+          move(
+            join(stage, 'builds', 'test-reports', id + '.jsonl'),
+            join(this.root, 'builds', 'test-reports', id + '.jsonl'),
+          );
         if (existsSync(join(stage, 'builds', 'artifacts', id)))
           move(join(stage, 'builds', 'artifacts', id), join(this.root, 'builds', 'artifacts', id));
         move(records.path(id), this.builds.records.path(id));

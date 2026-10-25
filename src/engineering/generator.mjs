@@ -1,6 +1,7 @@
 import { validateModSpec } from '../core/mod-spec.mjs';
 import { AppError } from '../core/errors.mjs';
 import { identifyTarget } from '../core/targets.ts';
+import { withGameTests } from './game-tests.mjs';
 import { generateForge } from './adapters/forge.mjs';
 import forge from '../../templates/forge-1.20.1/manifest.json' with { type: 'json' };
 import neoforge from '../../templates/neoforge-1.21.1/manifest.json' with { type: 'json' };
@@ -32,7 +33,7 @@ export function generateWorkspace(input, assets = []) {
     generate = adapters.get(target?.id);
   if (!target?.enabled || !generate)
     throw new AppError(422, 'TARGET_UNAVAILABLE', '这个目标尚没有可用的生成适配器。');
-  return generate({ input: spec, assets });
+  return withGameTests(spec, generate({ input: spec, assets }));
 }
 export function workspaceFiles(snapshot) {
   return Object.fromEntries(

@@ -9,6 +9,7 @@ import { TEMPLATE, workspaceFiles, builderTemplate } from '../engineering/genera
 import { sha256, readZipEntry } from '../core/archive.mjs';
 import { packageBedrock } from '../engineering/adapters/bedrock.mjs';
 import { AppError } from '../core/errors.mjs';
+import { supportsGameTests, parseGameTestReceipt } from '../engineering/game-tests.mjs';
 const execute = promisify(execFile);
 const TERMINAL = new Set(['passed', 'failed', 'cancelled', 'timed_out', 'interrupted']);
 const script = fileURLToPath(new URL('../../scripts/container-build.sh', import.meta.url));
@@ -90,7 +91,7 @@ export class BuildManager {
           (record.log ?? '') + '\n服务重启，之前的任务已中断；请重新启动构建。',
         );
         this.records.write(id, record);
-        if (record.type === 'build') void this.removeContainer(id);
+        if (['build', 'game-test'].includes(record.type)) void this.removeContainer(id);
       }
     }
   }
@@ -142,6 +143,43 @@ export class BuildManager {
       allowNetwork: true,
     });
   }
+  async startGameTests(projectId, snapshotHash, { allowNetwork = false, approval, buildId } = {}) {
+    if (this.active.size) throw new AppError(409, 'BUILD_ACTIVE', '已有构建或运行检查正在进行。');
+    const snapshot = this.workspaces.get(projectId, snapshotHash),
+      build = this.get(buildId);
+    if (snapshot.imported) throw new AppError(409, 'IMPORTED_WORKSPACE', '请先重新生成工程。');
+    if (!snapshot.files.some((f) => f.path === 'GAME-TEST-PLAN.json'))
+      throw new AppError(409, 'GAME_TEST_SETUP', '请重新生成包含服务器检查的工程。');
+    const plan = JSON.parse(workspaceFiles(snapshot)['GAME-TEST-PLAN.json']);
+    const testSource = snapshot.files.find(
+      (f) =>
+        f.path ===
+        'src/main/java/studio/minemod/testing/m_' + snapshot.modId + '/GeneratedGameChecks.java',
+    );
+    if (!testSource || testSource.sha256 !== plan.testSourceSha256)
+      throw new AppError(409, 'GAME_TEST_SETUP', '固定检查源码与计划不一致，请重新生成。');
+    if (approval !== snapshotHash)
+      throw new AppError(400, 'BUILD_APPROVAL_REQUIRED', '运行检查需要批准此工程快照。');
+    if (!supportsGameTests(snapshot.targetId))
+      throw new AppError(422, 'GAME_TEST_UNAVAILABLE', '此目标尚无服务器运行检查适配器。');
+    if (
+      build.projectId !== projectId ||
+      build.snapshotHash !== snapshotHash ||
+      build.status !== 'passed' ||
+      !build.artifact
+    )
+      throw new AppError(409, 'BUILD_REQUIRED', '先成功编译同一个工程快照。');
+    if (typeof allowNetwork !== 'boolean')
+      throw new AppError(400, 'INVALID_INPUT', '联网选项需要为布尔值。');
+    return this.launch({
+      type: 'game-test',
+      projectId,
+      snapshotHash,
+      allowNetwork,
+      snapshot,
+      sourceBuildId: buildId,
+    });
+  }
   launch({
     type,
     projectId,
@@ -150,6 +188,7 @@ export class BuildManager {
     snapshot,
     selectedTemplate = TEMPLATE,
     targetId = null,
+    sourceBuildId = null,
   }) {
     const id = randomUUID();
     const record = {
@@ -171,13 +210,15 @@ export class BuildManager {
       log: '',
       artifact: null,
       gameTested: false,
+      ...(type === 'game-test' ? { sourceBuildId, gameNetworkDisabled: true } : {}),
     };
     this.records.write(id, record);
     const job = { record, child: null, cancelReason: null, timer: null };
     this.active.set(id, job);
     void this.run(job, snapshot).catch(async () => {
       job.child?.kill('SIGTERM');
-      if (job.record.type === 'build') await this.removeContainer(job.record.id);
+      if (['build', 'game-test'].includes(job.record.type))
+        await this.removeContainer(job.record.id);
       this.finish(
         job,
         'failed',
@@ -199,6 +240,18 @@ export class BuildManager {
     job.record.finishedAt = new Date().toISOString();
     if (message) job.record.log = sanitize(job.record.log + '\n' + message);
     this.records.write(job.record.id, job.record);
+    if (job.record.type === 'game-test' && job.record.sourceBuildId) {
+      try {
+        const parent = this.get(job.record.sourceBuildId);
+        parent.latestServerCheck = { id: job.record.id, status, finishedAt: job.record.finishedAt };
+        parent.log = sanitize(
+          (parent.log ?? '') + '\n[临时服务器检查 ' + status + '，客户端视觉未验]',
+        );
+        this.records.write(parent.id, parent);
+      } catch {
+        /* The primary result remains readable even if a separate parent record is damaged. */
+      }
+    }
     this.active.delete(job.record.id);
   }
   async run(job, snapshot) {
@@ -229,7 +282,8 @@ export class BuildManager {
       this.finish(job, job.cancelReason);
       return;
     }
-    if (!status.available || (record.type === 'build' && !status.imageReady)) {
+    if (!status.available || (['build', 'game-test'].includes(record.type) && !status.imageReady)) {
+      if (record.type === 'game-test') record.failureKind = 'environment';
       this.finish(job, 'failed', status.reason);
       return;
     }
@@ -283,34 +337,97 @@ export class BuildManager {
         'bash',
         '/run/minemod-build.sh',
         record.allowNetwork ? 'online' : 'offline',
+        record.type === 'game-test' ? 'prepare-game' : 'build',
+        record.targetId.startsWith('fabric-')
+          ? 'fabric'
+          : record.targetId.startsWith('forge-')
+            ? 'forge'
+            : 'neoforge',
       );
     }
     record.status = 'running';
     record.startedAt = new Date().toISOString();
     this.records.write(id, record);
-    const code = await new Promise((resolve) => {
-      const child = spawn('docker', [...baseArgs, ...args], {
-        env: environment(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        shell: false,
+    const phases = [args];
+    if (record.type === 'game-test') {
+      const offline = [...args];
+      offline[offline.length - 3] = 'offline';
+      offline[offline.length - 2] = 'game';
+      if (record.allowNetwork) offline.splice(1, 0, '--network', 'none');
+      phases.push(offline);
+    }
+    job.timer = setTimeout(() => {
+      void this.cancel(id, 'timed_out');
+    }, 600000);
+    job.timer.unref();
+    let code = 0;
+    for (const [phaseIndex, phaseArgs] of phases.entries()) {
+      if (job.cancelReason) break;
+      if (record.type === 'game-test') {
+        record.phase = phaseIndex ? 'server-game' : 'runtime-preparation';
+        this.records.write(id, record);
+      }
+      if (record.type === 'game-test')
+        this.log(
+          job,
+          phaseIndex ? '\n[服务器运行检查：网络已关闭]\n' : '\n[准备固定游戏运行依赖]\n',
+        );
+      code = await new Promise((resolve) => {
+        const child = spawn('docker', [...baseArgs, ...phaseArgs], {
+          env: environment(),
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+        });
+        job.child = child;
+        child.stdout.on('data', (chunk) => this.log(job, chunk.toString()));
+        child.stderr.on('data', (chunk) => this.log(job, chunk.toString()));
+        child.once('error', () => resolve(-1));
+        child.once('close', (exit) => resolve(exit));
       });
-      job.child = child;
-      child.stdout.on('data', (chunk) => this.log(job, chunk.toString()));
-      child.stderr.on('data', (chunk) => this.log(job, chunk.toString()));
-      child.once('error', () => resolve(-1));
-      child.once('close', (exit) => resolve(exit));
-      job.timer = setTimeout(() => {
-        void this.cancel(id, 'timed_out');
-      }, 600000);
-      job.timer.unref();
-    });
+      if (code !== 0) break;
+    }
     if (job.cancelReason) {
       await this.removeContainer(id);
       this.finish(job, job.cancelReason);
       return;
     }
     if (code !== 0) {
+      if (record.type === 'game-test')
+        record.failureKind = record.phase === 'runtime-preparation' ? 'environment' : 'game-check';
       this.finish(job, 'failed', '构建未通过（退出码 ' + code + '）。旧的成功产物仍可下载。');
+      return;
+    }
+    if (record.type === 'game-test') {
+      try {
+        const files = workspaceFiles(snapshot),
+          plan = JSON.parse(files['GAME-TEST-PLAN.json']);
+        if (
+          plan.version !== 1 ||
+          plan.targetId !== record.targetId ||
+          plan.modId !== snapshot.modId
+        )
+          throw new Error('plan');
+        const path = join(this.root, 'runs', id, 'workspace', 'build', 'minemod-game-tests.jsonl');
+        const stat = lstatSync(path);
+        if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error('receipt');
+        record.tests = parseGameTestReceipt(readFileSync(path), plan);
+        record.gameTested = true;
+        record.gameTestScope = 'headless-server';
+        record.clientGameTested = false;
+        const parent = this.get(record.sourceBuildId);
+        parent.serverTests = { id: record.id, status: 'passed', ...record.tests };
+        parent.gameTested = true;
+        parent.gameTestScope = 'headless-server';
+        parent.clientGameTested = false;
+        this.records.write(parent.id, parent);
+        this.finish(
+          job,
+          'passed',
+          'Minecraft 临时服务器运行检查通过；没有进行客户端视觉与多人游戏验收。',
+        );
+      } catch {
+        this.finish(job, 'failed', '未取得与当前工程匹配的完整服务器检查报告。');
+      }
       return;
     }
     if (record.type === 'build') {
@@ -382,7 +499,7 @@ export class BuildManager {
     const job = this.active.get(id);
     if (!job) return { cancelled: false };
     job.cancelReason = reason;
-    if (job.record.type === 'build') await this.removeContainer(id);
+    if (['build', 'game-test'].includes(job.record.type)) await this.removeContainer(id);
     job.child?.kill('SIGTERM');
     return { cancelled: true };
   }
@@ -400,6 +517,25 @@ export class BuildManager {
     const bytes = readFileSync(path);
     if (bytes.length !== record.artifact.size || sha256(bytes) !== record.artifact.sha256)
       throw new AppError(409, 'ARTIFACT_CORRUPT', '产物校验失败。');
+    return { record, bytes };
+  }
+  gameTestReport(id) {
+    const record = this.get(id),
+      expected = record.imported ? record.externalValidation?.sha256 : record.tests?.sha256;
+    if (
+      !expected ||
+      (!record.imported && (record.type !== 'game-test' || record.status !== 'passed'))
+    )
+      throw new AppError(409, 'GAME_TEST_REPORT', '此任务没有完整服务器检查报告。');
+    const path = record.imported
+      ? join(this.root, 'test-reports', id + '.jsonl')
+      : join(this.root, 'runs', id, 'workspace', 'build', 'minemod-game-tests.jsonl');
+    const stat = lstatSync(path);
+    if (!stat.isFile() || stat.size > 1024 * 1024)
+      throw new AppError(409, 'GAME_TEST_REPORT', '服务器报告不是有效普通文件。');
+    const bytes = readFileSync(path);
+    if (sha256(bytes) !== expected)
+      throw new AppError(409, 'GAME_TEST_REPORT', '服务器报告哈希不匹配。');
     return { record, bytes };
   }
   async close() {

@@ -7,6 +7,7 @@ import { validateTexture } from '../core/assets.mjs';
 import { validateAnimation } from '../core/animation.mjs';
 import { ApiKnowledge } from './knowledge.mjs';
 import { codeContext } from '../engineering/code-changes.mjs';
+import { supportsGameTests } from '../engineering/game-tests.mjs';
 
 const terminal = new Set(['passed', 'failed', 'cancelled', 'interrupted']);
 export const CREATION_LIMITS = Object.freeze({ maxCalls: 256, maxRepairs: 3 });
@@ -16,6 +17,7 @@ export function creationOptions(input) {
     textures: input.textures ?? true,
     models: input.models ?? true,
     code: input.code ?? true,
+    gameTests: input.gameTests ?? false,
     maxCalls: input.maxCalls ?? 48,
     maxRepairs: input.maxRepairs ?? 2,
     allowNetwork: input.allowNetwork ?? false,
@@ -23,7 +25,9 @@ export function creationOptions(input) {
   if (
     typeof options.instruction !== 'string' ||
     options.instruction.length > 4000 ||
-    ['textures', 'models', 'code', 'allowNetwork'].some((k) => typeof options[k] !== 'boolean') ||
+    ['textures', 'models', 'code', 'gameTests', 'allowNetwork'].some(
+      (k) => typeof options[k] !== 'boolean',
+    ) ||
     !Number.isInteger(options.maxCalls) ||
     options.maxCalls < 1 ||
     options.maxCalls > CREATION_LIMITS.maxCalls ||
@@ -143,6 +147,8 @@ export class CreationManager {
       assetJobs: [],
       snapshotHash: null,
       buildId: null,
+      gameTestId: null,
+      gameTested: false,
       versionId: null,
     };
     this.event(task, 'queued', '本轮自动创作已授权，准备规划、制作素材、生成工程并构建。');
@@ -163,6 +169,7 @@ export class CreationManager {
     if (task.error?.code === 'CREATION_BUDGET' && nextOptions.maxCalls <= task.calls.length)
       throw new AppError(409, 'CREATION_BUDGET', '请提高调用上限并重新确认后继续。');
     task.options = nextOptions;
+    if (task.error?.code === 'GAME_ENVIRONMENT') task.gameTestId = null;
     this.current(task);
     this.store.assertRevision(this.store.get(task.projectId), input.revision);
     if (this.isActive(task.projectId) || this.active.size >= 2)
@@ -237,11 +244,23 @@ export class CreationManager {
     }
   }
   async waitBuild(task, id, signal) {
+    let phase = null;
     try {
       for (;;) {
         signal.throwIfAborted();
         this.current(task);
         const build = this.builds.get(id);
+        if (build.type === 'game-test' && build.phase && phase !== build.phase) {
+          phase = build.phase;
+          this.event(
+            task,
+            'game-tests',
+            phase === 'runtime-preparation'
+              ? '正在准备固定服务器运行依赖。'
+              : '依赖已准备，正在断网执行 Minecraft 服务器检查。',
+            { gameTestId: id, phase },
+          );
+        }
         if (!['queued', 'running'].includes(build.status)) return build;
         await delay(200, undefined, { signal });
       }
@@ -254,10 +273,14 @@ export class CreationManager {
     task.status = 'running';
     this.event(task, 'planning', '生成或继续修改玩法规格。');
     if (!task.beforeVersionId && this.current(task).spec) {
-      task.beforeVersionId = this.versions.capture(task.projectId, {
-        label: '创作前自动保存',
-        taskId: task.id,
-      }).id;
+      const latest = this.versions.list(task.projectId)[0];
+      task.beforeVersionId =
+        latest && JSON.stringify(latest.project) === JSON.stringify(this.current(task))
+          ? latest.id
+          : this.versions.capture(task.projectId, {
+              label: '创作前自动保存',
+              taskId: task.id,
+            }).id;
       this.records.write(task.id, task);
     }
     for (;;) {
@@ -301,6 +324,8 @@ export class CreationManager {
         task.assetJobs = [];
         task.snapshotHash = null;
         task.buildId = null;
+        task.gameTestId = null;
+        task.gameTested = false;
         this.event(task, 'spec', '玩法规格已保存。', { specHash: this.current(task).specHash });
       }
       await this.makeAssets(task, provider, signal);
@@ -368,6 +393,8 @@ export class CreationManager {
           }
           task.codeComplete = true;
           task.buildId = null;
+          task.gameTestId = null;
+          task.gameTested = false;
           this.event(task, 'coding', '代码修改已校验并记录差异，继续真实编译。', {
             snapshotHash: task.snapshotHash,
             changes: changed.changes,
@@ -434,7 +461,32 @@ export class CreationManager {
           snapshotHash: task.snapshotHash,
         });
       }
-      const build = await this.waitBuild(task, task.buildId, signal);
+      let build = await this.waitBuild(task, task.buildId, signal);
+      if (
+        build.status === 'passed' &&
+        task.options.gameTests &&
+        supportsGameTests(build.targetId)
+      ) {
+        if (
+          !task.gameTestId ||
+          ['cancelled', 'interrupted', 'timed_out'].includes(
+            this.builds.get(task.gameTestId).status,
+          )
+        ) {
+          const check = await this.builds.startGameTests(project.id, task.snapshotHash, {
+            approval: task.snapshotHash,
+            allowNetwork: task.options.allowNetwork,
+            buildId: task.buildId,
+          });
+          task.gameTestId = check.id;
+          this.event(task, 'game-tests', '准备依赖并在断网临时 Minecraft 服务器中检查本轮作品。', {
+            gameTestId: check.id,
+          });
+        }
+        const checked = await this.waitBuild(task, task.gameTestId, signal);
+        if (checked.status === 'passed') task.gameTested = true;
+        else build = checked;
+      }
       if (build.status === 'passed') {
         task.versionId = this.versions.capture(task.projectId, {
           label: '自动创作完成 · ' + this.current(task).spec.displayName,
@@ -445,11 +497,19 @@ export class CreationManager {
         this.event(
           task,
           'passed',
-          '作品已构建并保存完整版本，可下载产物与源码。游戏行为仍需实际验证。',
-          { versionId: task.versionId, buildId: build.id },
+          task.gameTested
+            ? '作品已构建、服务器检查通过并保存完整版本。客户端视觉与未覆盖玩法仍需验收。'
+            : '作品已构建并保存完整版本，可下载产物与源码。游戏行为仍需实际验证。',
+          { versionId: task.versionId, buildId: task.buildId, gameTestId: task.gameTestId },
         );
         return;
       }
+      if (build.failureKind === 'environment')
+        throw new AppError(
+          409,
+          'GAME_ENVIRONMENT',
+          '服务器运行依赖准备失败。请查看检查日志，修复网络/缓存后继续；不会调用模型修改代码来处理环境失败。',
+        );
       if (build.status !== 'failed' || task.repairs >= task.options.maxRepairs)
         throw new AppError(
           409,
@@ -461,6 +521,8 @@ export class CreationManager {
       if (project.target.edition === 'java' && task.options.code) {
         task.codeComplete = false;
         task.buildId = null;
+        task.gameTestId = null;
+        task.gameTested = false;
       } else task.specComplete = false;
       this.event(task, 'repairing', '构建失败，带失败日志进入有界修复并重新构建。', {
         buildId: build.id,

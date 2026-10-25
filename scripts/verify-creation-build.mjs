@@ -77,6 +77,7 @@ try {
       consent: 'integration-creation',
       allowNetwork: true,
       maxCalls: 64,
+      gameTests: process.env.MINEMOD_TEST_GAME_TESTS === 'true',
     }),
   });
   assert.equal(response.status, 202, await response.clone().text());
@@ -97,7 +98,9 @@ try {
     'passed',
     JSON.stringify(task.error) +
       '\n' +
-      (task.buildId ? server.workshop.builds.get(task.buildId).log : ''),
+      (task.buildId ? server.workshop.builds.get(task.buildId).log : '') +
+      '\n' +
+      (task.gameTestId ? server.workshop.builds.get(task.gameTestId).log : ''),
   );
   const build = server.workshop.builds.get(task.buildId),
     artifact = server.workshop.builds.artifact(task.buildId).bytes;
@@ -113,6 +116,13 @@ try {
   const version = server.workshop.versions.get(task.projectId, task.versionId);
   assert.equal(version.workspaceHash, task.snapshotHash);
   assert.deepEqual(version.buildIds, [task.buildId]);
+  if (process.env.MINEMOD_TEST_GAME_TESTS === 'true') {
+    assert.equal(task.gameTested, true);
+    const check = server.workshop.builds.get(task.gameTestId);
+    assert.equal(check.status, 'passed', check.log);
+    assert.equal(check.gameNetworkDisabled, true);
+    assert.ok(check.tests.passed >= 3);
+  }
   assert.equal(build.artifact.sha256, sha256(artifact));
   const result = {
     result: 'passed',
@@ -126,7 +136,9 @@ try {
     modelFixture: true,
     codeRepairs: task.repairs,
     artifact: build.artifact,
-    gameTested: false,
+    gameTested: task.gameTested,
+    gameTestId: task.gameTestId,
+    ...(task.gameTestId ? { serverTests: server.workshop.builds.get(task.gameTestId).tests } : {}),
   };
   writeFileSync(join(dir, 'CREATION-VALIDATION.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
