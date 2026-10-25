@@ -37,6 +37,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:hub-browser
       - run: npm run package
       - run: npm run test:package
       - uses: actions/upload-artifact@v4

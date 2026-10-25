@@ -1,6 +1,12 @@
 import { AppError } from './core/errors.mjs';
 
-export function providerSettingsRoutes({ profiles, isActive, onChanged, environment }) {
+export function providerSettingsRoutes({
+  profiles,
+  isActive,
+  onChanged,
+  environment,
+  validate = null,
+}) {
   const summary = () => ({ ...profiles.summary(), environment });
   return async ({ request, response, url, json, body, fields }) => {
     if (!url.pathname.startsWith('/api/settings/providers')) return false;
@@ -39,8 +45,10 @@ export function providerSettingsRoutes({ profiles, isActive, onChanged, environm
     // Check again after the asynchronous body read; a request may have started meanwhile.
     if (isActive())
       throw new AppError(409, 'PROVIDER_REQUEST_ACTIVE', '模型请求正在运行，请稍后重试。');
-    if (operation === 'save') profiles.save(data, revision, match[1] ?? null);
-    else if (operation === 'activate') profiles.activate(data.kind, data.profileId, revision);
+    if (operation === 'save') {
+      validate?.(data);
+      profiles.save(data, revision, match[1] ?? null);
+    } else if (operation === 'activate') profiles.activate(data.kind, data.profileId, revision);
     else profiles.remove(match[1], revision);
     onChanged(); // Rebuild configurations, invalidating all previously granted consent IDs.
     json(response, operation === 'save' && !match[1] ? 201 : 200, summary());

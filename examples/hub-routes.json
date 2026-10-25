@@ -1,0 +1,11 @@
+[
+  {
+    "id": "community",
+    "label": "团队公益线路",
+    "baseUrl": "https://newapi.nowrise.cn/v1",
+    "model": "gpt-6-luna",
+    "apiKeyEnv": "MINEMOD_HUB_COMMUNITY_KEY",
+    "inputCreditsPer1000": 0,
+    "outputCreditsPer1000": 0
+  }
+]

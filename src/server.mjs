@@ -1,3 +1,4 @@
+import { json, fields, body } from './http/transport.mjs';
 import { acquireDataLock } from './storage/data-lock.mjs';
 import { CreationManager } from './creation/manager.mjs';
 import { creationRoutes } from './creation/routes.mjs';
@@ -28,7 +29,6 @@ const VENDORS = new Map([
   ['/vendor/OrbitControls.js', 'three/examples/jsm/controls/OrbitControls.js'],
 ]);
 
-const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
   ['/studio/asset-sessions.js', ['studio/asset-sessions.js', 'text/javascript; charset=utf-8']],
   ['/studio/creation.js', ['studio/creation.js', 'text/javascript; charset=utf-8']],
@@ -54,48 +54,16 @@ const ASSETS = new Map([
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 
-function json(response, status, body) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  response.end(JSON.stringify(body));
-}
-
-function fields(input, allowed) {
-  if (
-    !input ||
-    typeof input !== 'object' ||
-    Array.isArray(input) ||
-    Object.keys(input).some((key) => !allowed.includes(key))
-  ) {
-    throw new AppError(400, 'INVALID_INPUT', '请求字段不正确。');
-  }
-  return input;
-}
-
 function publicProject({ specHistory, ...project }) {
   return { ...project, historyCount: specHistory.length };
 }
 
-async function body(request, limit = MAX_BODY) {
-  if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
-    throw new AppError(415, 'JSON_REQUIRED', '请求必须使用 application/json。');
-  }
-  if (Number(request.headers['content-length']) > limit)
-    throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
-  let size = 0;
-  const chunks = [];
-  for await (const chunk of request) {
-    size += chunk.length;
-    if (size > limit) throw new AppError(413, 'BODY_TOO_LARGE', '请求内容过长。');
-    chunks.push(chunk);
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  } catch {
-    throw new AppError(400, 'INVALID_JSON', 'JSON 格式不正确。');
-  }
-}
-
-export function makeServer({ dataDir, llmProvider = null, imageProvider = null }) {
+export function makeServer({
+  dataDir,
+  llmProvider = null,
+  imageProvider = null,
+  providerPolicy = null,
+}) {
   const releaseLock = acquireDataLock(dataDir);
   let store, workshop, profiles, assetSessions, creations;
   try {
@@ -115,16 +83,39 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
   function configureProviders(rotate = false) {
     const resolve = (kind) => {
       const selected = profiles.selected(kind);
-      if (selected) return providerFromProfile(selected);
+      if (selected) {
+        try {
+          providerPolicy?.(selected);
+        } catch (error) {
+          if (!(error instanceof AppError)) throw error;
+          return {
+            info: {
+              id: kind === 'text' ? 'openai-compatible' : 'image-compatible',
+              configured: false,
+              label: selected.name,
+              baseUrl: selected.baseUrl,
+              model: selected.model,
+              configurationError: error.message,
+            },
+          };
+        }
+        return providerFromProfile(selected);
+      }
       const p = fallback[kind];
       return p && rotate ? { ...p, info: { ...p.info, configurationId: randomUUID() } } : p;
     };
     llmProvider = resolve('text');
     imageProvider = resolve('image');
   }
-  configureProviders();
+  try {
+    configureProviders();
+  } catch (error) {
+    releaseLock();
+    throw error;
+  }
   const settingsRoute = providerSettingsRoutes({
     profiles,
+    validate: providerPolicy,
     isActive: () => active.size > 0 || creations.active.size > 0,
     onChanged: () => configureProviders(true),
     environment: {
@@ -262,6 +253,8 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
             active.delete('image-generation');
             response.off('close', disconnect);
           }
+        } else if (request.method === 'GET' && pathname === '/api/platform') {
+          json(response, 200, { mode: 'local', authenticated: false });
         } else if (request.method === 'GET' && pathname === '/api/health') {
           json(response, 200, { ok: true, version: pkg.version, stage: capabilities().stage });
         } else if (request.method === 'GET' && pathname === '/api/targets') {
@@ -548,5 +541,8 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
     return server;
   };
   server.workshop = workshop;
+  Object.defineProperty(server, 'isBusy', {
+    get: () => active.size > 0 || creations.active.size > 0 || workshop.builds.active.size > 0,
+  });
   return server;
 }

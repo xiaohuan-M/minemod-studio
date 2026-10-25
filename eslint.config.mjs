@@ -22,7 +22,11 @@ export default [
   },
   {
     // Playwright serializes these callbacks into the actual page context.
-    files: ['scripts/verify-browser.mjs', 'scripts/verify-creation-browser.mjs'],
+    files: [
+      'scripts/verify-browser.mjs',
+      'scripts/verify-creation-browser.mjs',
+      'scripts/verify-hub-browser.mjs',
+    ],
     languageOptions: {
       globals: {
         document: 'readonly',

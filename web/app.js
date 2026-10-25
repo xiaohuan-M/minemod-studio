@@ -550,3 +550,10 @@ initProjectHub({
     );
   },
 });
+
+fetch('/api/platform')
+  .then((r) => r.json())
+  .then((p) => {
+    if (p.mode === 'hosted') $('hosted-account').hidden = false;
+  })
+  .catch(() => {});

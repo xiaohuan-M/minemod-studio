@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MineMod Studio · 共享工作室</title>
+    <link rel="stylesheet" href="/hub.css" />
+    <script type="module" src="/hub.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="/">MineMod Studio</a><span>开源共享工作室</span><a href="/">进入创作台 →</a>
+    </header>
+    <main>
+      <p id="notice" role="status" aria-live="polite"></p>
+      <section id="login-panel">
+        <h1>让创作跟着你走</h1>
+        <p>登录后在不同设备继续创作；每个账号有独立项目、素材、模型设置和历史。</p>
+        <form id="login">
+          <h2>登录</h2>
+          <label>账号<input name="username" autocomplete="username" required /></label
+          ><label
+            >密码<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required /></label
+          ><button>登录工作室</button>
+        </form>
+        <details>
+          <summary>创建账号</summary>
+          <form id="register">
+            <label
+              >账号<input
+                name="username"
+                required
+                minlength="3"
+                maxlength="40"
+                autocomplete="username" /></label
+            ><label>显示名称<input name="displayName" maxlength="80" /></label
+            ><label
+              >密码（至少 10 位）<input
+                name="password"
+                type="password"
+                minlength="10"
+                required
+                autocomplete="new-password" /></label
+            ><label>邀请码<input name="invite" autocomplete="off" /></label
+            ><button>创建账号，领取 1000 积分</button>
+          </form>
+        </details>
+        <button id="wechat" hidden>微信扫码登录</button>
+        <p>微信登录需要运营者配置开放平台网站应用；邀请码策略同账号注册。</p>
+      </section>
+      <section id="account-panel" hidden>
+        <h1 id="greeting"></h1>
+        <div class="toolbar">
+          <a class="button" href="/">继续制作模组与模型</a><button id="logout">退出登录</button>
+        </div>
+        <div class="grid">
+          <article>
+            <h2>积分与线路</h2>
+            <p id="balance"></p>
+            <button id="checkin">每日签到 +10</button
+            ><label>托管模型线路<select id="route"></select></label>
+            <p id="route-info"></p>
+            <p>
+              积分由此工作室管理，与自带 API 的服务商账单独立。上游返回有效 token
+              用量后结算；失败或用量未知退回预留额度。
+            </p>
+          </article>
+          <article>
+            <h2>创作激励</h2>
+            <p>提交 B站、抖音或小红书作品，由工作室管理员审核发放奖励。</p>
+            <form id="incentive">
+              <label>作品名称<input name="title" maxlength="120" required /></label
+              ><label>作品链接<input name="url" type="url" required /></label
+              ><button>提交审核</button>
+            </form>
+            <div id="incentive-list"></div>
+          </article>
+        </div>
+        <details>
+          <summary>账户安全与外部 API</summary>
+          <form id="password">
+            <label
+              >原密码<input
+                name="oldPassword"
+                type="password"
+                autocomplete="current-password"
+                required /></label
+            ><label
+              >新密码<input
+                name="newPassword"
+                type="password"
+                minlength="10"
+                autocomplete="new-password"
+                required /></label
+            ><button>更新密码并撤销旧令牌</button>
+          </form>
+          <form id="token">
+            <label>API 令牌用途<input name="label" maxlength="80" required /></label
+            ><button>创建 30 天模型专用令牌</button>
+          </form>
+          <p id="token-result"></p>
+          <form id="revoke-token">
+            <label>要撤销的令牌<input name="token" type="password" required /></label
+            ><button>撤销令牌</button>
+          </form>
+        </details>
+        <details>
+          <summary>积分流水</summary>
+          <div id="ledger"></div>
+        </details>
+        <section id="admin" hidden>
+          <h2>管理员</h2>
+          <button id="invite">生成一次性邀请码</button>
+          <p id="invite-result"></p>
+          <h3>待审核投稿</h3>
+          <div id="review-incentives"></div>
+          <h3>待审核模型</h3>
+          <div id="review-market"></div>
+        </section>
+      </section>
+      <section>
+        <h2>共享模型与素材</h2>
+        <p>带许可和来源的公开资源。发布修改需要重新审核，已通过的旧版本在审核期间保持可用。</p>
+        <form id="search" class="toolbar">
+          <input name="q" placeholder="搜索模型、贴图或说明" aria-label="搜索资源" /><select
+            name="filter"
+          >
+            <option value="public">公开资源</option>
+            <option value="mine">我发布的</option>
+            <option value="favorites">我的收藏</option></select
+          ><button>搜索</button>
+        </form>
+        <div id="market" class="grid"></div>
+        <button id="more" hidden>下一页</button>
+      </section>
+      <section id="publish-panel" hidden>
+        <h2>发布自己的资源</h2>
+        <form id="publish">
+          <label>标题<input name="title" maxlength="80" required /></label
+          ><label>说明<textarea name="description" maxlength="2000" required></textarea></label
+          ><label>标签（逗号分隔）<input name="tags" /></label
+          ><label
+            >许可证<input
+              name="license"
+              placeholder="例如 CC0-1.0 / CC-BY-4.0"
+              maxlength="80"
+              required /></label
+          ><label
+            >选择自己的素材<select
+              id="publish-assets"
+              name="assetIds"
+              multiple
+              size="6"
+            ></select></label
+          ><label
+            >或导入本项目资源包<input
+              id="package-file"
+              type="file"
+              accept="application/json,.json" /></label
+          ><label
+            ><input
+              name="rightsConfirmed"
+              type="checkbox"
+              required
+            />我有权按照上述许可分享全部素材，来源与许可已经填写。</label
+          ><button>提交上架审核</button>
+        </form>
+      </section>
+      <dialog id="preview-dialog">
+        <h2 id="preview-title"></h2>
+        <label>素材<select id="preview-assets"></select></label
+        ><canvas
+          id="market-canvas"
+          width="560"
+          height="420"
+          aria-label="可拖动旋转的模型预览"
+        ></canvas>
+        <pre id="preview-attribution"></pre>
+        <button id="preview-close">关闭预览</button>
+      </dialog>
+    </main>
+    <footer>MIT 开源 · 本地版无需账号 · 托管版由你或你的团队部署</footer>
+  </body>
+</html>

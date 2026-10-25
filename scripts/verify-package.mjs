@@ -18,7 +18,7 @@ assert.equal(sha256(bytes), checksum);
 const manifest = JSON.parse(readZipEntry(bytes, prefix + '/RELEASE-MANIFEST.json'));
 assert.equal(manifest.version, pkg.version);
 const temp = mkdtempSync(join(tmpdir(), 'minemod-release-'));
-let child;
+let child, hubChild;
 try {
   for (const file of manifest.files) {
     safeArchivePath(file.path);
@@ -107,14 +107,69 @@ try {
     }),
   });
   assert.equal(made.status, 201);
+  hubChild = spawn(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `
+    import {makeHubServer} from './src/hub/server.mjs';
+    const server=await makeHubServer({dataDir:'.isolated-hub-check',adminUsername:'release-admin',adminPassword:'isolated release check password'});
+    server.listen(0,'127.0.0.1',()=>console.log(server.address().port));
+    process.on('SIGTERM',()=>server.close());
+  `,
+    ],
+    { cwd: temp, stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  let hubErrors = '';
+  hubChild.stderr.on('data', (data) => {
+    hubErrors += data;
+  });
+  const hubPort = await new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Packaged Hub did not start: ' + hubErrors)),
+      15000,
+    );
+    hubChild.once('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    hubChild.once('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error('Packaged Hub exited ' + code + ': ' + hubErrors));
+    });
+    hubChild.stdout.once('data', (data) => {
+      clearTimeout(timer);
+      resolve(Number(data.toString().trim()));
+    });
+  });
+  assert.ok(Number.isInteger(hubPort));
+  const hosted = 'http://127.0.0.1:' + hubPort;
+  assert.equal((await (await fetch(hosted + '/api/platform')).json()).mode, 'hosted');
+  const login = await fetch(hosted + '/api/hub/login', {
+    method: 'POST',
+    headers: { Origin: hosted, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: 'release-admin',
+      password: 'isolated release check password',
+    }),
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  assert.equal(
+    (await fetch(hosted + '/api/projects', { headers: { Cookie: cookie } })).status,
+    200,
+  );
+  assert.equal((await fetch(hosted + '/hub')).status, 200);
   console.log(
-    'Portable release passed: every file hash, production dependencies, isolated startup, five targets, local WebGL modules, catalog and project creation. No npm install, API or Docker used.',
+    'Portable release passed: every file hash, dependencies, isolated local and Hub startup, login and per-account workspace, five targets, WebGL, catalog and project creation. No npm install, real API or Docker used.',
   );
 } finally {
-  if (child && child.exitCode === null) {
-    const exited = once(child, 'exit');
-    child.kill('SIGTERM');
-    await exited;
-  }
+  for (const process of [child, hubChild])
+    if (process && process.exitCode === null) {
+      const exited = once(process, 'exit');
+      process.kill('SIGTERM');
+      await exited;
+    }
   rmSync(temp, { recursive: true, force: true });
 }

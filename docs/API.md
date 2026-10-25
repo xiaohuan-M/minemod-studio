@@ -226,3 +226,23 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 - 自动创作输入可带 `gameTests: true`。API 默认 false；网页 Java 创作默认勾选，明确包含临时服务器执行授权。
 
 检查先准备依赖，再在 `--network none` 容器运行 Minecraft。`scope: headless-server`，`clientGameTested: false`；不能把 `gameTested: true` 推断为视觉或任意玩法全部验收。环境失败使用 `GAME_ENVIRONMENT`，恢复后重新准备而不消耗模型修复额度。
+
+
+## 可选 Hub · 0.10
+
+启动 `npm run hub`。`GET /api/platform` 区分 `local` / `hosted`，托管模式给出账号公开字段、线路公开价格和是否配置微信，不含密钥。浏览器写入需要配置的同源 Origin；Cookie 为 HttpOnly，HTTPS 下 Secure。模型专用 Bearer 令牌只能访问模型端点。
+
+- `POST /api/hub/login`：`{ username, password }`；`POST /api/hub/register`：`{ username, password, displayName?, invite? }`。
+- `POST /api/hub/logout`：`{}`；`POST /api/hub/password`：`{ oldPassword, newPassword }`，撤销旧会话/令牌。
+- `GET /api/hub/account`：账号、最近 100 条账本与投稿；`POST /api/hub/checkin`：`{}`，重复签到幂等。
+- `POST /api/hub/invites`：管理员创建一次性七天邀请码；`POST /api/hub/incentives`：`{ title, url }`；`POST /api/hub/incentives/:id/review`：管理员 `{ approve, reward?, reason? }`。
+- `GET /api/hub/market?q=&mine=true&favorites=true&pending=true&offset=0`：公开目录或自己的/待审目录；未登录只允许公开，pending 仅管理员。每页最多 50 条。
+- `POST /api/hub/market`：`{ id?, revision?, title, description, tags?, license, rightsConfirmed:true, assetIds? | package? }`；上传自己的 1–30 个素材或完整资源包。更新需当前 revision。
+- `GET /api/hub/market/:id`：可见修订的元信息；`GET /api/hub/market/:id/package` 下载已校验资源包。
+- `POST /api/hub/market/:id/{import,unpublish}`：`{}`；favorite：`{ favorite }`；review：管理员 `{ revision, approve, reason? }`。
+- `POST /api/hub/route`：`{ routeId }`，运行中拒绝切换；个人启用的自带配置优先。
+- `POST /api/hub/tokens`：`{ label }`，返回一次性展示的 30 天模型令牌；`DELETE /api/hub/tokens`：`{ token }`，仅撤销自己的。
+- `POST /api/hub/llm/:routeId/v1/chat/completions`：非流式兼容请求，固定配置的模型/上游，返回 `minemodBilling` 预留/实际扣款/是否用量已知，失败退款。未知用量不是 0 token，仅表示不扣平台积分。
+- `GET /api/hub/wechat/start?invite=`：配置后返回官方授权 URL；callback 为服务端换取身份，不在浏览器暴露 AppSecret。真实微信登录未验收。
+
+其他项目/素材/创作/工程/构建接口由认证网关转发到本账号回环内核，继承已有 revision、哈希与执行批准。未登录返回 401，跨账号对象不可读取。部署与协议边界详见 HOSTED.md。

@@ -13,3 +13,5 @@ dist/
 *.class
 .gradle/
 build/
+
+.minemod-hub/
