@@ -1,6 +1,6 @@
 {
   "name": "minemod-studio",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "description": "Local-first open-source Minecraft workshop with BYO AI, animated assets and verified multi-loader builds",
   "type": "module",
@@ -27,7 +27,8 @@
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/verify-package.mjs",
     "hub": "node --use-env-proxy --env-file-if-exists=.env src/hub/cli.mjs",
-    "test:hub-browser": "node scripts/verify-hub-browser.mjs"
+    "test:hub-browser": "node scripts/verify-hub-browser.mjs",
+    "test:skeleton-browser": "node scripts/verify-skeleton-browser.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",

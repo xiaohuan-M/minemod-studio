@@ -12,6 +12,8 @@ import { AppError } from '../src/core/errors.mjs';
 import { placeholderTexture } from '../src/core/assets.mjs';
 import { readZipEntry } from '../src/core/archive.mjs';
 import example from '../examples/project-spec.json' with { type: 'json' };
+import fullWorkshop from '../examples/full-workshop.json' with { type: 'json' };
+import rig from '../examples/rigged-guardian.json' with { type: 'json' };
 
 const source = {
   provider: 'test-fixture',
@@ -118,6 +120,45 @@ test('one sentence runs assets, source, real Bedrock packaging and complete roun
     await (await call('/api/builds/' + task.buildId + '/artifact')).arrayBuffer(),
   );
   assert.deepEqual(old, artifact);
+});
+
+test('one prompt automatically installs a real hierarchical animated Bedrock entity instead of replacing its clips with idle', async (t) => {
+  const provider = fixtureProvider(),
+    asset = provider.planAsset;
+  provider.planSpec = async (project) => {
+    const spec = structuredClone(fullWorkshop);
+    spec.target = { ...project.target };
+    spec.items = spec.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
+    return { spec, source };
+  };
+  provider.planAsset = async (input) =>
+    input.kind === 'animated_model'
+      ? { kind: input.kind, data: structuredClone(rig), source }
+      : asset(input);
+  const { server, call } = await fixture(t, provider),
+    response = await call('/api/creations', 'POST', {
+      prompt: '制作带父子骨骼和挥手动作的生物',
+      targetId: 'bedrock-1.21.60',
+      ...approved,
+      maxCalls: 64,
+    });
+  assert.equal(response.status, 202);
+  const task = await finished(server, (await response.json()).task.id);
+  assert.equal(task.status, 'passed', JSON.stringify(task.error));
+  const project = server.workshop.creations.current(task),
+    entity = project.spec.entities[0],
+    model = server.workshop.assets.get(entity.modelAsset);
+  assert.equal(model.kind, 'animated_model');
+  assert.equal(model.data.bones.length, 3);
+  assert.equal(entity.animationClip, 'wave');
+  assert.equal(model.data.clips[0].tracks[0].bone, 2);
+  const pack = server.workshop.builds.artifact(task.buildId).bytes,
+    resources = readZipEntry(pack, 'resource_pack.mcpack'),
+    geometry = JSON.parse(readZipEntry(resources, 'models/entity/' + entity.id + '.geo.json'))[
+      'minecraft:geometry'
+    ][0];
+  assert.equal(geometry.bones[2].parent, '身体');
+  assert.equal(geometry.bones[0].cubes.length, 2);
 });
 
 test('active creation blocks conflicting project/provider writes; cancellation and resume retain completed work', async (t) => {

@@ -17,7 +17,7 @@ export function sampleClip(clip, time) {
       before.time === after.time
         ? 0
         : Math.max(0, Math.min(1, (time - before.time) / (after.time - before.time)));
-    result[track.element] = Object.fromEntries(
+    result[track.bone ?? track.element] = Object.fromEntries(
       [
         ['rotation', [0, 0, 0]],
         ['translation', [0, 0, 0]],

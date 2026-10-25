@@ -52,7 +52,8 @@ export function initWorkshop({
     fileEpoch = 0,
     activeBuild = null,
     pollTimer = null,
-    formBusy = false;
+    formBusy = false,
+    assetEpoch = 0;
   const request = (path, method = 'POST', data = {}) =>
     api(path, { method, body: JSON.stringify(data) });
   const projectRoot = () => '/api/projects/' + getProject().id;
@@ -546,7 +547,10 @@ export function initWorkshop({
     },
   });
   async function refreshAssets() {
-    assets = (await api('/api/assets')).assets;
+    const epoch = ++assetEpoch,
+      result = await api('/api/assets');
+    if (epoch !== assetEpoch) return;
+    assets = result.assets;
     document.dispatchEvent(new CustomEvent('assets-loaded', { detail: assets }));
     for (const [id, kind, label] of [
       ['content-texture', 'texture', '使用占位贴图'],
@@ -952,4 +956,5 @@ export function initWorkshop({
   });
   drawPixels();
   kindFields();
+  void refreshAssets().catch((error) => feedback(error.message, true));
 }

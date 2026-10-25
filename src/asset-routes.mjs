@@ -5,6 +5,7 @@ import {
   bedrockAnimationResources,
 } from './core/animation.mjs';
 import { zipFiles } from './core/archive.mjs';
+import { hasSkeleton } from './core/skeleton-exchange.mjs';
 import catalog from '../community/catalog.json' with { type: 'json' };
 import { sha256 } from './core/archive.mjs';
 import { pixelizeImage, decodePNG } from './core/images.mjs';
@@ -40,7 +41,7 @@ export function createAssetRoutes(assets) {
         'source',
         'license',
       ]);
-      const animated = !!input.model?.animations?.length;
+      const animated = !!input.model?.animations?.length || hasSkeleton(input.model);
       const model = animated
           ? importAnimatedBlockbench(input.model)
           : importBlockbench(input.model),

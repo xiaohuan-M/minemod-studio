@@ -71,6 +71,8 @@ export function placeholderTexture(color = '#8e62cf', block = false) {
   return { width: 16, height: 16, pixels };
 }
 export function validateModel(input) {
+  if (input?.bones !== undefined)
+    fail('层级骨骼请使用动画模型格式，不能作为 Java 静态物品/方块模型导入。');
   if (
     !input ||
     !Array.isArray(input.elements) ||

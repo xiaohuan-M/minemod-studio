@@ -246,3 +246,8 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 - `GET /api/hub/wechat/start?invite=`：配置后返回官方授权 URL；callback 为服务端换取身份，不在浏览器暴露 AppSecret。真实微信登录未验收。
 
 其他项目/素材/创作/工程/构建接口由认证网关转发到本账号回环内核，继承已有 revision、哈希与执行批准。未登录返回 401，跨账号对象不可读取。部署与协议边界详见 HOSTED.md。
+
+
+## 层级模型与独立工坊 · 0.12
+
+素材会话、素材保存、bbmodel 导入导出不需要项目 ID。`animated_model.data.bones` 与 `clips[].tracks[].bone` 为可选层级格式，旧模型继续使用 element 轨道；结构、范围和兼容规则见 MODEL-FORMAT.md。bbmodel 导入会识别嵌套分组和无动作骨骼模型，返回 animated_model 及嵌入贴图；静态 Java 素材拒绝 bones，不隐式丢弃。自动 Bedrock 生物请求 animated_model，保留实际动作并绑定选择的片段。

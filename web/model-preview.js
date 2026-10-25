@@ -20,7 +20,9 @@ export function modelPreview(canvas, onSelect = () => {}) {
       texture() {},
       view() {},
       select() {},
+      selectBone() {},
       animate() {},
+      fit() {},
       capture() {
         throw new Error('WebGL 不可用。');
       },
@@ -49,8 +51,10 @@ export function modelPreview(canvas, onSelect = () => {}) {
   let model = { elements: [] },
     map = null,
     selected = -1,
+    selectedBone = -1,
     mode = 'orbit',
     meshes = [],
+    bonePivots = [],
     helper = null;
   let lastSize = [0, 0];
   function draw() {
@@ -134,15 +138,29 @@ export function modelPreview(canvas, onSelect = () => {}) {
       helper.material.dispose();
       helper = null;
     }
-    if (meshes[selected]) {
+    const target = selectedBone >= 0 ? bonePivots[selectedBone] : meshes[selected];
+    if (target) {
       root.updateMatrixWorld(true);
-      helper = new THREE.BoxHelper(meshes[selected], 0xefad36);
+      helper = new THREE.BoxHelper(target, 0xefad36);
       scene.add(helper);
     }
   }
   function rebuild() {
     dispose(root);
     meshes = [];
+    bonePivots = (model.bones ?? []).map((bone) => {
+      const pivot = new THREE.Group(),
+        parent = bone.parent === undefined ? [8, 8, 8] : model.bones[bone.parent].pivot;
+      pivot.position.fromArray(bone.pivot.map((v, i) => v - parent[i]));
+      pivot.rotation.set(...bone.rotation.map(THREE.MathUtils.degToRad), 'ZYX');
+      pivot.userData.bindPosition = pivot.position.clone();
+      pivot.userData.bindRotation = pivot.rotation.clone();
+      pivot.userData.bindScale = pivot.scale.clone();
+      return pivot;
+    });
+    (model.bones ?? []).forEach((bone, index) =>
+      (bone.parent === undefined ? root : bonePivots[bone.parent]).add(bonePivots[index]),
+    );
     model.elements.forEach((e, index) => {
       const geometry = new THREE.BoxGeometry(...e.to.map((n, i) => n - e.from[i]));
       const uv = geometry.attributes.uv;
@@ -173,8 +191,10 @@ export function modelPreview(canvas, onSelect = () => {}) {
         pivot = new THREE.Group();
       mesh.userData.index = index;
       const origin = e.rotation?.origin ?? [8, 8, 8];
+      const boneIndex = model.bones?.findIndex((bone) => bone.elements.includes(index));
+      const bone = boneIndex === undefined ? null : model.bones[boneIndex];
       mesh.position.fromArray(e.from.map((v, i) => (v + e.to[i]) / 2 - origin[i]));
-      pivot.position.fromArray(origin.map((v) => v - 8));
+      pivot.position.fromArray(origin.map((v, i) => v - (bone?.pivot[i] ?? 8)));
       if (e.rotation) {
         pivot.rotation[e.rotation.axis] = THREE.MathUtils.degToRad(e.rotation.angle);
         if (e.rotation.rescale) {
@@ -187,7 +207,7 @@ export function modelPreview(canvas, onSelect = () => {}) {
       pivot.userData.bindRotation = pivot.rotation.clone();
       pivot.userData.bindScale = pivot.scale.clone();
       pivot.add(mesh);
-      root.add(pivot);
+      (bone ? bonePivots[boneIndex] : root).add(pivot);
       meshes.push(mesh);
     });
     pose();
@@ -234,6 +254,13 @@ export function modelPreview(canvas, onSelect = () => {}) {
     },
     select(index) {
       selected = index;
+      selectedBone = -1;
+      highlight();
+      draw();
+    },
+    selectBone(index) {
+      selectedBone = index;
+      selected = -1;
       highlight();
       draw();
     },
@@ -249,9 +276,9 @@ export function modelPreview(canvas, onSelect = () => {}) {
       draw();
     },
     animate(poses) {
-      for (const [index, mesh] of meshes.entries()) {
-        const pivot = mesh.parent,
-          pose = poses[index] ?? {};
+      const pivots = model.bones ? bonePivots : meshes.map((mesh) => mesh.parent);
+      for (const [index, pivot] of pivots.entries()) {
+        const pose = poses[index] ?? {};
         pivot.position
           .copy(pivot.userData.bindPosition)
           .add(new THREE.Vector3(...(pose.translation ?? [0, 0, 0])));
@@ -269,6 +296,25 @@ export function modelPreview(canvas, onSelect = () => {}) {
     capture() {
       draw();
       return canvas.toDataURL('image/png');
+    },
+    fit() {
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) return;
+      const sphere = box.getBoundingSphere(new THREE.Sphere()),
+        radius = Math.max(4, sphere.radius);
+      controls.target.copy(sphere.center);
+      const halfVertical = THREE.MathUtils.degToRad(camera.fov / 2),
+        halfHorizontal = Math.atan(Math.tan(halfVertical) * camera.aspect),
+        distance = (radius / Math.sin(Math.min(halfVertical, halfHorizontal))) * 1.1;
+      camera.position
+        .copy(sphere.center)
+        .add(new THREE.Vector3(1.8, 1.2, 2.4).normalize().multiplyScalar(distance));
+      camera.far = Math.max(1000, radius * 30);
+      camera.updateProjectionMatrix();
+      controls.maxDistance = Math.max(140, radius * 20);
+      controls.update();
+      draw();
     },
   };
   api.view('orbit');

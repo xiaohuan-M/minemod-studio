@@ -1,5 +1,7 @@
 import { modelPreview } from '../model-preview.js';
 import { sampleClip } from './animation-timeline.js';
+import { initSkeletonEditor } from './skeleton-editor.js';
+import { isSkeletonDocument } from '/studio/skeleton.js';
 const $ = (id) => document.getElementById(id);
 const option = (value, text) => {
   const o = document.createElement('option');
@@ -20,10 +22,16 @@ export function initAnimationEditor({
     playing = false,
     frame = 0,
     last = 0,
-    texture = null;
+    texture = null,
+    skeletonEditor;
   const preview = modelPreview($('animation-canvas'), (index) => {
-    $('animation-bone').value = String(index);
+    const bone = animation?.bones
+      ? animation.bones.findIndex((b) => b.elements.includes(index))
+      : index;
+    $('animation-bone').value = String(bone);
+    keys();
     loadKey();
+    skeletonEditor?.refresh();
   });
   const clip = () => animation?.clips[Number($('animation-clip').value) || 0];
   const time = () => Number($('animation-time').value);
@@ -55,10 +63,13 @@ export function initAnimationEditor({
       $('animation-' + key).value = (pose[key] ?? value)
         .map((n) => Math.round(n * 1000) / 1000)
         .join(',');
-    preview.select(Number($('animation-bone').value));
+    if (animation.bones) preview.selectBone(Number($('animation-bone').value));
+    else preview.select(Number($('animation-bone').value));
   }
   function keys() {
-    const track = clip()?.tracks.find((t) => t.element === Number($('animation-bone').value));
+    const track = clip()?.tracks.find(
+      (t) => (t.bone ?? t.element) === Number($('animation-bone').value),
+    );
     $('animation-keyframes').replaceChildren(
       ...(track?.keyframes ?? []).map((k) => {
         const button = document.createElement('button');
@@ -84,7 +95,7 @@ export function initAnimationEditor({
     draw();
     loadKey();
   }
-  function set(value) {
+  function set(value, boneIndex = 0) {
     stop();
     animation = structuredClone(value);
     texture = animation.texture ?? null;
@@ -93,13 +104,32 @@ export function initAnimationEditor({
       ...animation.clips.map((c, i) => option(String(i), c.name)),
     );
     $('animation-bone').replaceChildren(
-      ...animation.elements.map((_, i) => option(String(i), '骨骼 cube_' + i)),
+      ...(animation.bones
+        ? animation.bones.map((b, i) => option(String(i), b.name))
+        : animation.elements.map((_, i) => option(String(i), '骨骼 cube_' + i))),
+    );
+    $('animation-bone').value = String(
+      Math.min(boneIndex, (animation.bones?.length ?? animation.elements.length) - 1),
     );
     $('animation-time').value = '0';
     preview.set(animation);
     controls();
     $('animation-controls').hidden = false;
+    skeletonEditor?.refresh();
   }
+  skeletonEditor = initSkeletonEditor({
+    getAnimation: () => animation,
+    getBone: () => Number($('animation-bone').value),
+    setAnimation: set,
+    selectBone: (index) => {
+      $('animation-bone').value = String(index);
+      keys();
+      loadKey();
+      skeletonEditor.refresh();
+    },
+    run,
+    feedback,
+  });
   $('animation-create').onclick = run(() => {
     const model = getModel();
     set({
@@ -112,6 +142,7 @@ export function initAnimationEditor({
   $('animation-bone').onchange = () => {
     keys();
     loadKey();
+    skeletonEditor.refresh();
   };
   $('animation-clip').onchange = () => {
     stop();
@@ -150,6 +181,7 @@ export function initAnimationEditor({
     };
     frame = requestAnimationFrame(tick);
   };
+  $('animation-fit').onclick = () => preview.fit();
   $('animation-save-key').onclick = run(() => {
     if (!animation) throw new Error('请先创建或载入动画。');
     stop();
@@ -166,9 +198,9 @@ export function initAnimationEditor({
       key.scale.some((n) => n < 0.01 || n > 4)
     )
       throw new Error('旋转范围 ±360，位移 ±80，缩放 0.01–4。');
-    let track = clip().tracks.find((t) => t.element === element);
+    let track = clip().tracks.find((t) => (t.bone ?? t.element) === element);
     if (!track) {
-      track = { element, keyframes: [] };
+      track = { ...(animation.bones ? { bone: element } : { element }), keyframes: [] };
       clip().tracks.push(track);
     }
     track.keyframes = track.keyframes.filter((k) => k.time !== key.time);
@@ -179,7 +211,9 @@ export function initAnimationEditor({
     feedback('关键帧已写入动画草稿。');
   });
   $('animation-delete-key').onclick = run(() => {
-    const track = clip()?.tracks.find((t) => t.element === Number($('animation-bone').value));
+    const track = clip()?.tracks.find(
+      (t) => (t.bone ?? t.element) === Number($('animation-bone').value),
+    );
     if (!track) return;
     track.keyframes = track.keyframes.filter((k) => Math.abs(k.time - time()) > 0.001);
     clip().tracks = clip().tracks.filter((t) => t.keyframes.length);
@@ -256,7 +290,8 @@ export function initAnimationEditor({
     if (!file) return;
     if (file.size > 800 * 1024) throw new Error('文件不能超过 800 KiB。');
     const model = JSON.parse(await file.text());
-    if (!model.animations?.length) throw new Error('这是静态模型，请在模型工坊导入。');
+    if (!model.animations?.length && !isSkeletonDocument(model))
+      throw new Error('这是静态模型，请在模型工坊导入。');
     const result = await request('/api/blockbench/import', 'POST', {
       model,
       name: file.name.slice(0, 80),

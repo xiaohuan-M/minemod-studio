@@ -1,5 +1,13 @@
 import { validateModel, exportBlockbench, importBlockbench } from './assets.mjs';
 import { AppError } from './errors.mjs';
+import { normalizeBones } from './skeleton.mjs';
+import {
+  hasSkeleton,
+  exportSkeletonBlockbench,
+  importSkeletonBlockbench,
+  skeletonBedrockResources,
+  animatorFrames,
+} from './skeleton-exchange.mjs';
 const fail = (message) => {
   throw new AppError(422, 'INVALID_ANIMATION', message);
 };
@@ -14,7 +22,16 @@ const vector = (v, fallback, min, max) => {
   return [...out];
 };
 export function validateAnimation(input) {
-  const model = validateModel(input);
+  const { bones: inputBones, ...geometry } = input ?? {};
+  const model = validateModel(geometry);
+  let bones;
+  if (inputBones !== undefined) {
+    try {
+      bones = normalizeBones(inputBones, model.elements.length);
+    } catch (error) {
+      fail(error.message);
+    }
+  }
   for (const element of model.elements) {
     element.rotation ??= { origin: [8, 8, 8], axis: 'x', angle: 0 };
     if (element.rotation.angle === 0) element.rotation.axis = 'x';
@@ -47,19 +64,21 @@ export function validateAnimation(input) {
       duration: clip.duration,
       loop: clip.loop,
       tracks: clip.tracks.map((track) => {
+        const target = bones ? track.bone : track.element;
         if (
-          !Number.isInteger(track.element) ||
-          track.element < 0 ||
-          track.element >= model.elements.length ||
-          elements.has(track.element) ||
+          !Number.isInteger(target) ||
+          target < 0 ||
+          target >= (bones?.length ?? model.elements.length) ||
+          (bones ? track.element !== undefined : track.bone !== undefined) ||
+          elements.has(target) ||
           !Array.isArray(track.keyframes) ||
           !track.keyframes.length
         )
           fail('每个立方体最多一条轨道，且需要关键帧。');
-        elements.add(track.element);
+        elements.add(target);
         const times = new Set();
         return {
-          element: track.element,
+          ...(bones ? { bone: target } : { element: target }),
           keyframes: track.keyframes
             .map((k) => {
               if (
@@ -83,12 +102,19 @@ export function validateAnimation(input) {
       }),
     };
   });
-  return { ...validateModel(model), clips };
+  return { ...validateModel(model), ...(bones ? { bones } : {}), clips };
 }
 const uuid = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 export function exportAnimatedBlockbench(input, name, texture) {
-  const model = validateAnimation(input),
-    base = exportBlockbench(model, name, texture);
+  const model = validateAnimation(input);
+  if (model.bones) {
+    try {
+      return exportSkeletonBlockbench(model, name, texture);
+    } catch (error) {
+      fail(error.message);
+    }
+  }
+  const base = exportBlockbench(model, name, texture);
   base.meta.model_format = 'bedrock';
   delete base.display;
   base.outliner = model.elements.map((e, i) => ({
@@ -139,6 +165,13 @@ export function exportAnimatedBlockbench(input, name, texture) {
   return base;
 }
 export function importAnimatedBlockbench(input) {
+  if (hasSkeleton(input)) {
+    try {
+      return validateAnimation(importSkeletonBlockbench(input));
+    } catch (error) {
+      fail(error.message);
+    }
+  }
   if (!Array.isArray(input?.outliner) || !input.outliner.length || !Array.isArray(input.animations))
     fail('需要包含立方体骨骼与动画的 bbmodel。');
   const groups = new Map();
@@ -183,26 +216,12 @@ export function importAnimatedBlockbench(input) {
     duration: a.length,
     loop: a.loop === 'loop',
     tracks: Object.entries(a.animators ?? {}).map(([id, animator]) => {
-      const frames = new Map();
-      if (!groups.has(id) || animator.type !== 'bone') fail('不支持效果器或缺失骨骼。');
-      for (const k of animator.keyframes ?? []) {
-        if (
-          !['rotation', 'position', 'scale'].includes(k.channel) ||
-          k.interpolation !== 'linear' ||
-          k.data_points?.length !== 1
-        )
-          fail('仅支持线性变换关键帧，不执行表达式。');
-        const frame = frames.get(k.time) ?? { time: k.time };
-        const values = ['x', 'y', 'z'].map((axis) => {
-          const v = k.data_points[0][axis];
-          if (!/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(String(v)))
-            fail('不执行 Molang 或其他表达式。');
-          return Number(v);
-        });
-        frame[k.channel === 'position' ? 'translation' : k.channel] = values;
-        frames.set(k.time, frame);
+      if (!groups.has(id)) fail('动画引用缺失的骨骼。');
+      try {
+        return { element: groups.get(id), keyframes: animatorFrames(animator) };
+      } catch (error) {
+        fail(error.message);
       }
-      return { element: groups.get(id), keyframes: [...frames.values()] };
     }),
   }));
   return validateAnimation({ ...model, clips });
@@ -215,6 +234,13 @@ export function bedrockAnimationResources(
   textureHeight = 64,
 ) {
   const model = validateAnimation(input);
+  if (model.bones) {
+    try {
+      return skeletonBedrockResources(model, identifier, textureWidth, textureHeight);
+    } catch (error) {
+      fail(error.message);
+    }
+  }
   const bones = model.elements.map((e, index) => {
     if (e.rotation?.rescale) fail('Bedrock 骨骼导出不支持 Java rescale，请先烘焙几何。');
     const faces = {};

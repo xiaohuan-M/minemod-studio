@@ -86,6 +86,8 @@ try {
     '/workshop.js',
     '/model-preview.js',
     '/studio/animation-editor.js',
+    '/studio/skeleton.js',
+    '/studio/skeleton-editor.js',
     '/studio/provider-settings.js',
     '/studio/loot-editor.js',
     '/studio/creation.js',

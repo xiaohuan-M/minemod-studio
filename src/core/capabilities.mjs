@@ -33,6 +33,8 @@ export function capabilities() {
       cubeModelAI: true,
       cubeModelEditor: true,
       animationEditor: true,
+      hierarchicalAnimation: true,
+      standaloneAssetWorkshop: true,
       bedrockAnimatedEntities: true,
       imageProvider: true,
       visionReference: true,

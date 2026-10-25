@@ -120,7 +120,7 @@ try {
   await page.waitForFunction(() =>
     document.querySelector('#asset-library').textContent.includes('方块雕塑'),
   );
-  await page.locator('#animation-studio summary').click();
+  await page.locator('#animation-studio > summary').click();
   await page.click('#animation-create');
   await page.click('#animation-save-key');
   await page.locator('#animation-time').fill('1');
@@ -240,7 +240,7 @@ try {
   await fallback.goto('http://127.0.0.1:' + server.address().port);
   await fallback.locator('#projects button').first().click();
   assert.equal(await fallback.getAttribute('#model-canvas', 'data-renderer'), 'unavailable');
-  await fallback.locator('#animation-studio summary').click();
+  await fallback.locator('#animation-studio > summary').click();
   await fallback.click('#animation-create');
   await fallback.click('#animation-save-key');
   await fallback.fill('#animation-name', '无 GPU 编辑');

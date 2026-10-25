@@ -26,6 +26,7 @@ export default [
       'scripts/verify-browser.mjs',
       'scripts/verify-creation-browser.mjs',
       'scripts/verify-hub-browser.mjs',
+      'scripts/verify-skeleton-browser.mjs',
     ],
     languageOptions: {
       globals: {

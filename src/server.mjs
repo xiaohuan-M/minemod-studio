@@ -30,6 +30,8 @@ const VENDORS = new Map([
 ]);
 
 const ASSETS = new Map([
+  ['/studio/skeleton-editor.js', ['studio/skeleton-editor.js', 'text/javascript; charset=utf-8']],
+  ['/studio/skeleton.js', ['../src/core/skeleton.mjs', 'text/javascript; charset=utf-8']],
   ['/studio/asset-sessions.js', ['studio/asset-sessions.js', 'text/javascript; charset=utf-8']],
   ['/studio/creation.js', ['studio/creation.js', 'text/javascript; charset=utf-8']],
   ['/studio/product-versions.js', ['studio/product-versions.js', 'text/javascript; charset=utf-8']],

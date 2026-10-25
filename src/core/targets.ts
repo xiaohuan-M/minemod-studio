@@ -50,6 +50,7 @@ const descriptors: readonly TargetDescriptor[] = [
       'textures',
       'entities',
       'cube_animation',
+      'hierarchical_animation',
       'block_models',
     ],
   },

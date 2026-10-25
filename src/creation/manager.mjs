@@ -564,7 +564,7 @@ export class CreationManager {
             provider,
             'planAsset',
             {
-              kind,
+              kind: kind === 'model' && group === 'entities' && bedrock ? 'animated_model' : kind,
               prompt: (
                 initial.prompt +
                 '。' +
@@ -577,7 +577,12 @@ export class CreationManager {
                 owner.displayName.zh_cn +
                 '制作' +
                 (kind === 'texture' ? '16×16 Minecraft 像素贴图' : 'Minecraft 立方体模型') +
-                '，风格保持一致。'
+                '，风格保持一致。' +
+                (kind === 'model' && group === 'entities' && bedrock
+                  ? '使用父子骨骼与多立方体分组，并提供 ' +
+                    (owner.animationClip ?? 'walk') +
+                    ' 动画片段。'
+                  : '')
               ).slice(0, 2000),
             },
             signal,
@@ -589,7 +594,7 @@ export class CreationManager {
           if (kind === 'model' && group === 'entities') {
             data = validateAnimation({
               ...data,
-              clips: [{ name: 'idle', duration: 1, loop: true, tracks: [] }],
+              clips: data.clips ?? [{ name: 'idle', duration: 1, loop: true, tracks: [] }],
             });
             assetKind = 'animated_model';
           }
@@ -605,6 +610,11 @@ export class CreationManager {
           const current = this.current(task),
             spec = structuredClone(current.spec);
           spec[group].find((o) => o.id === owner.id)[field] = asset.id;
+          if (assetKind === 'animated_model') {
+            const entity = spec[group].find((o) => o.id === owner.id);
+            entity.animationClip ??=
+              data.clips.find((c) => c.name === 'walk')?.name ?? data.clips[0].name;
+          }
           this.update(
             task,
             this.store.setSpec(current.id, spec, current.revision, current.specSource),

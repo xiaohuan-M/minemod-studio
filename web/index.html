@@ -16,7 +16,7 @@
     <main>
       <section class="intro">
         <p class="eyebrow">你的想法，你的工程</p>
-        <h1>从想法到模组，<br />在自己的工坊完成。</h1>
+        <h1>从想法到模组与模型，<br />在自己的工坊完成。</h1>
         <p>自带模型 API，本地保存工程。设计内容、制作素材、审查源码，真实编译并下载。</p>
         <aside>
           <strong>多目标本地创作工坊</strong
@@ -24,6 +24,7 @@
           实体。选择 Fabric、Forge、NeoForge 或 Bedrock 目标，导出源码与作品。 Java 编译需要
           Docker，Bedrock 本地打包无需 Docker；支持范围随目标显示。
         </aside>
+        <a href="#asset-workshop">直接制作模型与贴图 →</a>
       </section>
       <section class="panel settings-panel">
         <details id="provider-settings">
@@ -539,471 +540,115 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
             <div id="recipe-list" class="recipe-list"></div>
           </details>
         </section>
-        <section id="asset-workshop">
-          <h2>素材工坊</h2>
-          <p class="target">
-            本地绘制、编辑与导入，不需要 API。资源保存后可在内容编辑器中绑定，随源码导出来源和许可。
+        <details id="loot-editor">
+          <summary>掉落编辑器 · 方块与生物</summary>
+          <label for="loot-owner">选择方块或实体</label
+          ><select id="loot-owner"></select>
+          <p id="loot-state"></p>
+          <p>
+            可使用下方物品建议，或输入 minecraft:diamond 等当前版本原版 ID。每个对象最多 8
+            条独立掉落；Java 方块保留爆炸存活条件。暂不支持时运、抢夺或精准采集。
           </p>
-          <details>
-            <summary>用我的 LLM 创作与继续修改素材</summary>
-            <p>
-              先在上方选择“我的 LLM API”并核对目标。发送素材描述、最近 12
-              条素材修改要求、当前会话素材，以及明确选择的编辑器内容/参考图。结果自动保存到资源库，可继续修改和恢复旧版；质量取决于模型。
-            </p>
-            <label
-              >素材会话<select id="asset-session-select">
-                <option value="">新建素材会话</option>
-              </select></label
-            >
-            <label
-              >素材类型<select id="ai-asset-kind">
-                <option value="texture">16 × 16 像素贴图</option>
-                <option value="model">静态立方体模型</option>
-                <option value="animated_model">立方体动画模型</option>
-              </select></label
-            ><label class="consent"
-              ><input id="asset-with-texture" type="checkbox" checked />自动补全模型贴图（首次最多 2
-              次模型调用）</label
-            >
+          <form id="loot-entry-form">
+            <label for="loot-item">掉落物品</label
+            ><input id="loot-item" list="ingredients" maxlength="113" required />
+            <div class="workspace">
+              <div>
+                <label for="loot-min">最小数量</label
+                ><input id="loot-min" type="number" min="1" max="64" value="1" required />
+              </div>
+              <div>
+                <label for="loot-max">最大数量</label
+                ><input id="loot-max" type="number" min="1" max="64" value="1" required />
+              </div>
+            </div>
+            <label for="loot-chance">概率（%）</label
+            ><input
+              id="loot-chance"
+              type="number"
+              min="0"
+              max="100"
+              step="any"
+              value="100"
+              required
+            />
             <label class="consent"
-              ><input
-                id="asset-regenerate-texture"
-                type="checkbox"
-              />本轮同时重新绘制贴图；保留几何修改以外的内容</label
-            ><label
-              >描述<textarea
-                id="ai-asset-prompt"
-                rows="3"
-                maxlength="2000"
-                placeholder="例如：紫色水晶法杖，金色握柄"
-              ></textarea></label
-            ><label class="consent"
-              ><input
-                id="ai-asset-current"
-                type="checkbox"
-              />使用当前编辑器的素材继续修改（不勾选时使用会话中上一次结果）</label
-            ><label class="consent"
-              ><input
-                id="ai-asset-consent"
-                type="checkbox"
-              />允许将本次描述、素材上下文和所选参考图发送到上方配置的服务商（可能计费）</label
-            >
-            <label
-              >可选参考图（需要所选模型支持图片输入）<select id="ai-asset-reference">
-                <option value="">不发送参考图</option>
-              </select></label
-            >
-            <p class="target">
-              选中参考图时，本次确认也包括将这张图片发送给模型。文本模型若不支持视觉输入会返回错误。
-            </p>
-            <div class="actions">
-              <button id="ai-asset-generate">生成 / 继续修改素材</button
-              ><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button>
-            </div>
-            <div id="asset-session-history"></div>
-          </details>
-          <details id="image-studio">
-            <summary>美术工坊 · 参考图、概念图、三视图与细节图</summary>
-            <p id="image-provider-info" class="target"></p>
-            <label
-              >画面描述<textarea
-                id="image-prompt"
-                rows="3"
-                maxlength="2000"
-                placeholder="描述风格、轮廓、材料与颜色"
-              ></textarea>
-            </label>
-            <div class="form-grid">
-              <label
-                >图像类型<select id="image-view">
-                  <option value="concept">概念设计</option>
-                  <option value="three_view">三视图</option>
-                  <option value="detail">细节设计</option>
-                  <option value="texture">平面贴图</option>
-                </select></label
-              ><label
-                >参考图<select id="image-reference">
-                  <option value="">不发送参考图</option>
-                </select></label
-              >
-            </div>
-            <label class="consent"
-              ><input
-                id="image-consent"
-                type="checkbox"
-              />同意将本次描述和所选参考图发送给上方图像服务（可能计费）。</label
+              ><input id="loot-player-only" type="checkbox" />要求玩家击杀（仅实体）</label
             >
             <div class="actions">
-              <button id="image-generate">生成图片</button
-              ><button id="image-cancel" class="secondary" hidden>取消图片请求</button
-              ><label class="file-button"
-                >导入本地 PNG<input id="image-import" type="file" accept="image/png"
-              /></label>
+              <button id="loot-entry-save" type="submit">添加掉落条目</button
+              ><button id="loot-entry-reset" type="button" class="secondary">
+                取消编辑 / 新条目
+              </button>
             </div>
-            <img id="image-preview" class="art-preview" alt="当前图片结果" hidden />
-            <label>图片名称<input id="image-name" value="我的概念图" maxlength="80" /></label
-            ><button id="image-save" class="secondary" disabled>保存图片到资源库</button>
-            <p class="target">
-              图片生成依赖独立 Images API，不将文本 LLM
-              当作图像模型。三视图一致性和美术质量需要人工审核。图片转像素在本机执行。
-            </p>
-            <div class="form-grid">
-              <label
-                >转换尺寸<select id="image-pixel-size">
-                  <option>16</option>
-                  <option selected>32</option>
-                  <option>64</option>
-                </select></label
-              ><label
-                >调色板颜色数<select id="image-palette">
-                  <option>4</option>
-                  <option>8</option>
-                  <option selected>16</option>
-                  <option>32</option>
-                  <option>64</option>
-                </select></label
-              >
-            </div>
-            <div id="image-library" class="inventory"></div>
-          </details>
-          <details id="loot-editor">
-            <summary>掉落编辑器 · 方块与生物</summary>
-            <label for="loot-owner">选择方块或实体</label
-            ><select id="loot-owner"></select>
-            <p id="loot-state"></p>
-            <p>
-              可使用下方物品建议，或输入 minecraft:diamond 等当前版本原版 ID。每个对象最多 8
-              条独立掉落；Java 方块保留爆炸存活条件。暂不支持时运、抢夺或精准采集。
-            </p>
-            <form id="loot-entry-form">
-              <label for="loot-item">掉落物品</label
-              ><input id="loot-item" list="ingredients" maxlength="113" required />
-              <div class="workspace">
-                <div>
-                  <label for="loot-min">最小数量</label
-                  ><input id="loot-min" type="number" min="1" max="64" value="1" required />
-                </div>
-                <div>
-                  <label for="loot-max">最大数量</label
-                  ><input id="loot-max" type="number" min="1" max="64" value="1" required />
-                </div>
-              </div>
-              <label for="loot-chance">概率（%）</label
-              ><input
-                id="loot-chance"
-                type="number"
-                min="0"
-                max="100"
-                step="any"
-                value="100"
-                required
-              />
-              <label class="consent"
-                ><input id="loot-player-only" type="checkbox" />要求玩家击杀（仅实体）</label
-              >
-              <div class="actions">
-                <button id="loot-entry-save" type="submit">添加掉落条目</button
-                ><button id="loot-entry-reset" type="button" class="secondary">
-                  取消编辑 / 新条目
-                </button>
-              </div>
-            </form>
-            <ul id="loot-list" class="history-list"></ul>
-            <div class="actions">
-              <button id="loot-default" type="button" class="secondary">恢复默认掉落</button
-              ><button id="loot-none" type="button" class="secondary">设置不掉落</button>
-            </div>
-          </details>
-          <details id="entity-editor">
-            <summary>实体工坊 · 原版行为模板</summary>
-            <p id="entity-limit" class="target"></p>
-            <div id="entity-list" class="inventory"></div>
-            <form id="entity-form">
-              <div class="form-grid">
-                <label
-                  >实体 ID<input id="entity-id" pattern="[a-z][a-z0-9_]{0,63}" required /></label
-                ><label>中文名称<input id="entity-zh" maxlength="80" required /></label
-                ><label>英文名称<input id="entity-en" maxlength="80" required /></label
-                ><label
-                  >行为模板<select id="entity-archetype">
-                    <option value="zombie">僵尸 · 敌对与日晒燃烧</option>
-                    <option value="cow">牛 · 被动与繁殖</option>
-                  </select></label
-                ><label
-                  >生命值<input
-                    id="entity-health"
-                    type="number"
-                    min="1"
-                    max="200"
-                    value="20"
-                    required /></label
-                ><label
-                  >移动速度<input
-                    id="entity-speed"
-                    type="number"
-                    min="0.01"
-                    max="1"
-                    step="0.01"
-                    value="0.23"
-                    required /></label
-                ><label
-                  >攻击伤害（牛为 0）<input
-                    id="entity-damage"
-                    type="number"
-                    min="0"
-                    max="30"
-                    value="3"
-                    required /></label
-                ><label>占位颜色<input id="entity-color" type="color" value="#8e62cf" /></label
-                ><label
-                  >实体贴图<select id="entity-texture">
-                    <option value="">程序占位贴图</option>
-                  </select></label
-                >
-              </div>
-              <div class="actions">
-                <span id="entity-animation-fields"
-                  ><label
-                    >Bedrock 实体模型<select id="entity-model">
-                      <option value="">原创默认模型与步行动画</option>
-                    </select></label
-                  ><label
-                    >动画片段名（空白为首片段）<input
-                      id="entity-clip"
-                      placeholder="walk" /></label></span
-                ><button id="entity-save" type="submit">写入实体草稿</button
-                ><button id="entity-reset" type="button" class="secondary">清空实体表单</button>
-              </div>
-            </form>
-          </details>
-          <details id="animation-studio">
-            <summary>动画工坊 · 立方体骨骼与关键帧</summary>
-            <p class="target">
-              每个立方体对应一个独立骨骼；支持线性旋转、位移、缩放。可用于 Bedrock
-              自定义实体，并导出动画 bbmodel。Java 原版实体不能绑定这类模型。
-            </p>
-            <div class="actions">
-              <button id="animation-create" class="secondary">从当前立方体模型创建动画</button
-              ><label class="file-button"
-                >导入动画 bbmodel<input id="animation-import" type="file" accept=".bbmodel,.json"
-              /></label>
-            </div>
-            <canvas
-              id="animation-canvas"
-              width="640"
-              height="360"
-              aria-label="骨骼动画预览"
-            ></canvas>
-            <div id="animation-controls" hidden>
-              <div class="form-grid">
-                <label>动画片段<select id="animation-clip"></select></label
-                ><label>骨骼<select id="animation-bone"></select></label
-                ><label
-                  >片段名<input
-                    id="animation-clip-name"
-                    value="walk"
-                    pattern="[a-z][a-z0-9_]{0,47}" /></label
-                ><label
-                  >长度（秒）<input
-                    id="animation-duration"
-                    type="number"
-                    min="0.1"
-                    max="30"
-                    step="0.1"
-                    value="1" /></label
-                ><label class="consent"
-                  ><input id="animation-loop" type="checkbox" checked />循环</label
-                >
-              </div>
-              <div class="actions">
-                <button id="animation-update-clip" class="secondary">更新片段</button
-                ><button id="animation-add-clip" class="secondary">新增片段</button
-                ><button id="animation-play" class="secondary">播放</button
-                ><button id="animation-texture" class="secondary">使用当前像素贴图</button>
-              </div>
-              <label
-                >时间轴<input
-                  id="animation-time"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.001"
-                  value="0" /></label
-              ><output id="animation-clock"></output>
-              <div class="form-grid">
-                <label>旋转 x,y,z（度）<input id="animation-rotation" value="0,0,0" /></label
-                ><label>位移 x,y,z（像素）<input id="animation-translation" value="0,0,0" /></label
-                ><label>缩放 x,y,z<input id="animation-scale" value="1,1,1" /></label>
-              </div>
-              <div class="actions">
-                <button id="animation-save-key" class="secondary">保存当前关键帧</button
-                ><button id="animation-delete-key" class="secondary">删除当前关键帧</button>
-              </div>
-              <div id="animation-keyframes" class="actions"></div>
-              <label
-                >动画素材名称<input id="animation-name" value="我的动画" maxlength="80"
-              /></label>
-              <div class="actions">
-                <button id="animation-save">保存动画到资源库</button
-                ><button id="animation-export" class="secondary">导出动画与贴图 bbmodel</button>
-              </div>
-            </div>
-          </details>
-          <div class="workshop-columns">
-            <details open>
-              <summary>像素贴图</summary>
-              <div class="form-grid">
-                <label
-                  >尺寸<select id="texture-size">
-                    <option>16</option>
-                    <option>32</option>
-                    <option>64</option>
-                  </select></label
-                ><label>画笔颜色<input id="pixel-color" type="color" value="#a77adc" /></label
-                ><label class="consent"><input id="pixel-erase" type="checkbox" />橡皮</label>
-              </div>
-              <canvas id="pixel-canvas" width="256" height="256" aria-label="像素绘制画布"></canvas>
-              <div class="actions">
-                <button id="pixel-fill" class="secondary">填充</button
-                ><button id="pixel-clear" class="secondary">清空</button
-                ><button id="pixel-undo" class="secondary">撤销</button
-                ><label class="file-button"
-                  >导入 PNG<input id="texture-import" type="file" accept="image/png"
-                /></label>
-              </div>
-              <label>贴图名称<input id="texture-name" value="我的贴图" maxlength="80" /></label
-              ><button id="texture-save">保存贴图到资源库</button>
-            </details>
-            <details open>
-              <summary>立方体模型</summary>
-              <canvas
-                id="model-canvas"
-                width="420"
-                height="300"
-                aria-label="可拖动旋转的 3D 模型预览"
-              ></canvas>
-              <p class="target">
-                拖动旋转，滚轮缩放；本地 WebGL
-                贴图预览，点击选择立方体；人形为比例参考，姿态需进游戏核对。
-              </p>
-              <label
-                >预览角度<select id="model-view">
-                  <option value="orbit">环绕</option>
-                  <option value="hand">第三人称右手与人形</option>
-                  <option value="head">头部与人形</option>
-                  <option value="body">身体背部 · 背包定位</option>
-                  <option value="cape">披风定位</option>
-                  <option value="gui">物品栏</option>
-                  <option value="ground">掉落物</option>
-                  <option value="front">正面</option>
-                </select></label
-              ><label>立方体<select id="cube-select"></select></label>
-              <div class="form-grid">
-                <label>起点 x,y,z<input id="cube-from" value="4,0,4" /></label
-                ><label>终点 x,y,z<input id="cube-to" value="12,16,12" /></label>
-              </div>
-              <div class="actions">
-                <button id="cube-update" class="secondary">更新立方体</button
-                ><button id="cube-add" class="secondary">添加立方体</button
-                ><button id="cube-delete" class="secondary">删除立方体</button
-                ><label class="file-button"
-                  >导入 bbmodel / 模型 JSON<input
-                    id="model-import"
-                    type="file"
-                    accept=".bbmodel,.json"
-                /></label>
-              </div>
-              <details>
-                <summary>旋转、UV 与显示姿态</summary>
-                <div class="form-grid">
-                  <label
-                    >旋转轴<select id="cube-axis">
-                      <option>x</option>
-                      <option selected>y</option>
-                      <option>z</option>
-                    </select></label
-                  ><label
-                    >角度<select id="cube-angle">
-                      <option>-45</option>
-                      <option>-22.5</option>
-                      <option selected>0</option>
-                      <option>22.5</option>
-                      <option>45</option>
-                    </select></label
-                  ><label>旋转中心 x,y,z<input id="cube-origin" value="8,8,8" /></label
-                  ><label class="consent"
-                    ><input type="checkbox" id="cube-rescale" />旋转时保持截面尺寸</label
-                  >
-                </div>
-                <p class="target">调整后点击“更新立方体”。</p>
-                <div class="form-grid">
-                  <label
-                    >UV 面<select id="uv-face">
-                      <option>north</option>
-                      <option>south</option>
-                      <option>east</option>
-                      <option>west</option>
-                      <option>up</option>
-                      <option>down</option>
-                    </select></label
-                  ><label>UV u1,v1,u2,v2<input id="uv-coordinates" value="0,0,16,16" /></label
-                  ><label
-                    >UV 旋转<select id="uv-rotation">
-                      <option>0</option>
-                      <option>90</option>
-                      <option>180</option>
-                      <option>270</option>
-                    </select></label
-                  ><label class="consent"><input type="checkbox" id="uv-hidden" />隐藏此面</label>
-                </div>
-                <button id="uv-update" class="secondary">更新 UV</button>
-                <p class="target">
-                  显示姿态对应上方所选手持、头部、物品栏或掉落物；环绕和正面编辑右手姿态。
-                </p>
-                <div class="form-grid">
-                  <label>姿态旋转 x,y,z<input id="display-rotation" value="0,0,0" /></label
-                  ><label>姿态位移 x,y,z<input id="display-translation" value="0,0,0" /></label
-                  ><label>姿态缩放 x,y,z<input id="display-scale" value="1,1,1" /></label>
-                </div>
-                <button id="display-update" class="secondary">更新显示姿态</button>
-              </details>
-              <div class="actions">
-                <button id="model-texture-pixels" class="secondary">使用当前像素画布预览</button
-                ><button id="model-export" class="secondary">导出模型与预览贴图 bbmodel</button
-                ><button id="model-screenshot" class="secondary">导出预览 PNG</button>
-              </div>
-              <label>模型名称<input id="model-name" value="我的模型" maxlength="80" /></label
-              ><button id="model-save">保存模型到资源库</button>
-            </details>
-          </div>
-          <div class="form-grid">
-            <label>资源来源<input id="asset-source" value="本人原创" maxlength="200" /></label
-            ><label>许可说明<input id="asset-license" value="CC0-1.0" maxlength="200" /></label>
-          </div>
+          </form>
+          <ul id="loot-list" class="history-list"></ul>
           <div class="actions">
-            <a href="/api/asset-packages" download>导出整个资源库</a
-            ><label class="file-button"
-              >导入分享资源包<input id="asset-package-import" type="file" accept=".json"
-            /></label>
+            <button id="loot-default" type="button" class="secondary">恢复默认掉落</button
+            ><button id="loot-none" type="button" class="secondary">设置不掉落</button>
           </div>
-          <label
-            >搜索资源<input id="asset-search" type="search" placeholder="名称、来源或许可"
-          /></label>
-          <details id="community-catalog">
-            <summary>开放素材目录 · 离线可用</summary>
-            <p class="target">
-              原创样例随开源仓库分发。可编辑、导出、分享资源包，也可通过 GitHub Pull Request 贡献。
-            </p>
-            <a
-              href="https://github.com/xiaohuan-M/minemod-studio/tree/main/community"
-              target="_blank"
-              rel="noopener noreferrer"
-              >查看目录与贡献规则</a
-            >
-            <div id="catalog-list" class="inventory"></div>
-          </details>
-          <div id="asset-library" class="inventory"></div>
-        </section>
+        </details>
+        <details id="entity-editor">
+          <summary>实体工坊 · 原版行为模板</summary>
+          <p id="entity-limit" class="target"></p>
+          <div id="entity-list" class="inventory"></div>
+          <form id="entity-form">
+            <div class="form-grid">
+              <label>实体 ID<input id="entity-id" pattern="[a-z][a-z0-9_]{0,63}" required /></label
+              ><label>中文名称<input id="entity-zh" maxlength="80" required /></label
+              ><label>英文名称<input id="entity-en" maxlength="80" required /></label
+              ><label
+                >行为模板<select id="entity-archetype">
+                  <option value="zombie">僵尸 · 敌对与日晒燃烧</option>
+                  <option value="cow">牛 · 被动与繁殖</option>
+                </select></label
+              ><label
+                >生命值<input
+                  id="entity-health"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value="20"
+                  required /></label
+              ><label
+                >移动速度<input
+                  id="entity-speed"
+                  type="number"
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                  value="0.23"
+                  required /></label
+              ><label
+                >攻击伤害（牛为 0）<input
+                  id="entity-damage"
+                  type="number"
+                  min="0"
+                  max="30"
+                  value="3"
+                  required /></label
+              ><label>占位颜色<input id="entity-color" type="color" value="#8e62cf" /></label
+              ><label
+                >实体贴图<select id="entity-texture">
+                  <option value="">程序占位贴图</option>
+                </select></label
+              >
+            </div>
+            <div class="actions">
+              <span id="entity-animation-fields"
+                ><label
+                  >Bedrock 实体模型<select id="entity-model">
+                    <option value="">原创默认模型与步行动画</option>
+                  </select></label
+                ><label
+                  >动画片段名（空白为首片段）<input
+                    id="entity-clip"
+                    placeholder="walk" /></label></span
+              ><button id="entity-save" type="submit">写入实体草稿</button
+              ><button id="entity-reset" type="button" class="secondary">清空实体表单</button>
+            </div>
+          </form>
+        </details>
         <section id="engineering">
           <h2>工程、构建与交付</h2>
           <p id="engineering-state" class="target"></p>
@@ -1054,6 +699,386 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
           <h3>构建记录</h3>
           <ul id="build-history" class="history-list"></ul>
         </section>
+      </section>
+      <section id="asset-workshop" class="panel detail">
+        <h2>模型与贴图工坊</h2>
+        <p class="target">
+          本地绘制、编辑与导入，不需要 API。资源保存后可在内容编辑器中绑定，随源码导出来源和许可。
+        </p>
+        <details>
+          <summary>用我的 LLM 创作与继续修改素材</summary>
+          <p>
+            先在上方“模型与 API 设置”启用服务。无需先建模组项目，直接描述素材；发送描述、最近 12
+            条素材修改要求、当前会话素材，以及明确选择的编辑器内容/参考图。结果自动保存到资源库，可继续修改和恢复旧版；质量取决于模型。
+          </p>
+          <label
+            >素材会话<select id="asset-session-select">
+              <option value="">新建素材会话</option>
+            </select></label
+          >
+          <label
+            >素材类型<select id="ai-asset-kind">
+              <option value="texture">16 × 16 像素贴图</option>
+              <option value="model">静态立方体模型</option>
+              <option value="animated_model">立方体动画模型</option>
+            </select></label
+          ><label class="consent"
+            ><input id="asset-with-texture" type="checkbox" checked />自动补全模型贴图（首次最多 2
+            次模型调用）</label
+          >
+          <label class="consent"
+            ><input
+              id="asset-regenerate-texture"
+              type="checkbox"
+            />本轮同时重新绘制贴图；保留几何修改以外的内容</label
+          ><label
+            >描述<textarea
+              id="ai-asset-prompt"
+              rows="3"
+              maxlength="2000"
+              placeholder="例如：紫色水晶法杖，金色握柄"
+            ></textarea></label
+          ><label class="consent"
+            ><input
+              id="ai-asset-current"
+              type="checkbox"
+            />使用当前编辑器的素材继续修改（不勾选时使用会话中上一次结果）</label
+          ><label class="consent"
+            ><input
+              id="ai-asset-consent"
+              type="checkbox"
+            />允许将本次描述、素材上下文和所选参考图发送到上方配置的服务商（可能计费）</label
+          >
+          <label
+            >可选参考图（需要所选模型支持图片输入）<select id="ai-asset-reference">
+              <option value="">不发送参考图</option>
+            </select></label
+          >
+          <p class="target">
+            选中参考图时，本次确认也包括将这张图片发送给模型。文本模型若不支持视觉输入会返回错误。
+          </p>
+          <div class="actions">
+            <button id="ai-asset-generate">生成 / 继续修改素材</button
+            ><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button>
+          </div>
+          <div id="asset-session-history"></div>
+        </details>
+        <details id="image-studio">
+          <summary>美术工坊 · 参考图、概念图、三视图与细节图</summary>
+          <p id="image-provider-info" class="target"></p>
+          <label
+            >画面描述<textarea
+              id="image-prompt"
+              rows="3"
+              maxlength="2000"
+              placeholder="描述风格、轮廓、材料与颜色"
+            ></textarea>
+          </label>
+          <div class="form-grid">
+            <label
+              >图像类型<select id="image-view">
+                <option value="concept">概念设计</option>
+                <option value="three_view">三视图</option>
+                <option value="detail">细节设计</option>
+                <option value="texture">平面贴图</option>
+              </select></label
+            ><label
+              >参考图<select id="image-reference">
+                <option value="">不发送参考图</option>
+              </select></label
+            >
+          </div>
+          <label class="consent"
+            ><input
+              id="image-consent"
+              type="checkbox"
+            />同意将本次描述和所选参考图发送给上方图像服务（可能计费）。</label
+          >
+          <div class="actions">
+            <button id="image-generate">生成图片</button
+            ><button id="image-cancel" class="secondary" hidden>取消图片请求</button
+            ><label class="file-button"
+              >导入本地 PNG<input id="image-import" type="file" accept="image/png"
+            /></label>
+          </div>
+          <img id="image-preview" class="art-preview" alt="当前图片结果" hidden />
+          <label>图片名称<input id="image-name" value="我的概念图" maxlength="80" /></label
+          ><button id="image-save" class="secondary" disabled>保存图片到资源库</button>
+          <p class="target">
+            图片生成依赖独立 Images API，不将文本 LLM
+            当作图像模型。三视图一致性和美术质量需要人工审核。图片转像素在本机执行。
+          </p>
+          <div class="form-grid">
+            <label
+              >转换尺寸<select id="image-pixel-size">
+                <option>16</option>
+                <option selected>32</option>
+                <option>64</option>
+              </select></label
+            ><label
+              >调色板颜色数<select id="image-palette">
+                <option>4</option>
+                <option>8</option>
+                <option selected>16</option>
+                <option>32</option>
+                <option>64</option>
+              </select></label
+            >
+          </div>
+          <div id="image-library" class="inventory"></div>
+        </details>
+        <details id="animation-studio">
+          <summary>动画工坊 · 立方体骨骼与关键帧</summary>
+          <p class="target">
+            支持父子骨骼、多立方体分组、绑定姿态与线性旋转/位移/缩放。可用于 Bedrock
+            自定义实体，并导出动画 bbmodel。Java 原版实体不能绑定这类模型。
+          </p>
+          <div class="actions">
+            <button id="animation-create" class="secondary">从当前立方体模型创建动画</button
+            ><label class="file-button"
+              >导入骨骼/动画 bbmodel<input
+                id="animation-import"
+                type="file"
+                accept=".bbmodel,.json"
+            /></label>
+          </div>
+          <canvas id="animation-canvas" width="640" height="360" aria-label="骨骼动画预览"></canvas>
+          <div id="animation-controls" hidden>
+            <details id="skeleton-editor">
+              <summary>骨骼层级与立方体分组</summary>
+              <button id="skeleton-enable" type="button" class="secondary">
+                将独立骨骼转换为层级分组
+              </button>
+              <div id="skeleton-fields" hidden>
+                <div class="form-grid">
+                  <label>骨骼名称<input id="skeleton-name" maxlength="80" /></label
+                  ><label>父骨骼<select id="skeleton-parent"></select></label
+                  ><label>旋转中心 x,y,z<input id="skeleton-pivot" value="8,8,8" /></label
+                  ><label>绑定旋转 x,y,z（度）<input id="skeleton-bind" value="0,0,0" /></label>
+                </div>
+                <div class="actions">
+                  <button id="skeleton-save" type="button" class="secondary">更新骨骼</button
+                  ><button id="skeleton-add" type="button" class="secondary">新增空骨骼</button
+                  ><button id="skeleton-delete" type="button" class="secondary">删除空骨骼</button>
+                </div>
+                <label
+                  >选择立方体移入当前骨骼<select
+                    id="skeleton-cubes"
+                    multiple
+                    size="6"
+                  ></select></label
+                ><button id="skeleton-move" type="button" class="secondary">移入当前骨骼</button>
+                <ul id="skeleton-tree"></ul>
+              </div>
+            </details>
+
+            <div class="form-grid">
+              <label>动画片段<select id="animation-clip"></select></label
+              ><label>骨骼<select id="animation-bone"></select></label
+              ><label
+                >片段名<input
+                  id="animation-clip-name"
+                  value="walk"
+                  pattern="[a-z][a-z0-9_]{0,47}" /></label
+              ><label
+                >长度（秒）<input
+                  id="animation-duration"
+                  type="number"
+                  min="0.1"
+                  max="30"
+                  step="0.1"
+                  value="1" /></label
+              ><label class="consent"
+                ><input id="animation-loop" type="checkbox" checked />循环</label
+              >
+            </div>
+            <div class="actions">
+              <button id="animation-update-clip" class="secondary">更新片段</button
+              ><button id="animation-add-clip" class="secondary">新增片段</button
+              ><button id="animation-play" class="secondary">播放</button
+              ><button id="animation-fit" class="secondary">显示整个模型</button
+              ><button id="animation-texture" class="secondary">使用当前像素贴图</button>
+            </div>
+            <label
+              >时间轴<input
+                id="animation-time"
+                type="range"
+                min="0"
+                max="1"
+                step="0.001"
+                value="0" /></label
+            ><output id="animation-clock"></output>
+            <div class="form-grid">
+              <label>旋转 x,y,z（度）<input id="animation-rotation" value="0,0,0" /></label
+              ><label>位移 x,y,z（像素）<input id="animation-translation" value="0,0,0" /></label
+              ><label>缩放 x,y,z<input id="animation-scale" value="1,1,1" /></label>
+            </div>
+            <div class="actions">
+              <button id="animation-save-key" class="secondary">保存当前关键帧</button
+              ><button id="animation-delete-key" class="secondary">删除当前关键帧</button>
+            </div>
+            <div id="animation-keyframes" class="actions"></div>
+            <label>动画素材名称<input id="animation-name" value="我的动画" maxlength="80" /></label>
+            <div class="actions">
+              <button id="animation-save">保存动画到资源库</button
+              ><button id="animation-export" class="secondary">导出动画与贴图 bbmodel</button>
+            </div>
+          </div>
+        </details>
+        <div class="workshop-columns">
+          <details open>
+            <summary>像素贴图</summary>
+            <div class="form-grid">
+              <label
+                >尺寸<select id="texture-size">
+                  <option>16</option>
+                  <option>32</option>
+                  <option>64</option>
+                </select></label
+              ><label>画笔颜色<input id="pixel-color" type="color" value="#a77adc" /></label
+              ><label class="consent"><input id="pixel-erase" type="checkbox" />橡皮</label>
+            </div>
+            <canvas id="pixel-canvas" width="256" height="256" aria-label="像素绘制画布"></canvas>
+            <div class="actions">
+              <button id="pixel-fill" class="secondary">填充</button
+              ><button id="pixel-clear" class="secondary">清空</button
+              ><button id="pixel-undo" class="secondary">撤销</button
+              ><label class="file-button"
+                >导入 PNG<input id="texture-import" type="file" accept="image/png"
+              /></label>
+            </div>
+            <label>贴图名称<input id="texture-name" value="我的贴图" maxlength="80" /></label
+            ><button id="texture-save">保存贴图到资源库</button>
+          </details>
+          <details open>
+            <summary>立方体模型</summary>
+            <canvas
+              id="model-canvas"
+              width="420"
+              height="300"
+              aria-label="可拖动旋转的 3D 模型预览"
+            ></canvas>
+            <p class="target">
+              拖动旋转，滚轮缩放；本地 WebGL
+              贴图预览，点击选择立方体；人形为比例参考，姿态需进游戏核对。
+            </p>
+            <label
+              >预览角度<select id="model-view">
+                <option value="orbit">环绕</option>
+                <option value="hand">第三人称右手与人形</option>
+                <option value="head">头部与人形</option>
+                <option value="body">身体背部 · 背包定位</option>
+                <option value="cape">披风定位</option>
+                <option value="gui">物品栏</option>
+                <option value="ground">掉落物</option>
+                <option value="front">正面</option>
+              </select></label
+            ><label>立方体<select id="cube-select"></select></label>
+            <div class="form-grid">
+              <label>起点 x,y,z<input id="cube-from" value="4,0,4" /></label
+              ><label>终点 x,y,z<input id="cube-to" value="12,16,12" /></label>
+            </div>
+            <div class="actions">
+              <button id="cube-update" class="secondary">更新立方体</button
+              ><button id="cube-add" class="secondary">添加立方体</button
+              ><button id="cube-delete" class="secondary">删除立方体</button
+              ><label class="file-button"
+                >导入 bbmodel / 模型 JSON<input
+                  id="model-import"
+                  type="file"
+                  accept=".bbmodel,.json"
+              /></label>
+            </div>
+            <details>
+              <summary>旋转、UV 与显示姿态</summary>
+              <div class="form-grid">
+                <label
+                  >旋转轴<select id="cube-axis">
+                    <option>x</option>
+                    <option selected>y</option>
+                    <option>z</option>
+                  </select></label
+                ><label
+                  >角度<select id="cube-angle">
+                    <option>-45</option>
+                    <option>-22.5</option>
+                    <option selected>0</option>
+                    <option>22.5</option>
+                    <option>45</option>
+                  </select></label
+                ><label>旋转中心 x,y,z<input id="cube-origin" value="8,8,8" /></label
+                ><label class="consent"
+                  ><input type="checkbox" id="cube-rescale" />旋转时保持截面尺寸</label
+                >
+              </div>
+              <p class="target">调整后点击“更新立方体”。</p>
+              <div class="form-grid">
+                <label
+                  >UV 面<select id="uv-face">
+                    <option>north</option>
+                    <option>south</option>
+                    <option>east</option>
+                    <option>west</option>
+                    <option>up</option>
+                    <option>down</option>
+                  </select></label
+                ><label>UV u1,v1,u2,v2<input id="uv-coordinates" value="0,0,16,16" /></label
+                ><label
+                  >UV 旋转<select id="uv-rotation">
+                    <option>0</option>
+                    <option>90</option>
+                    <option>180</option>
+                    <option>270</option>
+                  </select></label
+                ><label class="consent"><input type="checkbox" id="uv-hidden" />隐藏此面</label>
+              </div>
+              <button id="uv-update" class="secondary">更新 UV</button>
+              <p class="target">
+                显示姿态对应上方所选手持、头部、物品栏或掉落物；环绕和正面编辑右手姿态。
+              </p>
+              <div class="form-grid">
+                <label>姿态旋转 x,y,z<input id="display-rotation" value="0,0,0" /></label
+                ><label>姿态位移 x,y,z<input id="display-translation" value="0,0,0" /></label
+                ><label>姿态缩放 x,y,z<input id="display-scale" value="1,1,1" /></label>
+              </div>
+              <button id="display-update" class="secondary">更新显示姿态</button>
+            </details>
+            <div class="actions">
+              <button id="model-texture-pixels" class="secondary">使用当前像素画布预览</button
+              ><button id="model-export" class="secondary">导出模型与预览贴图 bbmodel</button
+              ><button id="model-screenshot" class="secondary">导出预览 PNG</button>
+            </div>
+            <label>模型名称<input id="model-name" value="我的模型" maxlength="80" /></label
+            ><button id="model-save">保存模型到资源库</button>
+          </details>
+        </div>
+        <div class="form-grid">
+          <label>资源来源<input id="asset-source" value="本人原创" maxlength="200" /></label
+          ><label>许可说明<input id="asset-license" value="CC0-1.0" maxlength="200" /></label>
+        </div>
+        <div class="actions">
+          <a href="/api/asset-packages" download>导出整个资源库</a
+          ><label class="file-button"
+            >导入分享资源包<input id="asset-package-import" type="file" accept=".json"
+          /></label>
+        </div>
+        <label
+          >搜索资源<input id="asset-search" type="search" placeholder="名称、来源或许可"
+        /></label>
+        <details id="community-catalog">
+          <summary>开放素材目录 · 离线可用</summary>
+          <p class="target">
+            原创样例随开源仓库分发。可编辑、导出、分享资源包，也可通过 GitHub Pull Request 贡献。
+          </p>
+          <a
+            href="https://github.com/xiaohuan-M/minemod-studio/tree/main/community"
+            target="_blank"
+            rel="noopener noreferrer"
+            >查看目录与贡献规则</a
+          >
+          <div id="catalog-list" class="inventory"></div>
+        </details>
+        <div id="asset-library" class="inventory"></div>
       </section>
       <p id="feedback" role="status" aria-live="polite"></p>
     </main>
