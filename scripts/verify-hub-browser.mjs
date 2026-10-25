@@ -106,6 +106,16 @@ try {
   console.log(
     'Hosted browser passed: invite registration, cross-device project, check-in, publish/review/import, mobile layout; no real model or WeChat call.',
   );
+} catch (error) {
+  if (process.env.GITHUB_ACTIONS === 'true')
+    console.error(
+      '::error file=scripts/verify-hub-browser.mjs,title=Hosted browser verification::' +
+        String(error.stack ?? error)
+          .replaceAll('%', '%25')
+          .replaceAll('\r', '%0D')
+          .replaceAll('\n', '%0A'),
+    );
+  throw error;
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
