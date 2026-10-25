@@ -8,6 +8,10 @@ export function capabilities() {
     features: {
       projectStorage: true,
       automaticCreation: true,
+      llmCodeChanges: true,
+      versionApiKnowledge: true,
+      assetSessions: true,
+      wearablePreview: true,
       resumableCreation: true,
       productVersions: true,
       demoPlanning: true,

@@ -83,12 +83,15 @@ export function modelPreview(canvas, onSelect = () => {}) {
     const slot = { hand: 'thirdperson_righthand', head: 'head', gui: 'gui', ground: 'ground' }[
       mode
     ];
-    const t = model.display?.[slot] ?? {};
+    const wearable = ['body', 'cape'].includes(mode);
+    const t = wearable ? (model.preview?.[mode] ?? {}) : (model.display?.[slot] ?? {});
     root.rotation.set(...(t.rotation ?? [0, 0, 0]).map(THREE.MathUtils.degToRad));
     root.position.fromArray(t.translation ?? [0, 0, 0]);
     root.scale.fromArray(t.scale ?? [1, 1, 1]);
-    mannequin.visible = ['hand', 'head'].includes(mode);
-    if (mode === 'hand') mannequin.position.set(-10, -13, 1);
+    mannequin.visible = ['hand', 'head', 'body', 'cape'].includes(mode);
+    if (wearable) root.position.add(new THREE.Vector3(0, mode === 'cape' ? -5 : 0, 4));
+    if (wearable) mannequin.position.set(0, -10, 0);
+    else if (mode === 'hand') mannequin.position.set(-10, -13, 1);
     else mannequin.position.set(0, -25, 0);
   }
   for (const [size, pos] of [

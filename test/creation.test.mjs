@@ -156,9 +156,10 @@ test('active creation blocks conflicting project/provider writes; cancellation a
   provider.planAsset = original;
   const resumed = await call('/api/creations/' + task.id + '/resume', 'POST', {
     ...approved,
+    textures: false,
     revision: server.workshop.creations.get(task.id).expectedRevision,
   });
-  // Resume takes no new options; reject accidental extra policy overrides.
+  // Resume may extend budget/network grants, but cannot silently change which assets are required.
   assert.equal(resumed.status, 400);
   assert.equal(
     (
@@ -200,6 +201,20 @@ test('model-call budgets stop before extra calls; no approval or stale consent c
   assert.equal(result.error.code, 'CREATION_BUDGET');
   assert.equal(result.calls.length, 1);
   assert.equal(result.buildId, null);
+  assert.equal(
+    (
+      await call('/api/creations/' + task.id + '/resume', 'POST', {
+        approved: true,
+        consent: approved.consent,
+        revision: result.expectedRevision,
+        maxCalls: 12,
+      })
+    ).status,
+    202,
+  );
+  const resumed = await finished(server, task.id);
+  assert.equal(resumed.status, 'passed');
+  assert.equal(resumed.calls.filter((c) => c.method === 'planSpec').length, 1);
 });
 
 test('restart marks unfinished records interrupted and resumes from the saved project without repeating planning', async (t) => {

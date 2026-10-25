@@ -7,6 +7,7 @@ const options = [
   'instruction',
   'textures',
   'models',
+  'code',
   'maxCalls',
   'maxRepairs',
   'allowNetwork',
@@ -15,6 +16,8 @@ export function creationRoutes({ creations, store, getProvider, requireConsent, 
   function authorize(input) {
     requireConsent(input);
     creationOptions(input);
+    if (creations.active.size >= 2)
+      throw new AppError(429, 'CREATION_LIMIT', '最多同时进行两个自动创作任务。');
     if (modelActive())
       throw new AppError(409, 'PLANNING_ACTIVE', '请等待当前模型请求结束后再开始自动创作。');
     return getProvider();
@@ -58,7 +61,14 @@ export function creationRoutes({ creations, store, getProvider, requireConsent, 
       fields(await body(request), []);
       json(response, 200, await creations.cancel(id));
     } else if (method === 'POST' && action === 'resume') {
-      const input = fields(await body(request), ['revision', 'consent', 'approved']);
+      const input = fields(await body(request), [
+        'revision',
+        'consent',
+        'approved',
+        'maxCalls',
+        'maxRepairs',
+        'allowNetwork',
+      ]);
       requireConsent(input);
       if (modelActive()) throw new AppError(409, 'PLANNING_ACTIVE', '已有模型请求运行。');
       json(response, 202, creations.resume(id, input, getProvider()));

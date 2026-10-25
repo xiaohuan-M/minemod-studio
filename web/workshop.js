@@ -1,3 +1,4 @@
+import { initAssetSessions } from './studio/asset-sessions.js';
 import { initAnimationEditor } from './studio/animation-editor.js';
 import { initEntityEditor } from './studio/entity-editor.js';
 import { initLootEditor } from './studio/loot-editor.js';
@@ -510,46 +511,34 @@ export function initWorkshop({
     getPixels: () => ({ width: size, height: size, pixels }),
   });
   initImageStudio({ api, request, run, assetPayload, refreshAssets, feedback });
-  let assetAbort = null;
-  $('ai-asset-cancel').onclick = () => assetAbort?.abort();
-  $('ai-asset-generate').onclick = run(async () => {
-    const provider = getProvider();
-    if ($('provider-select').value !== 'openai-compatible' || !provider?.configured)
-      throw new Error('请先配置并选择“我的 LLM API”，核对服务商与模型。');
-    if (!$('ai-asset-consent').checked) throw new Error('请确认本次素材调用。');
-    assetAbort = new AbortController();
-    $('ai-asset-cancel').hidden = false;
-    feedback('正在请求模型生成结构化素材……');
-    try {
-      const result = await api('/api/providers/openai-compatible/asset', {
-        method: 'POST',
-        body: JSON.stringify({
-          consent: provider.configurationId,
-          kind: $('ai-asset-kind').value,
-          prompt: $('ai-asset-prompt').value,
-          referenceId: $('ai-asset-reference').value || undefined,
-        }),
-        signal: assetAbort.signal,
-      });
-      if (result.kind === 'texture') {
-        size = result.data.width;
-        pixels = [...result.data.pixels];
+  initAssetSessions({
+    api,
+    getProvider,
+    run,
+    feedback,
+    refreshAssets,
+    getCurrent: (kind) =>
+      kind === 'texture'
+        ? { width: size, height: size, pixels }
+        : kind === 'animated_model'
+          ? animationEditor.get()
+          : modelEditor.get(),
+    load: (kind, data) => {
+      if (kind === 'texture') {
+        size = data.width;
+        pixels = [...data.pixels];
         undo = [];
         $('texture-size').value = String(size);
-        $('texture-name').value = '模型生成的贴图';
+        $('texture-name').value = 'AI 会话贴图';
         drawPixels();
-      } else {
-        modelEditor.set(result.data);
-        $('model-name').value = '模型生成的立方体';
+      } else if (kind === 'animated_model') animationEditor.set(data);
+      else {
+        modelEditor.set(data);
+        $('model-name').value = 'AI 会话模型';
       }
-      $('asset-source').value = 'LLM: ' + result.source.model;
-      $('asset-license').value = '待用户核对服务商条款';
-      feedback('模型素材已通过结构校验并载入编辑器。请审查和修改，填写许可说明后保存到资源库。');
-    } finally {
-      assetAbort = null;
-      $('ai-asset-cancel').hidden = true;
-      $('ai-asset-consent').checked = false;
-    }
+      $('asset-source').value = 'LLM: ' + (getProvider()?.model ?? '已保存会话');
+      $('asset-license').value = 'AI 生成；请核对服务商条款';
+    },
   });
   async function refreshAssets() {
     assets = (await api('/api/assets')).assets;

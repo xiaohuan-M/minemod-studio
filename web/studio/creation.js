@@ -42,6 +42,7 @@ export function initCreation({
       allowNetwork: $('creation-network').checked,
       textures: $('creation-textures').checked,
       models: $('creation-models').checked,
+      code: $('creation-code').checked,
       maxCalls: Number($('creation-max-calls').value),
       maxRepairs: Number($('creation-repairs').value),
     };
@@ -174,7 +175,14 @@ export function initCreation({
         p = await api('/api/projects/' + current.projectId);
       const task = await api('/api/creations/' + current.id + '/resume', {
         method: 'POST',
-        body: JSON.stringify({ approved: true, consent: options.consent, revision: p.revision }),
+        body: JSON.stringify({
+          approved: true,
+          consent: options.consent,
+          revision: p.revision,
+          maxCalls: options.maxCalls,
+          maxRepairs: options.maxRepairs,
+          allowNetwork: options.allowNetwork,
+        }),
       });
       await begin(task);
     } catch (e) {

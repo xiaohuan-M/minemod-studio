@@ -135,31 +135,40 @@ export function validateModel(input) {
     'ground',
     'fixed',
   ];
-  if (
-    input.display !== undefined &&
-    (!input.display ||
-      typeof input.display !== 'object' ||
-      Array.isArray(input.display) ||
-      Object.keys(input.display).some((k) => !slots.includes(k)))
-  )
-    fail('模型显示姿态不正确。');
-  for (const [slot, transform] of Object.entries(input.display ?? {})) {
-    if (!transform || typeof transform !== 'object')
-      fail('姿态必须为 rotation、translation 和 scale 向量。');
-    const result = {};
-    for (const [field, min, max] of [
-      ['rotation', -360, 360],
-      ['translation', -80, 80],
-      ['scale', 0, 4],
-    ]) {
-      if (transform[field] !== undefined) {
-        if (!vector(transform[field], min, max)) fail('模型显示姿态的 ' + field + ' 超出范围。');
-        result[field] = [...transform[field]];
-      }
+  const normalizeTransforms = (value, allowed) => {
+    if (
+      value !== undefined &&
+      (!value ||
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        Object.keys(value).some((k) => !allowed.includes(k)))
+    )
+      fail('模型显示姿态不正确。');
+    const output = {};
+    for (const [slot, transform] of Object.entries(value ?? {})) {
+      if (!transform || typeof transform !== 'object')
+        fail('姿态必须为 rotation、translation 和 scale 向量。');
+      const result = {};
+      for (const [field, min, max] of [
+        ['rotation', -360, 360],
+        ['translation', -80, 80],
+        ['scale', 0, 4],
+      ])
+        if (transform[field] !== undefined) {
+          if (!vector(transform[field], min, max)) fail('模型显示姿态的 ' + field + ' 超出范围。');
+          result[field] = [...transform[field]];
+        }
+      output[slot] = result;
     }
-    display[slot] = result;
-  }
-  return { elements, ...(Object.keys(display).length ? { display } : {}) };
+    return output;
+  };
+  Object.assign(display, normalizeTransforms(input.display, slots));
+  const preview = normalizeTransforms(input.preview, ['body', 'cape']);
+  return {
+    elements,
+    ...(Object.keys(display).length ? { display } : {}),
+    ...(Object.keys(preview).length ? { preview } : {}),
+  };
 }
 export function importBlockbench(input) {
   if (
@@ -182,6 +191,7 @@ export function importBlockbench(input) {
     fail('模型纹理分辨率不正确。');
   return validateModel({
     display: input.display,
+    preview: input.minemod_preview,
     elements: input.elements.map((e) => {
       if (e.faces && Object.values(e.faces).some((face) => face.texture === false))
         fail('模型面 texture 格式不正确。');
@@ -225,6 +235,7 @@ export function exportBlockbench(model, name, texture) {
     name,
     resolution: { width: tex.width, height: tex.height },
     ...(clean.display ? { display: clean.display } : {}),
+    ...(clean.preview ? { minemod_preview: clean.preview } : {}),
     elements: clean.elements.map((e, index) => ({
       name: 'cube_' + index,
       type: 'cube',

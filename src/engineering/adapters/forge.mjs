@@ -42,7 +42,7 @@ neoForge {
   enable { version = '${template.loaderVersion}'; disableRecompilation = true }
   mods { '${ns}' { sourceSet sourceSets.main } }
 }
-tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
+tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-proc:none']; options.encoding = 'UTF-8'; options.release = 21 }
 jar { from('LICENSE') }
 `
       : `plugins { id 'java'; id 'net.minecraftforge.gradle' version '${template.pluginVersion}' }
@@ -53,7 +53,7 @@ java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaV
 minecraft { mappings channel: 'official', version: '1.20.1'; copyIdeResources = true }
 repositories { mavenCentral() }
 dependencies { minecraft 'net.minecraftforge:forge:1.20.1-${template.loaderVersion}' }
-tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 17 }
+tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-proc:none']; options.encoding = 'UTF-8'; options.release = 17 }
 jar { from('LICENSE'); finalizedBy 'reobfJar' }
 `,
   );

@@ -28,6 +28,35 @@ function fixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
+
+test('body/cape preview transforms survive bbmodel exchange without entering Minecraft item JSON', (t) => {
+  const data = validateModel({
+    elements: [{ from: [2, 0, 6], to: [14, 16, 10] }],
+    preview: {
+      body: { translation: [0, 1, 3], scale: [1, 1, 0.5] },
+      cape: { rotation: [0, 10, 0] },
+    },
+  });
+  assert.deepEqual(importBlockbench(exportBlockbench(data, '背包')), data);
+  const assets = new AssetStore(fixture(t));
+  const asset = assets.create({
+    kind: 'model',
+    name: '背包模型',
+    data,
+    source: '原创',
+    license: 'CC0',
+  });
+  const input = structuredClone(spec);
+  input.items[0].modelAsset = asset.id;
+  const files = workspaceFiles(generateWorkspace(input, [asset]));
+  const json = JSON.parse(
+    files[
+      'src/main/resources/assets/' + input.modId + '/models/item/' + input.items[0].id + '.json'
+    ],
+  );
+  assert.equal(Object.hasOwn(json, 'preview'), false);
+  assert.ok(json.elements.length > 0);
+});
 test('pinned generator emits repeatable complete Fabric files with Minecraft 1.21 resources', () => {
   const one = generateWorkspace(spec),
     two = generateWorkspace(structuredClone(spec));

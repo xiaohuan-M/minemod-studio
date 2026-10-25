@@ -83,7 +83,7 @@ dependencies {
   modImplementation 'net.fabricmc.fabric-api:fabric-api:${template.fabricApi}'
 }
 java { withSourcesJar(); sourceCompatibility = JavaVersion.VERSION_${template.java}; targetCompatibility = JavaVersion.VERSION_${template.java} }
-tasks.withType(JavaCompile).configureEach { options.release = ${template.java}; options.encoding = 'UTF-8' }
+tasks.withType(JavaCompile).configureEach { options.release = ${template.java}; options.compilerArgs += ['-proc:none']; options.encoding = 'UTF-8' }
 jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
 `,
   );
@@ -163,6 +163,7 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
             (item.tool || item.kind === 'lightning_wand' ? 'handheld' : 'generated'),
           textures: { layer0: ns + ':item/' + item.id },
         };
+    delete model.preview;
     if (model.elements)
       for (const element of model.elements)
         element.faces = Object.fromEntries(

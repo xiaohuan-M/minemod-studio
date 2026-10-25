@@ -5,14 +5,17 @@ import { JsonDirectory } from '../storage/json-directory.mjs';
 import { AppError } from '../core/errors.mjs';
 import { validateTexture } from '../core/assets.mjs';
 import { validateAnimation } from '../core/animation.mjs';
+import { ApiKnowledge } from './knowledge.mjs';
+import { codeContext } from '../engineering/code-changes.mjs';
 
 const terminal = new Set(['passed', 'failed', 'cancelled', 'interrupted']);
-export const CREATION_LIMITS = Object.freeze({ maxCalls: 64, maxRepairs: 3 });
+export const CREATION_LIMITS = Object.freeze({ maxCalls: 256, maxRepairs: 3 });
 export function creationOptions(input) {
   const options = {
     instruction: input.instruction ?? '',
     textures: input.textures ?? true,
     models: input.models ?? true,
+    code: input.code ?? true,
     maxCalls: input.maxCalls ?? 48,
     maxRepairs: input.maxRepairs ?? 2,
     allowNetwork: input.allowNetwork ?? false,
@@ -20,7 +23,7 @@ export function creationOptions(input) {
   if (
     typeof options.instruction !== 'string' ||
     options.instruction.length > 4000 ||
-    ['textures', 'models', 'allowNetwork'].some((k) => typeof options[k] !== 'boolean') ||
+    ['textures', 'models', 'code', 'allowNetwork'].some((k) => typeof options[k] !== 'boolean') ||
     !Number.isInteger(options.maxCalls) ||
     options.maxCalls < 1 ||
     options.maxCalls > CREATION_LIMITS.maxCalls ||
@@ -31,7 +34,7 @@ export function creationOptions(input) {
     throw new AppError(
       422,
       'INVALID_CREATION',
-      '创作选项无效：最多 64 次模型调用、3 轮修复，需求最多 4000 字。',
+      '创作选项无效：最多 256 次模型调用、3 轮修复，需求最多 4000 字。',
     );
   if (input.approved !== true)
     throw new AppError(
@@ -64,6 +67,7 @@ export class CreationManager {
     Object.assign(this, { store, ...workshop });
     this.records = new JsonDirectory(join(dataDir, 'creations'));
     this.active = new Map();
+    this.knowledge = new ApiKnowledge(dataDir);
     for (const id of this.records.ids()) {
       const task = this.get(id);
       if (!terminal.has(task.status)) {
@@ -134,6 +138,8 @@ export class CreationManager {
       calls: [],
       repairs: 0,
       specComplete: false,
+      codeComplete: false,
+      previousSnapshotHash: project.workspaceHash ?? project.lastWorkspaceHash ?? null,
       assetJobs: [],
       snapshotHash: null,
       buildId: null,
@@ -147,7 +153,16 @@ export class CreationManager {
     const task = this.get(id);
     if (!['interrupted', 'cancelled', 'failed'].includes(task.status))
       throw new AppError(409, 'CREATION_ACTIVE', '此任务不需要恢复。');
-    creationOptions({ ...task.options, approved: input.approved });
+    const nextOptions = creationOptions({
+      ...task.options,
+      approved: input.approved,
+      maxCalls: input.maxCalls ?? task.options.maxCalls,
+      maxRepairs: input.maxRepairs ?? task.options.maxRepairs,
+      allowNetwork: input.allowNetwork ?? task.options.allowNetwork,
+    });
+    if (task.error?.code === 'CREATION_BUDGET' && nextOptions.maxCalls <= task.calls.length)
+      throw new AppError(409, 'CREATION_BUDGET', '请提高调用上限并重新确认后继续。');
+    task.options = nextOptions;
     this.current(task);
     this.store.assertRevision(this.store.get(task.projectId), input.revision);
     if (this.isActive(task.projectId) || this.active.size >= 2)
@@ -193,11 +208,13 @@ export class CreationManager {
       throw new AppError(
         409,
         'CREATION_BUDGET',
-        '达到本轮模型调用上限，已停止。可保存当前作品后发起新一轮。',
+        '达到本轮模型调用上限，已停止。提高调用上限并重新确认后可继续，或保存当前作品后发起新一轮。',
       );
     const call = {
       id: randomUUID(),
       method,
+      model: provider.info.model,
+      configurationId: provider.info.configurationId,
       status: 'running',
       startedAt: new Date().toISOString(),
       usage: null,
@@ -280,6 +297,7 @@ export class CreationManager {
           }),
         );
         task.specComplete = true;
+        task.codeComplete = false;
         task.assetJobs = [];
         task.snapshotHash = null;
         task.buildId = null;
@@ -300,6 +318,73 @@ export class CreationManager {
           snapshotHash: snapshot.hash,
           changes: snapshot.changes,
         });
+      }
+      if (project.target.edition === 'java' && task.options.code && !task.codeComplete) {
+        if (typeof provider.planCode !== 'function')
+          throw new AppError(
+            409,
+            'PROVIDER_CAPABILITY',
+            '当前服务未提供代码生成适配器；可关闭本轮代码扩展，仅使用已支持的规格。',
+          );
+        this.event(task, 'knowledge', '检索当前版本与加载器的 API 资料。');
+        const snapshot = this.workspaces.get(project.id, task.snapshotHash);
+        const knowledge = await this.knowledge.search(snapshot.targetId, project.spec, {
+          allowNetwork: task.options.allowNetwork,
+          signal,
+        });
+        signal.throwIfAborted();
+        this.current(task);
+        task.knowledge = knowledge.map(({ text, ...metadata }) => metadata);
+        this.event(
+          task,
+          'coding',
+          task.failureLog ? '根据失败日志修复代码。' : '生成或继续修改玩法代码。',
+          { sources: task.knowledge },
+        );
+        try {
+          const previous = task.previousSnapshotHash
+            ? this.workspaces.get(project.id, task.previousSnapshotHash)
+            : null;
+          const result = await this.call(
+            task,
+            provider,
+            'planCode',
+            {
+              project: { ...project, instruction: task.options.instruction || project.prompt },
+              files: codeContext(snapshot),
+              previousFiles: previous ? codeContext(previous) : [],
+              knowledge,
+              failureLog: task.failureLog,
+            },
+            signal,
+          );
+          const changed = this.workspaces.applyCode(this.current(task), task.snapshotHash, result);
+          if (changed.hash !== task.snapshotHash) {
+            project = this.update(
+              task,
+              this.store.attachWorkspace(project.id, changed, this.current(task).revision),
+            );
+            task.snapshotHash = changed.hash;
+          }
+          task.codeComplete = true;
+          task.buildId = null;
+          this.event(task, 'coding', '代码修改已校验并记录差异，继续真实编译。', {
+            snapshotHash: task.snapshotHash,
+            changes: changed.changes,
+            summary: result.summary,
+          });
+        } catch (error) {
+          if (
+            !signal.aborted &&
+            ['PROVIDER_INVALID_CODE', 'INVALID_CODE_CHANGE'].includes(error.code) &&
+            task.repairs < task.options.maxRepairs
+          ) {
+            task.repairs++;
+            this.event(task, 'repairing', '代码数据校验失败，使用剩余修复额度重新生成。');
+            continue;
+          }
+          throw error;
+        }
       }
       if (!project.target || project.target.edition === 'java') {
         this.event(task, 'environment', '检查固定版本 Java 构建环境。');
@@ -373,7 +458,10 @@ export class CreationManager {
         );
       task.repairs++;
       task.failureLog = build.log.slice(-6000);
-      task.specComplete = false;
+      if (project.target.edition === 'java' && task.options.code) {
+        task.codeComplete = false;
+        task.buildId = null;
+      } else task.specComplete = false;
       this.event(task, 'repairing', '构建失败，带失败日志进入有界修复并重新构建。', {
         buildId: build.id,
         attempt: task.repairs,

@@ -152,11 +152,16 @@ export function initModelEditor({
     renderCubes(Number($('cube-select').value));
   });
   const slot = () =>
-    ({ hand: 'thirdperson_righthand', head: 'head', gui: 'gui', ground: 'ground' })[
-      $('model-view').value
-    ] ?? 'thirdperson_righthand';
+    ({
+      hand: 'thirdperson_righthand',
+      head: 'head',
+      gui: 'gui',
+      ground: 'ground',
+      body: 'body',
+      cape: 'cape',
+    })[$('model-view').value] ?? 'thirdperson_righthand';
   function loadDisplay() {
-    const t = model.display?.[slot()] ?? {};
+    const t = (['body', 'cape'].includes(slot()) ? model.preview : model.display)?.[slot()] ?? {};
     for (const [field, fallback] of [
       ['rotation', [0, 0, 0]],
       ['translation', [0, 0, 0]],
@@ -178,9 +183,14 @@ export function initModelEditor({
         throw new Error(field + ' 参数超出范围 ' + min + '–' + max);
       t[field] = v;
     }
-    (model.display ??= {})[slot()] = t;
+    if (['body', 'cape'].includes(slot())) (model.preview ??= {})[slot()] = t;
+    else (model.display ??= {})[slot()] = t;
     preview.set(model);
-    feedback('显示姿态已更新；保存模型后会写入导出的游戏模型。');
+    feedback(
+      ['body', 'cape'].includes(slot())
+        ? '身体预览位置已更新，随 bbmodel 保存；游戏装备行为需对应的模组代码。'
+        : '显示姿态已更新；保存模型后会写入导出的游戏模型。',
+    );
   });
   $('model-texture-pixels').onclick = () => {
     previewTexture = structuredClone(getPixels());

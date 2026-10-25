@@ -10,7 +10,7 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.6</span>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.7</span>
     </header>
     <main>
       <section class="intro">
@@ -178,22 +178,24 @@
               <label class="consent"
                 ><input id="creation-models" type="checkbox" checked />自动生成目标支持的模型</label
               >
+              <label class="consent"
+                ><input id="creation-code" type="checkbox" checked />生成并修复 Java
+                玩法代码（可下载审查源码；本流程不启动游戏）</label
+              >
               <label
                 >本轮模型调用上限<input
                   id="creation-max-calls"
                   type="number"
                   min="1"
-                  max="64"
+                  max="256"
                   value="48"
               /></label>
               <label
                 >失败修复上限<input id="creation-repairs" type="number" min="0" max="3" value="2"
               /></label>
               <label class="consent"
-                ><input
-                  id="creation-network"
-                  type="checkbox"
-                />允许下载固定构建镜像和游戏构建依赖（Java 首次构建需要）</label
+                ><input id="creation-network" type="checkbox" />允许检索版本 API
+                文档、下载固定构建镜像和游戏构建依赖（Java 首次构建需要）</label
               >
               <label class="consent"
                 ><input
@@ -535,15 +537,21 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
             本地绘制、编辑与导入，不需要 API。资源保存后可在内容编辑器中绑定，随源码导出来源和许可。
           </p>
           <details>
-            <summary>用我的 LLM 生成素材草稿</summary>
+            <summary>用我的 LLM 创作与继续修改素材</summary>
             <p>
-              先在上方选择“我的 LLM
-              API”并核对目标。只发送此处的素材描述，不发送项目文件。文本模型生成像素数组或立方体数据，质量取决于模型；支持生成后手工修改。
+              先在上方选择“我的 LLM API”并核对目标。发送素材描述、最近 12
+              条素材修改要求、当前会话素材，以及明确选择的编辑器内容/参考图。结果自动保存到资源库，可继续修改和恢复旧版；质量取决于模型。
             </p>
+            <label
+              >素材会话<select id="asset-session-select">
+                <option value="">新建素材会话</option>
+              </select></label
+            >
             <label
               >素材类型<select id="ai-asset-kind">
                 <option value="texture">16 × 16 像素贴图</option>
                 <option value="model">静态立方体模型</option>
+                <option value="animated_model">立方体动画模型</option>
               </select></label
             ><label
               >描述<textarea
@@ -554,9 +562,14 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
               ></textarea></label
             ><label class="consent"
               ><input
+                id="ai-asset-current"
+                type="checkbox"
+              />使用当前编辑器的素材继续修改（不勾选时使用会话中上一次结果）</label
+            ><label class="consent"
+              ><input
                 id="ai-asset-consent"
                 type="checkbox"
-              />允许将这次素材描述发送到上方配置的服务商（可能计费）</label
+              />允许将本次描述、素材上下文和所选参考图发送到上方配置的服务商（可能计费）</label
             >
             <label
               >可选参考图（需要所选模型支持图片输入）<select id="ai-asset-reference">
@@ -567,9 +580,10 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
               选中参考图时，本次确认也包括将这张图片发送给模型。文本模型若不支持视觉输入会返回错误。
             </p>
             <div class="actions">
-              <button id="ai-asset-generate">生成素材草稿</button
+              <button id="ai-asset-generate">生成 / 继续修改素材</button
               ><button id="ai-asset-cancel" class="secondary" hidden>取消素材生成</button>
             </div>
+            <div id="asset-session-history"></div>
           </details>
           <details id="image-studio">
             <summary>美术工坊 · 参考图、概念图、三视图与细节图</summary>
@@ -860,6 +874,8 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                   <option value="orbit">环绕</option>
                   <option value="hand">第三人称右手与人形</option>
                   <option value="head">头部与人形</option>
+                  <option value="body">身体背部 · 背包定位</option>
+                  <option value="cape">披风定位</option>
                   <option value="gui">物品栏</option>
                   <option value="ground">掉落物</option>
                   <option value="front">正面</option>

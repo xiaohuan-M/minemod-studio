@@ -270,6 +270,9 @@ export function initAnimationEditor({
     feedback('动画与嵌入贴图已导入。');
   });
   return {
+    get() {
+      return animation ? structuredClone(animation) : null;
+    },
     set(value) {
       set(value);
       $('animation-studio').open = true;

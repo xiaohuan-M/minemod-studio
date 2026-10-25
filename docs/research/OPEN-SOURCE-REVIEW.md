@@ -28,3 +28,7 @@ pngjs 已用于有尺寸/文件上限的 PNG 解码、CRC 检查、重新编码�
 - ForgeGradle 6.0.42 / Forge 47.4.28、ModDevGradle 2.0.148 / NeoForge 21.1.264：只在生成工程的构建阶段下载；独立生成注册与元数据代码。原版游戏与加载器的许可仍属于各自项目，非本站 MIT 许可重新授权。
 
 0.5 掉落协议核查：MicrosoftDocs/minecraft-creator 的 content/forms/loot/loot_condition.form.json（提交 f485796b292936a4ce6bb85884dcd84813b11f75）列出 killed_by_player、random_chance 等条件；同时对照已固定的 bedrock-samples 1.21.60 示例核查 set_count/范围结构。只实现接口格式，不复制游戏资产；没有因此加入运行依赖。
+
+## 0.7 文档检索与代码扩展
+
+没有新增运行依赖。Yarn Javadoc 使用锁定映射版本；Forge Documentation 的 1.20.x 提交 87526dd760129b356e88f130550d646d4eb2fa31、NeoForge Documentation 提交 c20338406b6cbfe98b3d971baf4a89ba5fe15e82 的 version-1.21.1 目录作为官方资料来源。仅在用户允许联网时读取，并在私有数据目录缓存有来源和哈希的摘录；不把第三方文档重新按 MIT 分发。文档是模型参考数据，不是可执行指令。

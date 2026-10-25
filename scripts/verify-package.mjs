@@ -89,6 +89,7 @@ try {
     '/studio/provider-settings.js',
     '/studio/loot-editor.js',
     '/studio/creation.js',
+    '/studio/asset-sessions.js',
     '/studio/product-versions.js',
     '/vendor/three.js',
     '/vendor/three.core.js',

@@ -4,6 +4,7 @@ import { assertProjectId } from '../core/project.mjs';
 import { AppError } from '../core/errors.mjs';
 import { sha256, safeArchivePath } from '../core/archive.mjs';
 import { generateWorkspace, diffWorkspaces, workspaceFiles } from '../engineering/generator.mjs';
+import { applyCodeChanges } from '../engineering/code-changes.mjs';
 export class WorkspaceStore {
   constructor(dataDir, assetStore) {
     this.root = join(dataDir, 'workspaces');
@@ -75,6 +76,28 @@ export class WorkspaceStore {
     )
       throw new AppError(500, 'WORKSPACE_CORRUPT', '工程快照哈希不匹配。');
     return snapshot;
+  }
+  applyCode(project, baseHash, input) {
+    if (project.workspaceHash !== baseHash || project.confirmedSpecHash !== project.specHash)
+      throw new AppError(409, 'WORKSPACE_CHANGED', '工程已改变，请重新生成。');
+    const before = this.get(project.id, baseHash),
+      generated = applyCodeChanges(before, project.spec, input);
+    if (before.imported)
+      throw new AppError(409, 'IMPORTED_WORKSPACE', '外部工程必须先从规格重新生成。');
+    if (generated.hash === before.hash) return before;
+    const records = this.records(project.id);
+    if (records.ids().length >= 100 && !records.ids().includes(generated.hash))
+      throw new AppError(409, 'WORKSPACE_LIMIT', '工程快照达到上限，请备份后整理。');
+    const snapshot = {
+      ...generated,
+      projectId: project.id,
+      projectRevision: project.revision,
+      createdAt: new Date().toISOString(),
+      changes: diffWorkspaces(before, generated),
+      codeGenerated: true,
+      baseHash,
+    };
+    return records.write(snapshot.hash, snapshot);
   }
   list(id) {
     return this.records(id)

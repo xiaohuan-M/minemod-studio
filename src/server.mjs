@@ -1,6 +1,8 @@
 import { acquireDataLock } from './storage/data-lock.mjs';
 import { CreationManager } from './creation/manager.mjs';
 import { creationRoutes } from './creation/routes.mjs';
+import { AssetSessionStore } from './storage/asset-session-store.mjs';
+import { assetSessionRoutes } from './asset-session-routes.mjs';
 import { randomUUID } from 'node:crypto';
 import { ProviderProfileStore } from './storage/provider-profile-store.mjs';
 import { providerFromProfile } from './providers/profile-runtime.mjs';
@@ -28,6 +30,7 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/asset-sessions.js', ['studio/asset-sessions.js', 'text/javascript; charset=utf-8']],
   ['/studio/creation.js', ['studio/creation.js', 'text/javascript; charset=utf-8']],
   ['/studio/product-versions.js', ['studio/product-versions.js', 'text/javascript; charset=utf-8']],
   ['/studio/loot-editor.js', ['studio/loot-editor.js', 'text/javascript; charset=utf-8']],
@@ -94,18 +97,20 @@ async function body(request, limit = MAX_BODY) {
 
 export function makeServer({ dataDir, llmProvider = null, imageProvider = null }) {
   const releaseLock = acquireDataLock(dataDir);
-  let store, workshop, profiles;
+  let store, workshop, profiles, assetSessions, creations;
   try {
     profiles = new ProviderProfileStore(dataDir);
     store = new ProjectStore(dataDir);
     workshop = workshopServices(dataDir, store);
+    assetSessions = new AssetSessionStore(dataDir, workshop.assets);
+    workshop.assetSessions = assetSessions;
+    creations = new CreationManager(dataDir, store, workshop);
+    workshop.creations = creations;
   } catch (error) {
     releaseLock();
     throw error;
   }
   const active = new Map();
-  const creations = new CreationManager(dataDir, store, workshop);
-  workshop.creations = creations;
   const fallback = { text: llmProvider, image: imageProvider };
   function configureProviders(rotate = false) {
     const resolve = (kind) => {
@@ -165,6 +170,12 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
     requireConsent,
     modelActive: () => active.size > 0,
   });
+  const assetSessionRoute = assetSessionRoutes({
+    sessions: assetSessions,
+    assets: workshop.assets,
+    requireConsent,
+    callModel,
+  });
   const server = createServer(
     { requestTimeout: 15_000, headersTimeout: 10_000 },
     async (request, response) => {
@@ -198,6 +209,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           );
         if (await creationRoute({ request, response, url, json, body, fields, publicProject }))
           return;
+        if (await assetSessionRoute({ request, response, url, json, body, fields })) return;
         if (await settingsRoute({ request, response, url, json, body, fields })) return;
         if (await workshop.route({ request, response, url, json, body, fields, publicProject }))
           return;

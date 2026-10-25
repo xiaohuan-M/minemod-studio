@@ -67,6 +67,40 @@ const post = (base, path, body) =>
     body: JSON.stringify(body),
   });
 
+test('code provider sends bounded source/docs/log context and rejects unsafe output without credential echoes', async (t) => {
+  const pkg = 'studio.minemod.generated.m_' + spec.modId;
+  const file = {
+    path: 'src/main/java/' + pkg.replaceAll('.', '/') + '/Extra.java',
+    content: 'package ' + pkg + '; public class Extra {}',
+  };
+  const { provider, calls } = await modelFixture(t, (response) =>
+    send(response, envelope({ summary: '扩展玩法', files: [file] })),
+  );
+  const result = await provider.planCode({
+    project: { ...project, spec },
+    files: [file],
+    previousFiles: [],
+    knowledge: [{ url: 'https://example.org/api', text: 'untrusted docs' }],
+    failureLog: 'compiler failure',
+  });
+  assert.equal(result.files[0].path, file.path);
+  assert.equal(result.source.usage.inputTokens, 100);
+  const context = JSON.parse(calls[0].body.messages[1].content);
+  assert.equal(context.failureLog, 'compiler failure');
+  assert.equal(context.files[0].content, file.content);
+  assert.ok(!JSON.stringify(context).includes('fixture-key-never-real'));
+  const unsafe = await modelFixture(t, (response) =>
+    send(
+      response,
+      envelope({ summary: 'wrong', files: [{ path: 'build.gradle', content: 'exec()' }] }),
+    ),
+  );
+  await assert.rejects(
+    unsafe.provider.planCode({ project: { ...project, spec }, files: [], knowledge: [] }),
+    { code: 'PROVIDER_INVALID_CODE' },
+  );
+});
+
 test('provider configuration rejects unsafe endpoints and invalid settings without exposing values', () => {
   const valid = {
     MINEMOD_LLM_BASE_URL: 'https://models.example/v1',

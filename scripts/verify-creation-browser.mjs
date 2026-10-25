@@ -18,11 +18,14 @@ const upstream = createServer(async (request, response) => {
   const payload = JSON.parse(Buffer.concat(chunks)),
     system = payload.messages[0].content;
   let content;
-  if (system.includes('structured Minecraft assets'))
-    content = system.includes('"pixels"')
+  if (system.includes('structured Minecraft assets')) {
+    const raw = payload.messages[1].content,
+      input = JSON.parse(Array.isArray(raw) ? raw[0].text : raw);
+    content = system.includes('pixels')
       ? placeholderTexture()
-      : { elements: [{ from: [4, 0, 4], to: [12, 16, 12] }] };
-  else {
+      : structuredClone(input.currentData ?? { elements: [{ from: [4, 0, 4], to: [12, 16, 12] }] });
+    if (input.currentData && !system.includes('pixels')) content.elements[0].to[1] = 20;
+  } else {
     const input = JSON.parse(payload.messages[1].content);
     content = structuredClone(input.currentSpec ?? example);
     content.target = input.target;
@@ -105,6 +108,29 @@ try {
   await page.waitForFunction(
     () => !document.querySelector('#spec-editor').value.includes('继续完善的作品'),
   );
+  await page.locator('summary').filter({ hasText: '用我的 LLM 创作与继续修改素材' }).click();
+  await page.selectOption('#ai-asset-kind', 'model');
+  await page.fill('#ai-asset-prompt', '做一根法杖');
+  await page.check('#ai-asset-consent');
+  await page.click('#ai-asset-generate');
+  await page.waitForFunction(
+    () => document.querySelectorAll('#asset-session-history article').length === 1,
+  );
+  await page.fill('#ai-asset-prompt', '把顶部加长');
+  await page.check('#ai-asset-consent');
+  await page.click('#ai-asset-generate');
+  await page.waitForFunction(
+    () => document.querySelectorAll('#asset-session-history article').length === 2,
+  );
+  assert.equal(await page.inputValue('#cube-to'), '12,20,12');
+  await page.locator('#asset-session-history button').first().click();
+  await page.waitForFunction(() => document.querySelector('#cube-to').value === '12,16,12');
+  await page.selectOption('#model-view', 'body');
+  await page.locator('summary').filter({ hasText: '旋转、UV 与显示姿态' }).click();
+  await page.fill('#display-translation', '0,1,3');
+  await page.click('#display-update');
+  await page.click('#model-save');
+  await page.locator('#model-canvas').screenshot({ path: '/tmp/minemod-body-preview.png' });
   await page.reload();
   await page.locator('#projects button').first().click();
   await page.waitForFunction(() =>
@@ -117,7 +143,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    'One-sentence browser flow passed: actual compatible HTTP, generated/bound textures, MCADDON download, continued round, full-version restore, reload and narrow layout. No real model or game used.',
+    'Browser flow passed: actual compatible HTTP, automatic MCADDON, complete round restore, contextual model edits with immutable history, body preview, reload and narrow layout. No real model or game used.',
   );
 } finally {
   await browser?.close();

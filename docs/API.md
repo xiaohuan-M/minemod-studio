@@ -1,10 +1,18 @@
-# HTTP API · 0.6
+# HTTP API · 0.7
 
 ## 自动创作与完整作品版本
 
-`POST /api/creations` 从一句需求新建并自动制作；接收 prompt、可选 name/targetId 和本轮策略。`POST /api/projects/:id/creations` 在已有项目继续，另需 revision、可选 instruction。策略为 consent（当前文本配置标识）、approved=true、textures/models（默认 true）、maxCalls（1–64，默认 48）、maxRepairs（0–3，默认 2）、allowNetwork（默认 false）。授权涵盖本轮模型、素材与具体工程构建；不允许覆盖任务的服务地址或密钥。
+0.7 策略增加 `code`（默认 true，Java 有效）：生成工程后检索匹配版本资料，让所选模型修改本模组 Java/JSON，随后编译；失败后在原工程上按日志修复。只允许指定命名空间、最多 24 个文件/128 KiB；禁止改脚本、依赖、入口元数据和宿主接口，编译关闭注解处理器。`allowNetwork` 同时控制固定文档源获取；离线可使用经过哈希校验的缓存。任务事件记录资料来源、修改说明与文件差异。源码数据约束不构成游戏行为正确性的证明。
 
-`GET /api/projects/:id/creations` 列出任务；`GET /api/creations/:taskId` 包含顺序事件、模型调用与用量、素材、工程、构建及完整版本 ID。`POST /api/creations/:taskId/cancel` 接受空对象；`POST .../resume` 接收当前 revision、consent、approved=true，继续未完成步骤，不重置调用/修复额度。配置更改、并发项目编辑和旧 revision 被拒绝。刷新页面不会取消任务；真实模型错误/构建失败不会被标为成功。
+## 持续素材会话
+
+`GET/POST /api/asset-sessions` 列表/创建（kind=texture/model/animated_model、name）；`GET /api/asset-sessions/:id` 返回当前素材、revision 和历史；`POST .../generate` 接收 revision、prompt、consent、可选 currentData/referenceId，明确发送当前素材和最近 12 条要求后生成并自动保存不可变素材。`POST .../restore` 接收 revision、assetId，不调用模型，恢复本会话已有结果。最多 100 个会话，每个保留最近 100 条记录；资源库原有限额仍生效。请求最多 256 KiB。
+
+像素生成额外支持 `{width,height,palette,runs:[[paletteIndex,count],...]}`，校验后转换为现有 RGBA 格式；不会将新传输格式写入旧素材记录。当前尺寸在继续编辑时必须保留。动画格式仍为现有受限立方体/平级根骨骼；真实模型效果未验。
+
+`POST /api/creations` 从一句需求新建并自动制作；接收 prompt、可选 name/targetId 和本轮策略。`POST /api/projects/:id/creations` 在已有项目继续，另需 revision、可选 instruction。策略为 consent（当前文本配置标识）、approved=true、textures/models（默认 true）、maxCalls（1–256，默认 48）、maxRepairs（0–3，默认 2）、allowNetwork（默认 false）。授权涵盖本轮模型、素材与具体工程构建；不允许覆盖任务的服务地址或密钥。
+
+`GET /api/projects/:id/creations` 列出任务；`GET /api/creations/:taskId` 包含顺序事件、模型调用与用量、素材、工程、构建及完整版本 ID。`POST /api/creations/:taskId/cancel` 接受空对象；`POST .../resume` 接收当前 revision、consent、approved=true，继续未完成步骤，不重置已用额度；可显式提交更高 maxCalls/maxRepairs 和新的 allowNetwork，重新确认剩余步骤。配置更改、并发项目编辑和旧 revision 被拒绝。刷新页面不会取消任务；真实模型错误/构建失败不会被标为成功。
 
 `GET /api/projects/:id/versions` 列出完整作品版本；`POST` 接收 revision、可选 label 保存；`GET .../versions/:versionId` 返回带校验值的完整项目状态与素材/工程/构建关联清单；`POST .../versions/:versionId/restore` 接收 revision。恢复前自动存档，恢复该轮需求/会话/规格/素材绑定和工程关联，推进 revision 并清除执行批准；旧产物继续独立可下载。完整备份包含这些版本，导入后重映射身份并保持外部工程不可直接执行。
 
@@ -12,7 +20,7 @@ Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发�
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.6.0",stage:"multi-target-workshop-preview"}` |
+| GET | `/api/health` | `{ok:true,version:"0.7.0",stage:"multi-target-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt,targetId?}` → 201，返回 Project |
@@ -203,6 +211,6 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 
 设置为本机私有文件，重启保留；不在项目/资源备份、源码或发行包中。首次输入密钥经本机 HTTP 提交，后续 GET 从不回传；此服务仍仅允许回环使用，不能直接作为公开站点后端。
 
-## 掉落编辑 · 0.6
+## 掉落编辑 · 0.7
 
 沿用 PUT spec、确认、工程生成和构建接口，无独立可执行脚本接口。blocks/entities 新增可选 loot 字段，约束见 MODSPEC.md。非法引用/概率/数量/方块击杀条件返回 422 INVALID_SPEC，字段路径定位至具体掉落条目。完整功能示例含方块晶体掉落、守卫玩家击杀概率掉落与牛皮掉落；目标能力列表增加 custom_loot。

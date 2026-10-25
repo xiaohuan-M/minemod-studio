@@ -1,6 +1,6 @@
 // Explicit Docker integration: model outputs are a labelled local fixture; compilation is real.
 import { once } from 'node:events';
-import { mkdirSync, mkdtempSync, cpSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
@@ -39,6 +39,26 @@ const server = makeServer({
           kind === 'texture'
             ? placeholderTexture()
             : { elements: [{ from: [3, 0, 3], to: [13, 16, 13] }] },
+      };
+    },
+    async planCode({ project, failureLog }) {
+      const pkg = 'studio.minemod.generated.m_' + project.spec.modId;
+      return {
+        summary: failureLog ? '修正真实编译错误' : '新增代码编译回归类',
+        files: [
+          {
+            path: 'src/main/java/' + pkg.replaceAll('.', '/') + '/GeneratedBonus.java',
+            content:
+              'package ' +
+              pkg +
+              '; public final class GeneratedBonus { public static int amount() { return ' +
+              (process.env.MINEMOD_TEST_CODE_REPAIR === 'true' && !failureLog
+                ? 'missing_bonus_symbol'
+                : '7') +
+              '; } }',
+          },
+        ],
+        source,
       };
     },
   },
@@ -83,6 +103,13 @@ try {
     artifact = server.workshop.builds.artifact(task.buildId).bytes;
   readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedMod.class');
   readZipEntry(artifact, 'assets/full_workshop/textures/entity/crystal_guard.png');
+  readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedBonus.class');
+  if (process.env.MINEMOD_TEST_CODE_REPAIR === 'true')
+    assert.equal(
+      task.repairs,
+      1,
+      'Expected a real failed Java compile followed by successful code repair',
+    );
   const version = server.workshop.versions.get(task.projectId, task.versionId);
   assert.equal(version.workspaceHash, task.snapshotHash);
   assert.deepEqual(version.buildIds, [task.buildId]);
@@ -97,6 +124,7 @@ try {
     generatedAssets: task.assetJobs.length,
     modelCalls: task.calls.length,
     modelFixture: true,
+    codeRepairs: task.repairs,
     artifact: build.artifact,
     gameTested: false,
   };
@@ -104,4 +132,6 @@ try {
   console.log(JSON.stringify(result, null, 2));
 } finally {
   await new Promise((resolve) => server.close(resolve));
+  if (process.env.MINEMOD_TEST_KEEP_CACHE !== 'true')
+    rmSync(join(dir, 'builds', 'cache'), { recursive: true, force: true });
 }
