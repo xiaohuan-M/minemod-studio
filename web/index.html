@@ -10,7 +10,7 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.7</span>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.8</span>
     </header>
     <main>
       <section class="intro">
@@ -553,6 +553,15 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                 <option value="model">静态立方体模型</option>
                 <option value="animated_model">立方体动画模型</option>
               </select></label
+            ><label class="consent"
+              ><input id="asset-with-texture" type="checkbox" checked />自动补全模型贴图（首次最多 2
+              次模型调用）</label
+            >
+            <label class="consent"
+              ><input
+                id="asset-regenerate-texture"
+                type="checkbox"
+              />本轮同时重新绘制贴图；保留几何修改以外的内容</label
             ><label
               >描述<textarea
                 id="ai-asset-prompt"

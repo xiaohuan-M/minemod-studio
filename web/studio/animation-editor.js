@@ -87,6 +87,8 @@ export function initAnimationEditor({
   function set(value) {
     stop();
     animation = structuredClone(value);
+    texture = animation.texture ?? null;
+    preview.texture(texture);
     $('animation-clip').replaceChildren(
       ...animation.clips.map((c, i) => option(String(i), c.name)),
     );
@@ -102,6 +104,7 @@ export function initAnimationEditor({
     const model = getModel();
     set({
       elements: model.elements,
+      ...(model.texture ? { texture: model.texture } : {}),
       clips: [{ name: 'walk', duration: 1, loop: true, tracks: [] }],
     });
     feedback('已为当前立方体模型创建平面骨骼。移动时间、设置变换并保存关键帧。');
@@ -216,6 +219,7 @@ export function initAnimationEditor({
   });
   $('animation-texture').onclick = () => {
     texture = structuredClone(getPixels());
+    if (animation) animation.texture = structuredClone(texture);
     preview.texture(texture);
     draw();
   };

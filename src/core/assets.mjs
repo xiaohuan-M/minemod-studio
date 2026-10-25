@@ -168,6 +168,7 @@ export function validateModel(input) {
     elements,
     ...(Object.keys(display).length ? { display } : {}),
     ...(Object.keys(preview).length ? { preview } : {}),
+    ...(input.texture ? { texture: validateTexture(input.texture) } : {}),
   };
 }
 export function importBlockbench(input) {
@@ -229,7 +230,7 @@ export function importBlockbench(input) {
 }
 export function exportBlockbench(model, name, texture) {
   const clean = validateModel(model);
-  const tex = validateTexture(texture ?? placeholderTexture());
+  const tex = validateTexture(texture ?? clean.texture ?? placeholderTexture());
   return {
     meta: { format_version: '4.10', model_format: 'java_block', box_uv: false },
     name,

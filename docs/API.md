@@ -1,10 +1,12 @@
-# HTTP API · 0.7
+# HTTP API · 0.8
 
 ## 自动创作与完整作品版本
 
 0.7 策略增加 `code`（默认 true，Java 有效）：生成工程后检索匹配版本资料，让所选模型修改本模组 Java/JSON，随后编译；失败后在原工程上按日志修复。只允许指定命名空间、最多 24 个文件/128 KiB；禁止改脚本、依赖、入口元数据和宿主接口，编译关闭注解处理器。`allowNetwork` 同时控制固定文档源获取；离线可使用经过哈希校验的缓存。任务事件记录资料来源、修改说明与文件差异。源码数据约束不构成游戏行为正确性的证明。
 
 ## 持续素材会话
+
+0.8 的模型数据可含 `texture`（现有 RGBA 像素格式）。会话 generate 新增 withTexture（默认 true）和 regenerateTexture（默认 false）：模型缺贴图时自动再请求一次像素贴图；后续几何修改默认保留原图，只有明确选择才重新绘制。一次请求最多两次模型调用，用量合并记录；生成期间会话写入/恢复被拒绝。数据保存、bbmodel 导入导出、独立 Bedrock 下载及生成模组都保留贴图。内容对象明确绑定 textureAsset 时，优先于模型内贴图。
 
 `GET/POST /api/asset-sessions` 列表/创建（kind=texture/model/animated_model、name）；`GET /api/asset-sessions/:id` 返回当前素材、revision 和历史；`POST .../generate` 接收 revision、prompt、consent、可选 currentData/referenceId，明确发送当前素材和最近 12 条要求后生成并自动保存不可变素材。`POST .../restore` 接收 revision、assetId，不调用模型，恢复本会话已有结果。最多 100 个会话，每个保留最近 100 条记录；资源库原有限额仍生效。请求最多 256 KiB。
 
@@ -20,7 +22,7 @@ Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发�
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.7.0",stage:"multi-target-workshop-preview"}` |
+| GET | `/api/health` | `{ok:true,version:"0.8.0",stage:"multi-target-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt,targetId?}` → 201，返回 Project |
@@ -211,6 +213,6 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 
 设置为本机私有文件，重启保留；不在项目/资源备份、源码或发行包中。首次输入密钥经本机 HTTP 提交，后续 GET 从不回传；此服务仍仅允许回环使用，不能直接作为公开站点后端。
 
-## 掉落编辑 · 0.7
+## 掉落编辑 · 0.8
 
 沿用 PUT spec、确认、工程生成和构建接口，无独立可执行脚本接口。blocks/entities 新增可选 loot 字段，约束见 MODSPEC.md。非法引用/概率/数量/方块击杀条件返回 422 INVALID_SPEC，字段路径定位至具体掉落条目。完整功能示例含方块晶体掉落、守卫玩家击杀概率掉落与牛皮掉落；目标能力列表增加 custom_loot。

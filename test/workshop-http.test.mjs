@@ -194,5 +194,8 @@ test('animated asset downloads contain valid Bedrock resources and reimportable 
   assert.equal(imported.status, 201);
   const { assets } = await imported.json();
   assert.equal(assets.length, 2);
-  assert.deepEqual(assets.find((a) => a.kind === 'animated_model').data, data);
+  assert.deepEqual(assets.find((a) => a.kind === 'animated_model').data, {
+    ...data,
+    texture: assets.find((a) => a.kind === 'texture').data,
+  });
 });

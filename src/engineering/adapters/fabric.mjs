@@ -148,13 +148,16 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
     );
     zh['item.' + ns + '.' + item.id] = item.displayName.zh_cn;
     en['item.' + ns + '.' + item.id] = item.displayName.en_us;
+    const modelData = item.modelAsset
+      ? validateModel(getAsset(item.modelAsset, 'model').data)
+      : null;
     const texture = item.textureAsset
       ? getAsset(item.textureAsset, 'texture').data
-      : placeholderTexture(item.textureColor);
+      : (modelData?.texture ?? placeholderTexture(item.textureColor));
     add(`src/main/resources/assets/${ns}/textures/item/${item.id}.png`, pngTexture(texture));
     const model = item.modelAsset
       ? {
-          ...validateModel(getAsset(item.modelAsset, 'model').data),
+          ...modelData,
           textures: { 0: ns + ':item/' + item.id },
         }
       : {
@@ -164,6 +167,7 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
           textures: { layer0: ns + ':item/' + item.id },
         };
     delete model.preview;
+    delete model.texture;
     if (model.elements)
       for (const element of model.elements)
         element.faces = Object.fromEntries(

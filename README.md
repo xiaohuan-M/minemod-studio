@@ -2,7 +2,7 @@
 
 **完全公开源码、自带 AI 服务、数据保存在自己电脑上的 Minecraft 创作工具。** 用自然语言或表单设计内容，制作贴图与模型，审查源码，编译 Java 模组或打包 Bedrock 附加包。代码采用 MIT 许可，无强制账号、积分、订阅或遥测。
 
-当前版本 **0.7.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
+当前版本 **0.8.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
 
 **完整功能目标尚未交付。** 当前 AI 生成受限规格，由固定适配器生成代码；已有自动素材/构建流水线和完整作品版本；现已支持版本 API 资料检索、受控 Java 代码扩展与有限轮编译修复；在线市场、跨设备及其他矩阵缺口仍待完成。2026-10-25 已重新逐项核对官网说明，具体已实现/部分实现/未实现及验证证据均列入上述功能对照。
 
@@ -22,7 +22,7 @@
 
 需要 **Node.js 24.5+**。选择一种方式：
 
-- **便携 ZIP**：解压 `minemod-studio-0.7.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
+- **便携 ZIP**：解压 `minemod-studio-0.8.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
 - **从源码启动**：
 
 ```sh
@@ -52,6 +52,8 @@ npm start
 Java 使用锁版本的 Gradle/JDK 容器；也可在源码包中用匹配 JDK 执行 `./gradlew build`。Fabric 1.20.1 容器使用 JDK21 编译器输出 Java17 字节码，Forge 使用 JDK17；其余目标使用 JDK21。源工程首次构建需要下载合法游戏依赖。不会自动安装作品或修改真实游戏目录。
 
 ## 自带模型与图片服务
+
+独立制作 3D 素材时，打开“用我的 LLM 创作与继续修改素材”，选择模型或动画模型，输入一句描述即可生成并保存带贴图的素材。首次默认最多两次文本服务调用；后续几何修改保留贴图，需要时再选择重画。模型、动画、UV、预览姿态与贴图一起保存，资源库的 bbmodel 下载包含实际 PNG；手工编辑的贴图也会随模型保存。
 
 推荐直接打开页面上方 **“模型与 API 设置”**，填写名称、Base URL、模型和密钥，保存后选择启用。支持最多 20 个文本/图像配置，即时切换，无需重启；保存本身不调用模型。编辑时密钥留空保留原值，接口只返回是否已保存密钥。
 

@@ -70,6 +70,7 @@ export function createAssetRoutes(assets) {
             (_, i) => '#' + img.data.subarray(i * 4, i * 4 + 4).toString('hex'),
           ),
         });
+        model.texture = texture;
         entries.push({
           name: input.name.slice(0, 70) + ' 贴图',
           kind: 'texture',
@@ -160,12 +161,18 @@ export function createAssetRoutes(assets) {
           'texture-' + asset.id + '.png',
         );
       else if (match[2] === 'bedrock' && asset.kind === 'animated_model') {
-        const data = bedrockAnimationResources(asset.data, 'minemod.export', 16, 16);
+        const texture = asset.data.texture ?? placeholderTexture();
+        const data = bedrockAnimationResources(
+          asset.data,
+          'minemod.export',
+          texture.width,
+          texture.height,
+        );
         send(
           zipFiles({
             'model.geo.json': JSON.stringify(data.geometry, null, 2),
             'model.animation.json': JSON.stringify(data.animations, null, 2),
-            'texture.png': pngTexture(placeholderTexture()),
+            'texture.png': pngTexture(texture),
             'SOURCE.json': JSON.stringify({ source: asset.source, license: asset.license }),
           }),
           'application/zip',

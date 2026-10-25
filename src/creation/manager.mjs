@@ -529,6 +529,8 @@ export class CreationManager {
             });
             assetKind = 'animated_model';
           }
+          if (kind === 'model' && owner.textureAsset)
+            data = { ...data, texture: this.assets.get(owner.textureAsset).data };
           const asset = this.assets.create({
             kind: assetKind,
             name: (owner.displayName.zh_cn + ' · 自动' + kind).slice(0, 80),

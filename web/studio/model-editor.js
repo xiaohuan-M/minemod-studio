@@ -194,6 +194,7 @@ export function initModelEditor({
   });
   $('model-texture-pixels').onclick = () => {
     previewTexture = structuredClone(getPixels());
+    model.texture = structuredClone(previewTexture);
     preview.texture(previewTexture);
     feedback('已使用当前像素画布预览；在内容编辑器中选择相同贴图即可用于游戏。');
   };
@@ -222,6 +223,8 @@ export function initModelEditor({
   return {
     set(value) {
       model = structuredClone(value);
+      previewTexture = model.texture ?? null;
+      preview.texture(previewTexture);
       renderCubes();
     },
     get() {

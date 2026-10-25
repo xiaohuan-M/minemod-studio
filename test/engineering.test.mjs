@@ -23,11 +23,66 @@ import { validateModSpec } from '../src/core/mod-spec.mjs';
 import { AssetStore } from '../src/storage/asset-store.mjs';
 import { WorkspaceStore } from '../src/storage/workspace-store.mjs';
 import { ProjectStore } from '../src/storage/project-store.mjs';
+import { TARGETS } from '../src/core/targets.ts';
+import { defaultEntityAnimation } from '../src/core/animation.mjs';
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'minemod-engineering-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
+
+test('embedded model textures reach all Java item resources and Bedrock entity packs without leaking editor fields', (t) => {
+  const assets = new AssetStore(fixture(t)),
+    texture = placeholderTexture('#8f2a5e');
+  const model = assets.create({
+    kind: 'model',
+    name: '完整贴图模型',
+    data: { elements: [{ from: [2, 0, 2], to: [14, 16, 14] }], texture },
+    source: '原创',
+    license: 'CC0',
+  });
+  const animated = assets.create({
+    kind: 'animated_model',
+    name: '完整动画模型',
+    data: { ...defaultEntityAnimation('cow'), texture },
+    source: '原创',
+    license: 'CC0',
+  });
+  for (const target of TARGETS) {
+    const input = structuredClone(spec);
+    input.target = { ...target.target };
+    if (target.target.edition === 'bedrock') {
+      input.items = input.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
+      input.entities[0].modelAsset = animated.id;
+      delete input.entities[0].textureAsset;
+      const files = workspaceFiles(generateWorkspace(input, [animated]));
+      assert.deepEqual(
+        files['resource_pack/textures/entity/' + input.modId + '_' + input.entities[0].id + '.png'],
+        pngTexture(texture),
+      );
+    } else {
+      input.items[0].modelAsset = model.id;
+      delete input.items[0].textureAsset;
+      const files = workspaceFiles(generateWorkspace(input, [model]));
+      assert.deepEqual(
+        files[
+          'src/main/resources/assets/' +
+            input.modId +
+            '/textures/item/' +
+            input.items[0].id +
+            '.png'
+        ],
+        pngTexture(texture),
+      );
+      const item = JSON.parse(
+        files[
+          'src/main/resources/assets/' + input.modId + '/models/item/' + input.items[0].id + '.json'
+        ],
+      );
+      assert.equal(Object.hasOwn(item, 'texture'), false);
+    }
+  }
+});
 
 test('body/cape preview transforms survive bbmodel exchange without entering Minecraft item JSON', (t) => {
   const data = validateModel({

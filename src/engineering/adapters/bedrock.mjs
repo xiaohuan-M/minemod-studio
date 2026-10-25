@@ -48,6 +48,13 @@ export function generateBedrock(input, assets = []) {
   const langs = { zh_CN: [], en_US: [] };
   const texture = (item, folder) => {
     let data = placeholderTexture(item.textureColor ?? '#678f71', folder !== 'items');
+    if (item.modelAsset) {
+      const model = assets.find((a) => a.id === item.modelAsset);
+      if (model?.data.texture) {
+        data = model.data.texture;
+        used.set(model.id, model);
+      }
+    }
     if (item.textureAsset) {
       const asset = assets.find((a) => a.id === item.textureAsset && a.kind === 'texture');
       if (!asset) throw new AppError(422, 'ASSET_MISSING', '贴图资源不存在或类型错误。');
@@ -123,7 +130,7 @@ export function generateBedrock(input, assets = []) {
     const tex = texture(entity, 'entity');
     const textureData = entity.textureAsset
       ? assets.find((a) => a.id === entity.textureAsset).data
-      : null;
+      : (assets.find((a) => a.id === entity.modelAsset)?.data.texture ?? null);
     let rig = defaultEntityAnimation(entity.archetype);
     if (entity.modelAsset) {
       const asset = assets.find(

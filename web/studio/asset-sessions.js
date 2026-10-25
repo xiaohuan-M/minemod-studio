@@ -87,6 +87,8 @@ export function initAssetSessions({
           prompt: $('ai-asset-prompt').value,
           currentData: $('ai-asset-current').checked ? getCurrent(kind) : undefined,
           referenceId: $('ai-asset-reference').value || undefined,
+          withTexture: $('asset-with-texture').checked,
+          regenerateTexture: $('asset-regenerate-texture').checked,
         }),
         signal: controller.signal,
       });

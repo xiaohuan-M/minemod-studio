@@ -11,6 +11,7 @@ export function capabilities() {
       llmCodeChanges: true,
       versionApiKnowledge: true,
       assetSessions: true,
+      texturedModelAssets: true,
       wearablePreview: true,
       resumableCreation: true,
       productVersions: true,
