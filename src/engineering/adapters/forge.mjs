@@ -131,7 +131,7 @@ side = "BOTH"
   }
   for (const b of spec.blocks ?? []) {
     fields.push(
-      `public static final java.util.function.Supplier<Block> BLOCK_${b.id} = BLOCKS.register("${b.id}", () -> new Block(net.minecraft.world.level.block.state.BlockBehaviour.Properties.of().strength(${b.hardness}f, ${b.resistance}f).lightLevel(state -> ${b.luminance})));`,
+      `public static final java.util.function.Supplier<Block> BLOCK_${b.id} = BLOCKS.register("${b.id}", () -> new Block(net.minecraft.world.level.block.state.BlockBehaviour.Properties.of().strength(${b.hardness}f, ${b.resistance}f).lightLevel(state -> ${b.luminance})${b.modelAsset ? '.noOcclusion()' : ''}));`,
     );
     item(b.id, `new BlockItem(BLOCK_${b.id}.get(), new Item.Properties())`);
   }

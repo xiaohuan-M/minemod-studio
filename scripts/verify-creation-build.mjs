@@ -107,6 +107,14 @@ try {
   readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedMod.class');
   readZipEntry(artifact, 'assets/full_workshop/textures/entity/crystal_guard.png');
   readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedBonus.class');
+  const blockModel = JSON.parse(
+    readZipEntry(artifact, 'assets/full_workshop/models/block/glow_block.json'),
+  );
+  assert.ok(
+    blockModel.elements.length > 0,
+    'Automatic creation must install the generated block model.',
+  );
+  assert.equal(blockModel.textures.particle, 'full_workshop:block/glow_block');
   if (process.env.MINEMOD_TEST_CODE_REPAIR === 'true')
     assert.equal(
       task.repairs,

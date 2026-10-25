@@ -115,6 +115,11 @@ try {
   assert.deepEqual(model.data.display.thirdperson_righthand.scale, [0.5, 0.5, 0.5]);
   await page.selectOption('#uv-rotation', '0');
   await page.click('#uv-update');
+  await page.fill('#model-name', '方块雕塑');
+  await page.click('#model-save');
+  await page.waitForFunction(() =>
+    document.querySelector('#asset-library').textContent.includes('方块雕塑'),
+  );
   await page.locator('#animation-studio summary').click();
   await page.click('#animation-create');
   await page.click('#animation-save-key');
@@ -166,8 +171,10 @@ try {
   await page.click('#loot-entry-save');
   await page.locator('#inventory button').filter({ hasText: 'glow_block' }).click();
   await page.fill('#block-hardness', '4');
+  await page.selectOption('#content-model', { label: '方块雕塑' });
   await page.click('#content-save');
   assert.equal(JSON.parse(await page.inputValue('#spec-editor')).blocks[0].loot[0].max, 3);
+  assert.ok(JSON.parse(await page.inputValue('#spec-editor')).blocks[0].modelAsset);
   await page.click('#save-spec');
   await page.waitForFunction(() => !document.querySelector('#confirm-spec').disabled);
   await page.click('#confirm-spec');
@@ -210,6 +217,7 @@ try {
   assert.equal(await page.locator('.conversation-entry').count(), 1);
   edited = JSON.parse(await page.inputValue('#spec-editor'));
   assert.equal(edited.blocks[0].loot[0].max, 3);
+  assert.ok(edited.blocks[0].modelAsset, 'Block model survives complete backup import.');
   assert.equal(edited.entities.find((e) => e.id === 'animated_actor').loot[0].chance, 0.25);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);

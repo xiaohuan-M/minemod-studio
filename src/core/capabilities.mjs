@@ -12,6 +12,8 @@ export function capabilities() {
       versionApiKnowledge: true,
       assetSessions: true,
       texturedModelAssets: true,
+      customBlockModels: true,
+      headlessGameTests: true,
       wearablePreview: true,
       resumableCreation: true,
       productVersions: true,

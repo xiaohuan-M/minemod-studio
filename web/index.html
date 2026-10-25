@@ -493,11 +493,14 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                     <option value="">使用占位贴图</option>
                   </select></label
                 ><label
-                  >物品立方体模型<select id="content-model">
+                  >物品/方块静态模型<select id="content-model">
                     <option value="">使用默认模型</option>
                   </select></label
                 >
               </div>
+              <p id="block-model-note" class="target" hidden>
+                方块模型改变外观；碰撞与选区保持完整方块。
+              </p>
               <div class="actions">
                 <button id="content-save" type="submit">添加到规格草稿</button
                 ><button id="content-reset" type="button" class="secondary">新建条目</button

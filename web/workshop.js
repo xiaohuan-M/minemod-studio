@@ -121,7 +121,8 @@ export function initWorkshop({
     $('content-stack').disabled = single || kind === 'block';
     if (single) $('content-stack').value = '1';
     else if ($('content-stack').value === '1') $('content-stack').value = '64';
-    $('content-model').disabled = kind === 'block';
+    $('content-model').disabled = getProject()?.target.edition === 'bedrock' && kind !== 'block';
+    $('block-model-note').hidden = kind !== 'block';
   }
   function resetContent() {
     editing = null;
@@ -262,6 +263,8 @@ export function initWorkshop({
         textureColor: $('content-color').value,
       };
       if ($('content-texture').value) item.textureAsset = $('content-texture').value;
+      if ($('content-model').value && !$('content-model').disabled)
+        item.modelAsset = $('content-model').value;
       if (kind === 'block')
         Object.assign(item, {
           hardness: Number($('block-hardness').value),
@@ -270,7 +273,6 @@ export function initWorkshop({
         });
       else {
         Object.assign(item, { kind, maxStackSize: Number($('content-stack').value) });
-        if ($('content-model').value) item.modelAsset = $('content-model').value;
         if (kind === 'food')
           item.food = {
             nutrition: Number($('food-nutrition').value),

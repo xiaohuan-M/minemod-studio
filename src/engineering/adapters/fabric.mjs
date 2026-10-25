@@ -1,4 +1,5 @@
 import { javaLoot } from '../loot.mjs';
+import { javaModelResource } from '../model-resources.mjs';
 import { generateEntities } from './fabric-entities.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -98,7 +99,9 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
     environment: '*',
     entrypoints: {
       main: [packageName + '.GeneratedMod'],
-      ...(spec.entities?.length ? { client: [packageName + '.GeneratedClient'] } : {}),
+      ...(spec.entities?.length || spec.blocks?.some((b) => b.modelAsset)
+        ? { client: [packageName + '.GeneratedClient'] }
+        : {}),
     },
     depends: {
       fabricloader: '>=' + template.loader,
@@ -156,45 +159,46 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
       : (modelData?.texture ?? placeholderTexture(item.textureColor));
     add(`src/main/resources/assets/${ns}/textures/item/${item.id}.png`, pngTexture(texture));
     const model = item.modelAsset
-      ? {
-          ...modelData,
-          textures: { 0: ns + ':item/' + item.id },
-        }
+      ? javaModelResource(modelData, ns + ':item/' + item.id)
       : {
           parent:
             'minecraft:item/' +
             (item.tool || item.kind === 'lightning_wand' ? 'handheld' : 'generated'),
           textures: { layer0: ns + ':item/' + item.id },
         };
-    delete model.preview;
-    delete model.texture;
-    if (model.elements)
-      for (const element of model.elements)
-        element.faces = Object.fromEntries(
-          Object.entries(element.faces).filter(([, face]) => face !== null),
-        );
     resource(`assets/${ns}/models/item/${item.id}.json`, model);
   }
   for (const block of spec.blocks ?? []) {
     statements.push(
-      `Block b_${block.id} = Registry.register(Registries.BLOCK, Identifier.of(MOD_ID, ${literal(block.id)}), new Block(AbstractBlock.Settings.create().strength(${block.hardness}f, ${block.resistance}f).luminance(state -> ${block.luminance})));`,
+      `Block b_${block.id} = Registry.register(Registries.BLOCK, Identifier.of(MOD_ID, ${literal(block.id)}), new Block(AbstractBlock.Settings.create().strength(${block.hardness}f, ${block.resistance}f).luminance(state -> ${block.luminance})${block.modelAsset ? '.nonOpaque()' : ''}));`,
     );
     statements.push(
       `all.add(Registry.register(Registries.ITEM, Identifier.of(MOD_ID, ${literal(block.id)}), new BlockItem(b_${block.id}, new Item.Settings())));`,
     );
     zh['block.' + ns + '.' + block.id] = block.displayName.zh_cn;
     en['block.' + ns + '.' + block.id] = block.displayName.en_us;
+    const modelData = block.modelAsset
+      ? validateModel(getAsset(block.modelAsset, 'model').data)
+      : null;
     const texture = block.textureAsset
       ? getAsset(block.textureAsset, 'texture').data
-      : placeholderTexture(block.textureColor ?? '#678f71', true);
+      : (modelData?.texture ?? placeholderTexture(block.textureColor ?? '#678f71', true));
     add(`src/main/resources/assets/${ns}/textures/block/${block.id}.png`, pngTexture(texture));
     resource(`assets/${ns}/blockstates/${block.id}.json`, {
       variants: { '': { model: ns + ':block/' + block.id } },
     });
-    resource(`assets/${ns}/models/block/${block.id}.json`, {
-      parent: 'minecraft:block/cube_all',
-      textures: { all: ns + ':block/' + block.id },
-    });
+    resource(
+      `assets/${ns}/models/block/${block.id}.json`,
+      modelData
+        ? javaModelResource(modelData, ns + ':block/' + block.id, {
+            block: true,
+            forge: spec.target.loader !== 'fabric',
+          })
+        : {
+            parent: 'minecraft:block/cube_all',
+            textures: { all: ns + ':block/' + block.id },
+          },
+    );
     resource(`assets/${ns}/models/item/${block.id}.json`, { parent: ns + ':block/' + block.id });
     resource(`data/${ns}/loot_table/blocks/${block.id}.json`, javaLoot(spec, block, 'block'));
   }

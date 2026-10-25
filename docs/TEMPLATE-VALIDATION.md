@@ -143,3 +143,17 @@ Fabric 1.21.1 自动创作重新真实编译通过，21 次本机测试模型调
 故障历史：首次 Forge 准备图会连带启动游戏，修复后准备阶段不启动；原默认堆预算造成退出 137，限制 JVM 堆/处理器后通过。NeoForge ModDev 的通用 PrepareRun 隐式下载客户端资产，为 headless 运行单独绑定标明 headless 的属性后，固定服务器库与真正 GameTest 均通过。失败记录未冒充成功。
 
 `npm run verify`：74 项通过；Chromium 两条完整流程通过，格式/语法/ESLint/TypeScript 检查通过。新增检查源保护、缺项/失败收据拒绝、完整版本检查引用和跨目录备份外部证明语义。
+
+
+## 2026-10-25 · 0.11 自动方块模型与真实服务端检查
+
+四 Java 目标重新执行自动创作，生成并绑定方块静态模型，验证实际 JAR 内模型元素及粒子贴图引用，再启动断网 GameTest。每个目标 20 个素材、22 次明确本机样例调用、0 轮修复、四组服务端检查通过。
+
+| 目标 | 工程 SHA-256 | JAR SHA-256 / 字节 | 报告 SHA-256 |
+| --- | --- | --- | --- |
+| fabric-1.21.1 | `66a3ca24f64f2ed08a1c24c6e71798d735664d17f5dafc580576e8b562a3e9ca` | `31b12c1a3691150111fecfc68a143fc99e542f87fd4bc2b5d23fc1b74234c80c` / 29994 | `d3849a0a668af1c643d403ef6d82c77c97c82e51e97102eb55a62d25ad4cbb27` |
+| fabric-1.20.1 | `adaa7736994fa3de9383af259d95a79b39d58f5cd903215966e31bd78d683fe1` | `88291feee6407e3f0b1ca5ff2e2ddf4fe1a901aaf696eaa88e5fd6a84294bae2` / 29870 | `4a5815b5e13517f6578c3528cbb5bc108a61bf060e9be129bb05731164b5f758` |
+| forge-1.20.1 | `1b73365cf50018892265a09578bc03c64a79bc8e923b2c9c301ac36879e8ebd6` | `c985c329ccfab4077e813ee5bf45111a1a5aeb977c09b33945bd9f3e86dff704` / 32212 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+| neoforge-1.21.1 | `a50f8fb2412b4cf793ff63cdc9d1406ce5a8b08b534e8bfb4a68e077ead26951` | `cb88a8e16bf762f62fa436ce246cde4ea8d10cc786aa5acd9020dc767d5c89c1` / 30836 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+
+数据：`.minemod/creation-validation-qHlEQ4`、`.minemod/creation-validation-mScvta`、`.minemod/creation-validation-3cAfzy`、`.minemod/creation-validation-z1g3hM`。Java 客户端代码真实编译，但没有客户端视觉验收；服务端检查不检查模型渲染。Bedrock 由五目标模型资源测试及实际浏览器绑定/备份/MCADDON 检查验证，仍未游戏导入。

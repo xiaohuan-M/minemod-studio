@@ -36,3 +36,6 @@ blocks/entities 可选 `loot` 数组，每个对象最多 8 条。每条必填 i
 每条是独立一次概率判定，可同时掉落；不会自动增加默认条目。省略 loot 保留默认行为：方块掉落自身，实体不掉落；loot=[] 表示明确不掉落。新字段不在读取时自动填充，旧规格哈希保持稳定。Java 使用 block/entity loot table，1.20.1 为 loot_tables、1.21.1 为 loot_table；Bedrock 写入独立 loot_tables 并由 block/entity 组件引用。玩家击杀不包含“玩家或宠物”的扩展条件。
 
 Java 方块保留 survives_explosion，数量使用 set_count/uniform；Bedrock 使用对应的无命名空间函数与条件。时运、抢夺、精准采集、经验、装备继承和自然生成不在本次能力范围。
+
+
+0.11：`blocks[].modelAsset` 可引用静态 model 素材，适用于五个当前目标。模型自带贴图作为回退，显式 textureAsset 优先；来源随工程保存。Java 输出原生 blockstates/models，Bedrock 输出固定方块几何与材质引用，拒绝不兼容的 Java UV 旋转/rescale。该字段只改变外观，不改变完整方块的碰撞/选区。

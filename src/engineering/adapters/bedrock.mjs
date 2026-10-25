@@ -105,14 +105,39 @@ export function generateBedrock(input, assets = []) {
       key = ns + '_' + block.id;
     terrain[key] = texture(block, 'blocks');
     blocks[id] = { textures: key, sound: 'stone' };
+    let geometry = 'minecraft:geometry.full_block';
+    if (block.modelAsset) {
+      const asset = assets.find((a) => a.id === block.modelAsset && a.kind === 'model');
+      if (!asset)
+        throw new AppError(
+          422,
+          'ASSET_MISSING',
+          '方块模型不存在或类型错误，请选择静态立方体模型。',
+        );
+      used.set(asset.id, asset);
+      const data = block.textureAsset
+        ? assets.find((a) => a.id === block.textureAsset).data
+        : asset.data.texture;
+      const identifier = ns + '.block.' + block.id;
+      const generated = bedrockAnimationResources(
+        { ...asset.data, clips: [{ name: 'idle', duration: 1, loop: true, tracks: [] }] },
+        identifier,
+        data?.width ?? 16,
+        data?.height ?? 16,
+      );
+      geometry = 'geometry.' + identifier;
+      json('resource_pack/models/blocks/' + block.id + '.geo.json', generated.geometry);
+    }
     json(`behavior_pack/blocks/${block.id}.json`, {
       format_version: '1.21.60',
       'minecraft:block': {
         description: { identifier: id, menu_category: { category: 'construction' } },
         components: {
           'minecraft:display_name': 'tile.' + id + '.name',
-          'minecraft:geometry': 'minecraft:geometry.full_block',
-          'minecraft:material_instances': { '*': { texture: key, render_method: 'opaque' } },
+          'minecraft:geometry': geometry,
+          'minecraft:material_instances': {
+            '*': { texture: key, render_method: block.modelAsset ? 'alpha_test' : 'opaque' },
+          },
           'minecraft:destructible_by_mining': { seconds_to_destroy: block.hardness },
           'minecraft:destructible_by_explosion': { explosion_resistance: block.resistance },
           'minecraft:light_emission': block.luminance,
@@ -319,12 +344,21 @@ export function packageBedrock(snapshot) {
   const geometryIds = new Set(),
     animationIds = new Set();
   for (const [path, bytes] of all) {
-    if (path.startsWith('resource_pack/models/entity/') && path.endsWith('.json'))
+    if (path.startsWith('resource_pack/models/') && path.endsWith('.json'))
       for (const model of JSON.parse(bytes)['minecraft:geometry'] ?? [])
         geometryIds.add(model.description.identifier);
     if (path.startsWith('resource_pack/animations/') && path.endsWith('.json'))
       for (const id of Object.keys(JSON.parse(bytes).animations ?? {})) animationIds.add(id);
   }
+  for (const [path, bytes] of all)
+    if (path.startsWith('behavior_pack/blocks/') && path.endsWith('.json')) {
+      const geometry = JSON.parse(bytes)['minecraft:block']?.components?.['minecraft:geometry'];
+      if (
+        typeof geometry !== 'string' ||
+        (geometry !== 'minecraft:geometry.full_block' && !geometryIds.has(geometry))
+      )
+        throw new AppError(422, 'INVALID_PACK', '方块几何引用缺失。');
+    }
   for (const [path, bytes] of all)
     if (path.startsWith('resource_pack/entity/') && path.endsWith('.json')) {
       const d = JSON.parse(bytes)['minecraft:client_entity']?.description;

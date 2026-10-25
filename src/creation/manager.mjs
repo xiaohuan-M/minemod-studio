@@ -538,7 +538,9 @@ export class CreationManager {
         const kinds = [
           ...(task.options.textures ? ['texture'] : []),
           ...(task.options.models &&
-          ((group === 'items' && !bedrock) || (group === 'entities' && bedrock))
+          (group === 'blocks' ||
+            (group === 'items' && !bedrock) ||
+            (group === 'entities' && bedrock))
             ? ['model']
             : []),
         ];

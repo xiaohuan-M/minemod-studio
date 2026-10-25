@@ -513,6 +513,7 @@ api('/api/targets')
         entities: '实体',
         cube_animation: '立方体动画',
         server_game_tests: '服务器运行检查',
+        block_models: '自定义方块模型',
       };
       $('target-features').textContent =
         labels[target.validation] +

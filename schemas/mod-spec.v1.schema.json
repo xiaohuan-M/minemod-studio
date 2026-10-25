@@ -324,6 +324,9 @@
           },
           "loot": {
             "$ref": "#/$defs/loot"
+          },
+          "modelAsset": {
+            "$ref": "#/$defs/uuid"
           }
         },
         "required": [

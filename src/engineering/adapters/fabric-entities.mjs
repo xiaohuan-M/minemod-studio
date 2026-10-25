@@ -59,6 +59,11 @@ export function generateEntities(spec, { add, resource, getAsset, packageName, z
       @Override public Identifier getTexture(net.minecraft.entity.${zombie ? 'mob' : 'passive'}.${type} entity) { return Identifier.of(GeneratedMod.MOD_ID, "textures/entity/${entity.id}.png"); }
     });`);
   }
+  for (const block of spec.blocks ?? [])
+    if (block.modelAsset)
+      renderers.push(
+        `net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap.INSTANCE.putBlock(net.minecraft.registry.Registries.BLOCK.get(Identifier.of(GeneratedMod.MOD_ID, ${JSON.stringify(block.id)})), net.minecraft.client.render.RenderLayer.getCutout());`,
+      );
   if (renderers.length)
     add(
       'src/main/java/' + packageName.replaceAll('.', '/') + '/GeneratedClient.java',

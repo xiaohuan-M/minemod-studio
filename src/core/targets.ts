@@ -10,6 +10,7 @@ const features = [
   'custom_loot',
   'textures',
   'static_models',
+  'block_models',
   'vanilla_entity_archetypes',
   'server_game_tests',
 ];
@@ -49,6 +50,7 @@ const descriptors: readonly TargetDescriptor[] = [
       'textures',
       'entities',
       'cube_animation',
+      'block_models',
     ],
   },
   {
