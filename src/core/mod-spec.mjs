@@ -70,11 +70,8 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
   const entityIds = new Set();
 
   for (const entity of value.entities ?? []) {
-    if (
-      value.target.edition !== 'bedrock' &&
-      (entity.modelAsset || entity.animationClip || entity.modelPrompt)
-    )
-      invalid('spec.entities', '自定义实体模型/动画当前只接入 Bedrock；Java 实体使用原版模型。');
+    if (value.target.edition !== 'bedrock' && entity.animationClip && !entity.modelAsset)
+      invalid('spec.entities', 'Java 自定义动画片段需要绑定模型。');
     if (entityIds.has(entity.id) || itemIds.has(entity.id + '_spawn_egg'))
       invalid('spec.entities', '实体 ID 重复或刷怪蛋 ID 与物品冲突。');
     if (entity.archetype === 'cow' && entity.attackDamage !== 0)

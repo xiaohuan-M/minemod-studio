@@ -1,4 +1,5 @@
 import { generateFabric } from './fabric.mjs';
+import { entityRendererSource } from '../entity-renderer.mjs';
 import { snapshotFromFiles } from '../snapshot.mjs';
 import fabric1211 from '../../../templates/fabric-1.21.1/manifest.json' with { type: 'json' };
 import fabric1201 from '../../../templates/fabric-1.20.1/manifest.json' with { type: 'json' };
@@ -152,9 +153,18 @@ side = "BOTH"
     attributeStatements.push(
       `event.put(ENTITY_${e.id}.get(), ${type}.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH, ${e.health}).add(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED, ${e.movementSpeed})${zombie ? '.add(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE, ' + e.attackDamage + ')' : ''}.build());`,
     );
-    renderers.push(`event.registerEntityRenderer(GeneratedMod.ENTITY_${e.id}.get(), context -> new net.minecraft.client.renderer.entity.${short}Renderer(context) {
+    if (e.modelAsset)
+      renderers.push(
+        `event.registerEntityRenderer(GeneratedMod.ENTITY_${e.id}.get(), context -> new studio.minemod.runtime.m_${ns}.StudioEntityRenderer<>(context,"${e.id}"));`,
+      );
+    else
+      renderers.push(`event.registerEntityRenderer(GeneratedMod.ENTITY_${e.id}.get(), context -> new net.minecraft.client.renderer.entity.${short}Renderer(context) {
       @Override public net.minecraft.resources.ResourceLocation getTextureLocation(${type} entity) { return ${neo ? 'net.minecraft.resources.ResourceLocation.fromNamespaceAndPath' : 'new net.minecraft.resources.ResourceLocation'}(GeneratedMod.MOD_ID, "textures/entity/${e.id}.png"); }
     });`);
+  }
+  if (spec.entities?.some((e) => e.modelAsset)) {
+    const renderer = entityRendererSource(ns, { official: true, legacy });
+    add(renderer.path, renderer.content);
   }
   add(
     'src/main/java/' + pkg.replaceAll('.', '/') + '/GeneratedMod.java',

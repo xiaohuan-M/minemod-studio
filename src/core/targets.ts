@@ -12,6 +12,9 @@ const features = [
   'static_models',
   'block_models',
   'vanilla_entity_archetypes',
+  'entities',
+  'cube_animation',
+  'hierarchical_animation',
   'server_game_tests',
 ];
 const descriptors: readonly TargetDescriptor[] = [

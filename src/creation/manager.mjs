@@ -544,9 +544,7 @@ export class CreationManager {
         const kinds = [
           ...(task.options.textures ? ['texture'] : []),
           ...(task.options.models &&
-          (group === 'blocks' ||
-            (group === 'items' && !bedrock) ||
-            (group === 'entities' && bedrock))
+          (group === 'blocks' || (group === 'items' && !bedrock) || group === 'entities')
             ? ['model']
             : []),
         ];
@@ -557,8 +555,7 @@ export class CreationManager {
           const prior = (before?.[group] ?? []).find((o) => o.id === owner.id);
           if (!materialNeeded(task, group, owner, prior, kind)) continue;
           const base = owner[field] ? this.assets.get(owner[field]) : null;
-          const requestedKind =
-            kind === 'model' && group === 'entities' && bedrock ? 'animated_model' : kind;
+          const requestedKind = kind === 'model' && group === 'entities' ? 'animated_model' : kind;
           let currentData = base?.data;
           if (currentData && requestedKind === 'animated_model' && base.kind === 'model')
             currentData = validateAnimation({

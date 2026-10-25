@@ -43,7 +43,7 @@ export function materialPrompt(task, project, group, owner, kind) {
   const detail = owner[promptField(kind)] ?? '';
   const subject = `为 ${group}:${owner.id} ${owner.displayName.zh_cn} 制作${kind === 'texture' ? 'Minecraft 像素贴图' : 'Minecraft 立方体模型'}。`;
   const animation =
-    kind === 'model' && group === 'entities' && project.target.edition === 'bedrock'
+    kind === 'model' && group === 'entities'
       ? `保留当前骨骼和动作，提供 ${owner.animationClip ?? 'walk'} 片段，使用父子骨骼和多立方体分组。`
       : '';
   return [

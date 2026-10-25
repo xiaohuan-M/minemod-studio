@@ -1,0 +1,34 @@
+{
+  "hash": "e4bed8db60d19a9a6b355846f332accc6b882df2ee835b5cf5dbab3e44766772",
+  "target": "fabric-1.21.1",
+  "fixture": true,
+  "scope": "one Fabric 1.21.1 client fixture; original generated source, no real LLM",
+  "networkDisabled": true,
+  "cachedAssetsOnly": true,
+  "missingExternalAssets": true,
+  "animation": {
+    "fps": 5,
+    "framesCompared": [
+      1,
+      3
+    ],
+    "region": [
+      580,
+      305,
+      680,
+      402
+    ],
+    "changedPixels": 3837,
+    "silhouetteChangedPixels": 270
+  },
+  "screenshots": [
+    {
+      "path": "docs/media/fabric1211-entity-pose-01.png",
+      "sha256": "3b4ebdc387a1057b8a82dd8292b6b89798810c4d9eaf119298d011f01a24e690"
+    },
+    {
+      "path": "docs/media/fabric1211-entity-pose-03.png",
+      "sha256": "52b9c69a051c95ca9f61d88fdd55b4ff4e9e9a0af8712c233d5879112fa23752"
+    }
+  ]
+}

@@ -1,4 +1,6 @@
-# HTTP API · 0.13
+# HTTP API · 0.14
+
+0.14：四 Java 目标的实体可绑定静态或层级动画 modelAsset，animationClip 必须存在于该模型。固定包内渲染器和模型数据在 AI 可编辑命名空间之外；不绑定自定义模型时保留原版 64×64 UV 约束。自定义模型可使用 16/32/64，显式贴图优先，动作规则和物理限制见 MODEL-FORMAT.md。
 
 0.13：内容对象可选 `texturePrompt` / `modelPrompt`（非空、最多 2000 字，遵守目标支持范围）。自动规划改变要求或贴图颜色时以现有素材为上下文创建新素材；单纯重命名保留绑定。任务选项 `refreshMaterials` 默认 false，true 时重新制作本轮启用种类的已有素材，恢复保留这个策略。仅更新贴图会本地合成新的模型内置贴图，不额外调用几何模型。手工保存要求后需选择重制，因为本轮起点已经包含手工修改。
 
@@ -14,7 +16,7 @@
 
 `GET/POST /api/asset-sessions` 列表/创建（kind=texture/model/animated_model、name）；`GET /api/asset-sessions/:id` 返回当前素材、revision 和历史；`POST .../generate` 接收 revision、prompt、consent、可选 currentData/referenceId，明确发送当前素材和最近 12 条要求后生成并自动保存不可变素材。`POST .../restore` 接收 revision、assetId，不调用模型，恢复本会话已有结果。最多 100 个会话，每个保留最近 100 条记录；资源库原有限额仍生效。请求最多 256 KiB。
 
-像素生成额外支持 `{width,height,palette,runs:[[paletteIndex,count],...]}`，校验后转换为现有 RGBA 格式；不会将新传输格式写入旧素材记录。当前尺寸在继续编辑时必须保留。动画格式仍为现有受限立方体/平级根骨骼；真实模型效果未验。
+像素生成额外支持 `{width,height,palette,runs:[[paletteIndex,count],...]}`，校验后转换为现有 RGBA 格式；不会将新传输格式写入旧素材记录。当前尺寸在继续编辑时必须保留。动画包含兼容旧平级格式的可选层级骨骼，详见 MODEL-FORMAT.md；真实模型效果未验。
 
 `POST /api/creations` 从一句需求新建并自动制作；接收 prompt、可选 name/targetId 和本轮策略。`POST /api/projects/:id/creations` 在已有项目继续，另需 revision、可选 instruction。策略为 consent（当前文本配置标识）、approved=true、textures/models（默认 true）、maxCalls（1–256，默认 48）、maxRepairs（0–3，默认 2）、allowNetwork（默认 false）。授权涵盖本轮模型、素材与具体工程构建；不允许覆盖任务的服务地址或密钥。
 

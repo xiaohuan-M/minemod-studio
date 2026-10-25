@@ -660,8 +660,8 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
             <div class="actions">
               <span id="entity-animation-fields"
                 ><label
-                  >Bedrock 实体模型<select id="entity-model">
-                    <option value="">原创默认模型与步行动画</option>
+                  >实体模型<select id="entity-model">
+                    <option value="">使用目标默认模型</option>
                   </select></label
                 ><label
                   >动画片段名（空白为首片段）<input id="entity-clip" placeholder="walk" /></label
@@ -856,8 +856,8 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
         <details id="animation-studio">
           <summary>动画工坊 · 立方体骨骼与关键帧</summary>
           <p class="target">
-            支持父子骨骼、多立方体分组、绑定姿态与线性旋转/位移/缩放。可用于 Bedrock
-            自定义实体，并导出动画 bbmodel。Java 原版实体不能绑定这类模型。
+            支持父子骨骼、多立方体分组、绑定姿态与线性旋转/位移/缩放。可绑定到当前 Java 或 Bedrock
+            目标的自定义实体，并导出含贴图和动作的 bbmodel。
           </p>
           <div class="actions">
             <button id="animation-create" class="secondary">从当前立方体模型创建动画</button

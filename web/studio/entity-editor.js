@@ -28,10 +28,10 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
   function render() {
     const bedrock = getProject()?.target.edition === 'bedrock';
     $('entity-form').hidden = false;
-    $('entity-animation-fields').hidden = !bedrock;
+    $('entity-animation-fields').hidden = false;
     $('entity-limit').textContent = bedrock
       ? 'Bedrock 提供简单敌对/被动行为，可绑定立方体模型或动画素材。walk 片段随移动播放，其余选中片段持续播放；包结构已校验，未游戏实测。'
-      : '僵尸/牛保留原版行为和动画，不自动加入自然生成。用创造模式刷怪蛋验证。64×64 贴图需匹配所选原版模型 UV；牛的原始 64×32 布局请纵向放大两倍。';
+      : '僵尸/牛保留原版行为与碰撞体积，可绑定自定义立方体/层级模型和动作。不绑定模型时使用原版模型，贴图必须匹配原版 64×64 UV。walk 随移动播放，其余片段持续播放；用独立实例刷怪蛋验收。';
     let spec;
     try {
       spec = readSpec();
@@ -95,7 +95,7 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     if ($('entity-texture').value) entity.textureAsset = $('entity-texture').value;
     if ($('entity-texture-prompt').value.trim())
       entity.texturePrompt = $('entity-texture-prompt').value.trim();
-    if (getProject().target.edition === 'bedrock') {
+    {
       if ($('entity-model').value) entity.modelAsset = $('entity-model').value;
       if ($('entity-clip').value.trim()) entity.animationClip = $('entity-clip').value.trim();
       if ($('entity-model-prompt').value.trim())
@@ -124,17 +124,13 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
   document.addEventListener('assets-loaded', ({ detail }) => {
     const selected = $('entity-texture').value;
     $('entity-texture').replaceChildren(
-      ...[
-        { id: '', name: '程序占位贴图' },
-        ...detail.filter(
-          (a) =>
-            a.kind === 'texture' && (getProject()?.target.edition === 'bedrock' || a.width === 64),
-        ),
-      ].map((a) => {
-        const o = el('option', a.name);
-        o.value = a.id;
-        return o;
-      }),
+      ...[{ id: '', name: '程序占位贴图' }, ...detail.filter((a) => a.kind === 'texture')].map(
+        (a) => {
+          const o = el('option', a.name);
+          o.value = a.id;
+          return o;
+        },
+      ),
     );
     $('entity-texture').value = selected;
   });
@@ -142,7 +138,7 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     const selected = $('entity-model').value;
     $('entity-model').replaceChildren(
       ...[
-        { id: '', name: '原创默认模型与步行动画' },
+        { id: '', name: '使用目标默认模型' },
         ...detail.filter((a) => ['model', 'animated_model'].includes(a.kind)),
       ].map((a) => {
         const o = el('option', a.name);

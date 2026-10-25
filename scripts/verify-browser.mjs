@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { makeServer } from '../src/server.mjs';
-const parent = resolve('.minemod');
+const parent = resolve(process.env.MINEMOD_TEST_DATA_ROOT ?? '.minemod');
 mkdirSync(parent, { recursive: true });
 const dataDir = mkdtempSync(join(parent, 'browser-'));
 const server = makeServer({ dataDir });

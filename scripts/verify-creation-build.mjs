@@ -9,10 +9,11 @@ import { getTarget } from '../src/core/targets.ts';
 import { placeholderTexture } from '../src/core/assets.mjs';
 import { readZipEntry, sha256 } from '../src/core/archive.mjs';
 import example from '../examples/full-workshop.json' with { type: 'json' };
+import rig from '../examples/rigged-guardian.json' with { type: 'json' };
 
 const targetId = process.env.MINEMOD_TEST_TARGET ?? 'fabric-1.21.1';
 assert.ok(getTarget(targetId)?.target.edition === 'java');
-const parent = resolve('.minemod');
+const parent = resolve(process.env.MINEMOD_TEST_DATA_ROOT ?? '.minemod');
 mkdirSync(parent, { recursive: true });
 const dir = mkdtempSync(join(parent, 'creation-validation-'));
 if (process.env.MINEMOD_TEST_GRADLE_CACHE) {
@@ -38,7 +39,9 @@ const server = makeServer({
         data:
           kind === 'texture'
             ? placeholderTexture()
-            : { elements: [{ from: [3, 0, 3], to: [13, 16, 13] }] },
+            : kind === 'animated_model'
+              ? structuredClone(rig)
+              : { elements: [{ from: [3, 0, 3], to: [13, 16, 13] }] },
       };
     },
     async planCode({ project, failureLog }) {
@@ -107,6 +110,13 @@ try {
   readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedMod.class');
   readZipEntry(artifact, 'assets/full_workshop/textures/entity/crystal_guard.png');
   readZipEntry(artifact, 'studio/minemod/generated/m_full_workshop/GeneratedBonus.class');
+  readZipEntry(artifact, 'studio/minemod/runtime/m_full_workshop/StudioEntityRenderer.class');
+  const mesh = JSON.parse(
+    readZipEntry(artifact, 'assets/minemod_runtime_m_full_workshop/entity/crystal_guard.json'),
+  );
+  assert.equal(mesh.bones.length, 3);
+  assert.equal(mesh.order, 'ZYX');
+  assert.equal(mesh.clip.name, 'wave');
   const blockModel = JSON.parse(
     readZipEntry(artifact, 'assets/full_workshop/models/block/glow_block.json'),
   );

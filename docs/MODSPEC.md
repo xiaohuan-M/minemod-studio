@@ -25,9 +25,9 @@
 
 目标组合由 `/api/targets` 注册表确定：Fabric 1.20.1/Java17、Fabric 1.21.1/Java21、Forge 1.20.1/Java17、NeoForge 1.21.1/Java21、Bedrock 1.21.60/java0。Bedrock 的 java=0 表示不适用，支持物品/食物/方块/配方/实体与立方体动画，不支持工具/法杖/Java 物品模型。
 
-Java 目标可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，未配置 loot 时掉落表为空；其原型的 AI、繁殖、日晒等行为保留。引用贴图必须为 64×64，遵循对应原版模型的归一化 UV。不是自定义骨骼模型协议。
+Java 目标可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，未配置 loot 时掉落表为空；其原型的 AI、繁殖、日晒等行为保留。未绑定模型时引用贴图必须为 64×64，遵循对应原版模型的归一化 UV；自定义模型可用 16/32/64。Java 同样接受静态或层级动画 modelAsset，animationClip 选择存在的片段；不带模型不能指定 Java 片段。行为与物理体积仍为原型，模型不自动改变它们。
 
-Bedrock 同样接受最多 8 个实体的基础字段，提供简单敌对/被动 AI，不继承完整原版 Java 行为。可选 modelAsset 引用 model/animated_model、animationClip 选择动画片段，贴图允许 16/32/64。默认使用原创立方体角色与 walk 动画；walk 随移动播放，其他选中片段持续播放。模型引用、片段和素材类型在工程生成时校验；Java 不接受这些自定义实体绑定。实体默认不加入自然生成。
+Bedrock 同样接受最多 8 个实体的基础字段，提供简单敌对/被动 AI，不继承完整原版 Java 行为。可选 modelAsset 引用 model/animated_model、animationClip 选择动画片段，贴图允许 16/32/64。默认使用原创立方体角色与 walk 动画；walk 随移动播放，其他选中片段持续播放。模型引用、片段和素材类型在工程生成时校验；四 Java 目标也支持这些绑定，见 MODEL-FORMAT.md。实体默认不加入自然生成。
 
 ## 自定义掉落 · 0.5
 

@@ -157,3 +157,31 @@ Fabric 1.21.1 自动创作重新真实编译通过，21 次本机测试模型调
 | neoforge-1.21.1 | `a50f8fb2412b4cf793ff63cdc9d1406ce5a8b08b534e8bfb4a68e077ead26951` | `cb88a8e16bf762f62fa436ce246cde4ea8d10cc786aa5acd9020dc767d5c89c1` / 30836 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
 
 数据：`.minemod/creation-validation-qHlEQ4`、`.minemod/creation-validation-mScvta`、`.minemod/creation-validation-3cAfzy`、`.minemod/creation-validation-z1g3hM`。Java 客户端代码真实编译，但没有客户端视觉验收；服务端检查不检查模型渲染。Bedrock 由五目标模型资源测试及实际浏览器绑定/备份/MCADDON 检查验证，仍未游戏导入。
+
+
+## 2026-10-25 · 0.14 Java 层级实体模型
+
+四目标经自动创作入口生成 22 个素材、24 次明确本机样例调用，绑定父子骨骼和 wave 动作，实际编译并检查 JAR 内固定渲染器、模型数据、贴图，再运行四组断网服务器检查；0 轮修复。服务器收据仍明确 clientVisualTested=false，不能替代下方独立客户端检查。
+
+| 目标 | 工程 SHA-256 | JAR SHA-256 / 字节 | 报告 SHA-256 |
+| --- | --- | --- | --- |
+| fabric-1.21.1 | `4b5af531a73326456aafe945de6e9647099c1f5128a2e123429f174e4e8ff6ec` | `51eb5501deebe2058441c3288a16981d4e965f964edd1b7c14daffc86a741746` / 38291 | `d3849a0a668af1c643d403ef6d82c77c97c82e51e97102eb55a62d25ad4cbb27` |
+| fabric-1.20.1 | `c17deb6768afeeb8666502bf6722b3ad7da89b24b98bd4b231fa53909dfd5f70` | `e761a114c3062ede95005b8b10fab2b0358576dbf02385ef29e36068f258e553` / 38236 | `bb2819299651aa55e0a3b2d59bd755eb5f6d724ed2e9a86b765b5f68f5ac6136` |
+| forge-1.20.1 | `1eca0f970380a36cf33493ed8702690dd730c904e0d45f38c1cb5529848538ff` | `9894aaed935e5c55bd361a5602b52e10da8d4defeb7b2db4a2ab0e03d33c9797` / 40696 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+| neoforge-1.21.1 | `0146978341db2e070c32518eda54240781bef42be5192717956885b23d41db86` | `9083b2670a2096c9b1b8e5bffe2a00b69199bca544c6002d81cdd147ae87bfd1` / 38971 | `fa9c3e1191c095aa5d7d562327c93f24a6b085f132eb2f2b8903e87749223009` |
+
+独立记录目录（相对仓库）：`../../tmp/minemod-java-014/creation-validation-ixD5rd`、`../../tmp/minemod-java-014/creation-validation-zzUVFN`、`../../tmp/minemod-java-014/creation-validation-Q8J8Bz`、`../../tmp/minemod-java-014/creation-validation-HM8edW`。源码/产物/报告保留，复制缓存清理。Fabric 1.20.1 首次复制因工作区磁盘耗尽而失败，未开始编译；改用临时磁盘后通过。该失败未计为成功。
+
+### 独立 Fabric 1.21.1 客户端检查
+
+[原始范围与哈希清单](validation/client-fabric1211-0.14.json) 对应生成源码 e4bed8db60d19a9a6b355846f332accc6b882df2ee835b5cf5dbab3e44766772。客户端由这份固定生成源码启动，使用原创建器同一 rigged-guardian 样例和两段立方体方块；不是将上表 JAR 安装到独立正式发行启动器。
+
+实际启动 Minecraft 1.21.1 + Fabric Loader 0.16.10，Xvfb 1280×720、Mesa 软件 OpenGL、2 CPU/4 GiB、非特权只读容器。用复制的本次 GameTest 世界进入创造模式，在独立石英平台放置蓝色自定义方块、召唤金色层级角色；关闭日照并清除僵尸燃烧，固定相机和 HUD 后以 5fps 捕获连续画面，第 1、3 帧角色区域出现 270 个金色轮廓变化像素，画面可观察到手臂位置变化。
+
+![实际客户端中的角色姿态一](media/fabric1211-entity-pose-01.png)
+
+![0.4 秒后的角色姿态](media/fabric1211-entity-pose-03.png)
+
+限制：首次外部客户端资源下载被当前环境代理 403 拒绝（resources.download.minecraft.net），未从其他域名取代。检查禁用该下载任务，用已缓存库和游戏内置资源断网运行；背景、语言、字体、音效等外部资源缺失会报错，不作为完整资源/音效或账号服务验收。仅检查这一 Fabric 样例；其他加载器客户端、正式安装、多人、任意 AI 玩法和 Bedrock 客户端未验。截图含 Minecraft 游戏画面，其商标/游戏素材权利仍属于原权利人，项目 MIT 不重新授权这些游戏素材。
+
+测试工具链 Dockerfile 为 [scripts/client-validation.Dockerfile](../scripts/client-validation.Dockerfile)。构建传入 BuildKit secret system_ca，只在 apt 下载阶段读取公开 CA；运行时 Xvfb/Mesa 的本机库需要可执行临时目录。代理/CA 不写入最终镜像。GUI 检查与生产构建工具链分开，不增加应用运行依赖。

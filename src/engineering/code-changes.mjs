@@ -94,7 +94,10 @@ export function applyCodeChanges(snapshot, spec, input) {
 export function codeContext(snapshot) {
   let size = 0;
   return snapshot.files
-    .filter((f) => f.path.endsWith('.java'))
+    .filter(
+      (f) =>
+        f.path.endsWith('.java') && !f.path.startsWith('src/main/java/studio/minemod/runtime/'),
+    )
     .map((f) => ({ path: f.path, content: Buffer.from(f.content, 'base64').toString('utf8') }))
     .filter((f) => (size += Buffer.byteLength(f.content)) <= 160 * 1024)
     .slice(0, 24);

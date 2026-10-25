@@ -27,7 +27,7 @@ export function generateFabric(input, assets = [], template = defaultTemplate) {
   };
   const getAsset = (id, kind) => {
     const asset = assetMap.get(id);
-    if (!asset || asset.kind !== kind)
+    if (!asset || !(Array.isArray(kind) ? kind.includes(asset.kind) : asset.kind === kind))
       throw new AppError(
         422,
         'ASSET_MISSING',

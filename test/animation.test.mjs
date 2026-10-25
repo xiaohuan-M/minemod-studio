@@ -40,7 +40,7 @@ test('flat bone animation validates bounds, interpolates linearly and survives a
   assert.equal(geometry.geometry['minecraft:geometry'][0].bones.length, 6);
   assert.ok(geometry.animations.animations['animation.sample.guard.walk']);
 });
-test('Bedrock custom animated entities bind geometry, clips, textures and behavior while Java refuses unsupported bindings', () => {
+test('Bedrock animated entities bind geometry, clips, textures and behavior; Java also accepts supported models', () => {
   const spec = structuredClone(specFixture);
   spec.target = { edition: 'bedrock', loader: 'bedrock', minecraft: '1.21.60', java: 0 };
   const asset = {
@@ -79,5 +79,7 @@ test('Bedrock custom animated entities bind geometry, clips, textures and behavi
   bad.entities[0].animationClip = 'missing';
   assert.throws(() => generateWorkspace(bad, [asset]), /片段不存在/);
   spec.target = { edition: 'java', loader: 'fabric', minecraft: '1.21.1', java: 21 };
-  assert.throws(() => validateModSpec(spec), /只接入 Bedrock/);
+  assert.equal(validateModSpec(spec).entities[0].animationClip, 'walk');
+  delete spec.entities[0].modelAsset;
+  assert.throws(() => validateModSpec(spec), /需要绑定模型/);
 });

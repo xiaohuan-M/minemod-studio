@@ -1,6 +1,8 @@
 import { javaLoot } from '../loot.mjs';
 import { pngTexture, placeholderTexture } from '../../core/assets.mjs';
 import { AppError } from '../../core/errors.mjs';
+import { entityMesh } from '../entity-mesh.mjs';
+import { entityRendererSource } from '../entity-renderer.mjs';
 /** Vanilla archetypes retain their native animation and behavior; only supported attributes are exposed. */
 export function generateEntities(spec, { add, resource, getAsset, packageName, zh, en, legacy }) {
   const declarations = [],
@@ -33,16 +35,25 @@ export function generateEntities(spec, { add, resource, getAsset, packageName, z
     resource(`assets/${ns}/models/item/${entity.id}_spawn_egg.json`, {
       parent: 'minecraft:item/template_spawn_egg',
     });
+    const custom = entity.modelAsset
+      ? getAsset(entity.modelAsset, ['model', 'animated_model'])
+      : null;
+    if (custom)
+      resource(
+        `assets/minemod_runtime_m_${ns}/entity/${entity.id}.json`,
+        entityMesh(custom.data, custom.kind, entity.animationClip),
+      );
     let texture;
     if (entity.textureAsset) {
       texture = getAsset(entity.textureAsset, 'texture').data;
-      if (texture.width !== 64)
+      if (!custom && texture.width !== 64)
         throw new AppError(
           422,
           'ENTITY_TEXTURE',
           '实体贴图需要 64×64 PNG，并按照所选原版模型的 UV 布局绘制。',
         );
-    } else {
+    } else if (custom?.data.texture) texture = custom.data.texture;
+    else {
       const base = placeholderTexture(entity.textureColor ?? '#8e62cf', true);
       texture = {
         width: 64,
@@ -55,9 +66,18 @@ export function generateEntities(spec, { add, resource, getAsset, packageName, z
     }
     add(`src/main/resources/assets/${ns}/textures/entity/${entity.id}.png`, pngTexture(texture));
     resource(`data/${ns}/loot_table/entities/${entity.id}.json`, javaLoot(spec, entity, 'entity'));
-    renderers.push(`net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(GeneratedMod.${field}, context -> new net.minecraft.client.render.entity.${zombie ? 'ZombieEntityRenderer' : 'CowEntityRenderer'}(context) {
+    if (custom)
+      renderers.push(
+        `net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(GeneratedMod.${field}, context -> new studio.minemod.runtime.m_${ns}.StudioEntityRenderer<>(context,${name}));`,
+      );
+    else
+      renderers.push(`net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(GeneratedMod.${field}, context -> new net.minecraft.client.render.entity.${zombie ? 'ZombieEntityRenderer' : 'CowEntityRenderer'}(context) {
       @Override public Identifier getTexture(net.minecraft.entity.${zombie ? 'mob' : 'passive'}.${type} entity) { return Identifier.of(GeneratedMod.MOD_ID, "textures/entity/${entity.id}.png"); }
     });`);
+  }
+  if (spec.entities?.some((e) => e.modelAsset)) {
+    const renderer = entityRendererSource(ns, { legacy });
+    add(renderer.path, renderer.content);
   }
   for (const block of spec.blocks ?? [])
     if (block.modelAsset)

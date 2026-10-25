@@ -164,6 +164,32 @@ try {
   assert.equal(geometry.bones[1].parent, '身体');
   assert.equal(geometry.bones[1].cubes.length, 2);
   await page.locator('#animation-canvas').screenshot({ path: '/tmp/minemod-skeleton-preview.png' });
+  // The same model must be bindable on Java, with protected runtime resources.
+  await page.fill('#name', 'Java 骨骼角色');
+  await page.fill('#prompt', '自定义角色');
+  await page.selectOption('#target-select', 'fabric-1.21.1');
+  await page.click('#create-button');
+  await page.locator('#project-title').filter({ hasText: 'Java 骨骼角色' }).waitFor();
+  await page.click('#load-full-example');
+  await page.fill('#entity-id', 'java_rig');
+  await page.fill('#entity-zh', 'Java 骨骼角色');
+  await page.fill('#entity-en', 'Java Rig');
+  await page.selectOption('#entity-model', latest.id);
+  await page.fill('#entity-model-prompt', '保留身体，改善挥手动作');
+  await page.click('#entity-save');
+  await page.click('#save-spec');
+  await page.waitForFunction(() => !document.querySelector('#confirm-spec').disabled);
+  await page.click('#confirm-spec');
+  await page.click('#generate-workspace');
+  await page.waitForFunction(() => !document.querySelector('#approve-workspace').disabled);
+  const project = (await (await fetch(base + '/api/projects')).json()).projects.find(
+    (p) => p.name === 'Java 骨骼角色',
+  );
+  const snapshots = (
+    await (await fetch(base + '/api/projects/' + project.id + '/workspaces')).json()
+  ).workspaces;
+  assert.ok(snapshots.length);
+  assert.equal(project.spec.entities.find((e) => e.id === 'java_rig').modelAsset, latest.id);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
