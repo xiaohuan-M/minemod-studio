@@ -1,6 +1,6 @@
 {
   "name": "minemod-studio",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Local-first open-source Minecraft workshop with BYO AI, animated assets and verified multi-loader builds",
   "type": "module",
@@ -17,10 +17,11 @@
     "doctor": "node --use-env-proxy --env-file-if-exists=.env scripts/doctor.mjs",
     "setup:builder": "node --use-env-proxy --env-file-if-exists=.env scripts/setup-builder.mjs",
     "test:build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-build.mjs",
+    "test:creation-build": "node --use-env-proxy --env-file-if-exists=.env scripts/verify-creation-build.mjs",
     "format": "prettier --write \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\" eslint.config.mjs",
     "format:check": "prettier --check \"src/**/*.{mjs,ts}\" \"web/**/*.{js,css,html}\" \"scripts/*.mjs\" \"test/*.mjs\" eslint.config.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test:browser": "node scripts/verify-browser.mjs",
+    "test:browser": "node scripts/verify-browser.mjs && node scripts/verify-creation-browser.mjs",
     "lint": "eslint src web scripts test eslint.config.mjs",
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/verify-package.mjs"

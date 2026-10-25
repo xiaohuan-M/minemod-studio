@@ -7,6 +7,13 @@ import { modSpecSchema, validateModSpec } from '../core/mod-spec.mjs';
 
 const MAX_RESPONSE_BYTES = 128 * 1024;
 const fail = (status, code, message) => new AppError(status, code, message);
+const usageOf = (payload) => {
+  const count = (n) => (Number.isSafeInteger(n) && n >= 0 ? n : null);
+  return {
+    inputTokens: count(payload.usage?.prompt_tokens),
+    outputTokens: count(payload.usage?.completion_tokens),
+  };
+};
 
 function integer(raw, fallback, min, max, name) {
   if (raw === undefined || raw === '') return fallback;
@@ -188,7 +195,12 @@ export function createOpenAIProvider(env = process.env) {
         combined.throwIfAborted();
         return {
           proposals,
-          source: { provider: 'openai-compatible', model: config.model, demo: false },
+          source: {
+            provider: 'openai-compatible',
+            model: config.model,
+            demo: false,
+            usage: usageOf(payload),
+          },
         };
       } catch (error) {
         if (signal?.aborted) throw fail(499, 'PROVIDER_CANCELLED', '方案请求已取消。');
@@ -246,7 +258,12 @@ export function createOpenAIProvider(env = process.env) {
         return {
           kind,
           data,
-          source: { provider: 'openai-compatible', model: config.model, demo: false },
+          source: {
+            provider: 'openai-compatible',
+            model: config.model,
+            demo: false,
+            usage: usageOf(payload),
+          },
         };
       } catch (error) {
         if (signal?.aborted)

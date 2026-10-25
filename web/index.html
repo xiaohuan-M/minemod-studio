@@ -10,7 +10,7 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.5</span>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.6</span>
     </header>
     <main>
       <section class="intro">
@@ -165,6 +165,44 @@
               <option value="fabric-1.21.1">Fabric · 1.21.1 · Java 21</option>
             </select>
             <p id="target-features" class="target"></p>
+            <details id="creation-options" open>
+              <summary>一句话自动制作</summary>
+              <p id="creation-provider"></p>
+              <label class="consent"
+                ><input
+                  id="creation-textures"
+                  type="checkbox"
+                  checked
+                />自动生成并绑定缺少的贴图</label
+              >
+              <label class="consent"
+                ><input id="creation-models" type="checkbox" checked />自动生成目标支持的模型</label
+              >
+              <label
+                >本轮模型调用上限<input
+                  id="creation-max-calls"
+                  type="number"
+                  min="1"
+                  max="64"
+                  value="48"
+              /></label>
+              <label
+                >失败修复上限<input id="creation-repairs" type="number" min="0" max="3" value="2"
+              /></label>
+              <label class="consent"
+                ><input
+                  id="creation-network"
+                  type="checkbox"
+                />允许下载固定构建镜像和游戏构建依赖（Java 首次构建需要）</label
+              >
+              <label class="consent"
+                ><input
+                  id="creation-approved"
+                  type="checkbox"
+                />我已核对模型服务，允许在上述限额内发送需求、当前内容及失败日志，生成素材并自动构建本轮工程。</label
+              >
+              <button type="button" id="create-automatically">从这句话开始制作</button>
+            </details>
             <button type="submit" id="create-button">保存到本地</button>
           </form>
         </section>
@@ -183,6 +221,24 @@
         <p class="eyebrow">项目详情</p>
         <h2 id="project-title"></h2>
         <p id="project-prompt" class="preserve"></p>
+        <section id="creation-panel" class="provider-panel">
+          <h3>自动创作进度</h3>
+          <p id="creation-status" role="status" aria-live="polite">尚无自动创作任务</p>
+          <p id="creation-usage"></p>
+          <p id="creation-error" class="error"></p>
+          <ol id="creation-events"></ol>
+          <div id="creation-downloads" class="actions"></div>
+          <div class="actions">
+            <button type="button" id="creation-continue">按下方要求自动继续制作</button>
+            <button type="button" id="creation-cancel" class="secondary" hidden>停止本轮</button>
+            <button type="button" id="creation-resume" class="secondary" hidden>
+              继续中断任务
+            </button>
+          </div>
+          <p>
+            继续制作前，在“一句话自动制作”中确认本轮范围；修改要求填写在下方。后台任务可刷新后重新查看。
+          </p>
+        </section>
         <details>
           <summary>项目管理</summary>
           <label>项目名称<input id="rename-value" maxlength="80" /></label>
@@ -191,6 +247,22 @@
             ><a id="backup-export" download>下载完整项目备份</a
             ><button id="archive-project" class="secondary">归档项目</button>
           </div>
+        </details>
+        <details id="product-versions">
+          <summary>完整作品版本 · 素材、工程与产物</summary>
+          <p>
+            恢复该轮需求、会话、规格和素材绑定，并保留该版源码与成功产物。恢复前自动保存当前作品。
+          </p>
+          <label for="product-version-label">版本说明</label
+          ><input
+            id="product-version-label"
+            maxlength="120"
+            placeholder="例如：第一版晶体工具套装"
+          />
+          <button type="button" id="product-version-save" class="secondary">
+            保存完整作品版本
+          </button>
+          <div id="product-versions-list" class="cards"></div>
         </details>
         <section class="provider-panel" aria-labelledby="provider-title">
           <h3 id="provider-title">规划方式</h3>

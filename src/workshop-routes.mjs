@@ -1,5 +1,6 @@
 import { createAssetRoutes } from './asset-routes.mjs';
 import { ProjectBackup } from './storage/project-backup.mjs';
+import { ProductVersions } from './storage/product-versions.mjs';
 import { identifyTarget } from './core/targets.ts';
 import { AssetStore } from './storage/asset-store.mjs';
 import { WorkspaceStore } from './storage/workspace-store.mjs';
@@ -12,7 +13,8 @@ export function workshopServices(dataDir, store) {
     workspaces = new WorkspaceStore(dataDir, assets),
     builds = new BuildManager(dataDir, workspaces);
   const assetRoutes = createAssetRoutes(assets);
-  const backup = new ProjectBackup(dataDir, store, { assets, workspaces, builds });
+  const versions = new ProductVersions(dataDir, store, { assets, workspaces, builds });
+  const backup = new ProjectBackup(dataDir, store, { assets, workspaces, builds, versions });
   async function route({ request, response, url, json, body, fields, publicProject }) {
     const path = url.pathname,
       method = request.method;
@@ -34,6 +36,25 @@ export function workshopServices(dataDir, store) {
         'application/json',
         'project-' + backupMatch[1] + '.minemod.json',
       );
+      return true;
+    }
+    const versionMatch = path.match(
+      /^\/api\/projects\/([^/]+)\/versions(?:\/([^/]+)(?:\/(restore))?)?$/,
+    );
+    if (versionMatch) {
+      const [, id, versionId, action] = versionMatch;
+      store.get(id);
+      if (!versionId && method === 'GET')
+        json(response, 200, { versions: versions.list(id).map((v) => versions.summary(v)) });
+      else if (!versionId && method === 'POST') {
+        const input = fields(await body(request), ['revision', 'label']);
+        store.assertRevision(store.get(id), input.revision);
+        json(response, 201, versions.summary(versions.capture(id, { label: input.label })));
+      } else if (action === 'restore' && method === 'POST') {
+        const input = fields(await body(request), ['revision']);
+        json(response, 200, publicProject(versions.restore(id, versionId, input.revision)));
+      } else if (!action && method === 'GET') json(response, 200, versions.get(id, versionId));
+      else return false;
       return true;
     }
     if (await assetRoutes({ request, response, url, json, body, fields, send })) return true;
@@ -166,5 +187,5 @@ export function workshopServices(dataDir, store) {
     } else return false;
     return true;
   }
-  return { route, builds, assets, workspaces, backup };
+  return { route, builds, assets, workspaces, backup, versions };
 }

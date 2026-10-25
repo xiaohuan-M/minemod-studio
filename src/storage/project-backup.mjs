@@ -14,6 +14,7 @@ import { ProjectStore } from './project-store.mjs';
 import { AssetStore } from './asset-store.mjs';
 import { WorkspaceStore } from './workspace-store.mjs';
 import { JsonDirectory } from './json-directory.mjs';
+import { signVersion } from './product-versions.mjs';
 import { createProject, assertProjectId } from '../core/project.mjs';
 import { identifyTarget } from '../core/targets.ts';
 import { validateModel, validateTexture } from '../core/assets.mjs';
@@ -25,14 +26,16 @@ const fail = (message) => {
 const LIMIT = 32 * 1024 * 1024;
 /** Versioned local backup; validation is completed in staging before any visible project exists. */
 export class ProjectBackup {
-  constructor(dataDir, store, { assets, workspaces, builds }) {
+  constructor(dataDir, store, { assets, workspaces, builds, versions }) {
     this.root = resolve(dataDir);
-    Object.assign(this, { store, assets, workspaces, builds });
+    Object.assign(this, { store, assets, workspaces, builds, versions });
   }
   export(id) {
     const project = this.store.get(id),
       workspaces = this.workspaces.list(id).map((w) => this.workspaces.get(id, w.hash));
     const refs = new Set(workspaces.flatMap((w) => w.assetIds));
+    const versions = this.versions?.list(id) ?? [];
+    for (const version of versions) for (const asset of version.assets) refs.add(asset.id);
     for (const spec of [project.spec, ...project.specHistory.map((h) => h.spec)].filter(Boolean))
       for (const item of [...spec.items, ...(spec.blocks ?? []), ...(spec.entities ?? [])])
         for (const key of ['textureAsset', 'modelAsset']) if (item[key]) refs.add(item[key]);
@@ -54,6 +57,7 @@ export class ProjectBackup {
       assets,
       workspaces,
       builds,
+      versions,
     };
     const result = { ...payload, checksum: sha256(JSON.stringify(payload)) };
     if (Buffer.byteLength(JSON.stringify(result)) > LIMIT)
@@ -78,6 +82,11 @@ export class ProjectBackup {
       input.builds.length > 100
     )
       fail('备份记录数量超限。');
+    if (
+      input.versions !== undefined &&
+      (!Array.isArray(input.versions) || input.versions.length > 100)
+    )
+      fail('作品版本记录超限。');
     const old = input.project;
     assertProjectId(old?.id);
     const base = createProject({
@@ -189,6 +198,7 @@ export class ProjectBackup {
         stagedWorkspaces.get(project.id, w.hash);
       }
       const records = new JsonDirectory(join(stage, 'builds', 'records'));
+      const buildIds = new Map();
       for (const item of input.builds) {
         const r = item.record;
         if (
@@ -199,6 +209,8 @@ export class ProjectBackup {
         )
           fail('构建记录归属或日志不正确。');
         const id = randomUUID();
+        if (buildIds.has(r.id)) fail('构建 ID 重复。');
+        buildIds.set(r.id, id);
         const record = {
           id,
           type: 'imported',
@@ -254,6 +266,48 @@ export class ProjectBackup {
         }
         records.write(id, record);
       }
+      const versionRecords = new JsonDirectory(join(stage, 'versions', project.id));
+      for (const version of input.versions ?? []) {
+        const { checksum: versionChecksum, ...versionPayload } = version;
+        if (
+          sha256(JSON.stringify(versionPayload)) !== versionChecksum ||
+          version.projectId !== old.id ||
+          version.project?.id !== old.id ||
+          version.format !== 'minemod-version' ||
+          version.version !== 1 ||
+          !Array.isArray(version.assets) ||
+          version.assets.some(
+            (a) => !assetIds.has(a.id) || stagedAssets.get(a.id).sha256 !== a.sha256,
+          ) ||
+          (version.workspaceHash && !hashes.has(version.workspaceHash)) ||
+          !Array.isArray(version.buildIds) ||
+          version.buildIds.some((id) => !buildIds.has(id))
+        )
+          fail('作品版本引用或校验不正确。');
+        const id = randomUUID();
+        const restoredProject = {
+          ...version.project,
+          id: project.id,
+          confirmedSpecHash: null,
+          approvedWorkspaceHash: null,
+        };
+        // Validate the saved spec/project before making the version visible.
+        stagedProjects.save(restoredProject);
+        stagedProjects.get(project.id);
+        versionRecords.write(
+          id,
+          signVersion({
+            ...version,
+            id,
+            projectId: project.id,
+            project: restoredProject,
+            buildIds: version.buildIds.map((id) => buildIds.get(id)),
+            taskId: null,
+            imported: true,
+          }),
+        );
+      }
+      stagedProjects.save(project);
       // Single-writer service commits the project last. Roll back newly moved entries on errors.
       const move = (from, to) => {
         if (existsSync(to)) fail('导入目标冲突。');
@@ -271,6 +325,8 @@ export class ProjectBackup {
           move(join(stage, 'builds', 'artifacts', id), join(this.root, 'builds', 'artifacts', id));
         move(records.path(id), this.builds.records.path(id));
       }
+      if (versionRecords.ids().length)
+        move(join(stage, 'versions', project.id), join(this.root, 'versions', project.id));
       move(stagedProjects.path(project.id), this.store.path(project.id));
       return this.store.get(project.id);
     } catch (error) {

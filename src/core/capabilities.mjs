@@ -7,6 +7,9 @@ export function capabilities() {
     provider: { id: 'mock', externalRequests: false, label: '离线演示规划器' },
     features: {
       projectStorage: true,
+      automaticCreation: true,
+      resumableCreation: true,
+      productVersions: true,
       demoPlanning: true,
       modSpec: true,
       customLoot: true,

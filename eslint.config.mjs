@@ -22,9 +22,14 @@ export default [
   },
   {
     // Playwright serializes these callbacks into the actual page context.
-    files: ['scripts/verify-browser.mjs'],
+    files: ['scripts/verify-browser.mjs', 'scripts/verify-creation-browser.mjs'],
     languageOptions: {
-      globals: { document: 'readonly', innerWidth: 'readonly', HTMLCanvasElement: 'readonly' },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        innerWidth: 'readonly',
+        HTMLCanvasElement: 'readonly',
+      },
     },
   },
 ];

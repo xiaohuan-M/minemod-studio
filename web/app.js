@@ -1,9 +1,12 @@
 import { initProjectHub } from './studio/project-hub.js';
 import { initProviderSettings } from './studio/provider-settings.js';
+import { initProductVersions } from './studio/product-versions.js';
+import { initCreation } from './studio/creation.js';
 import { initWorkshop } from './workshop.js';
 const $ = (id) => document.getElementById(id);
 let selected = null;
 let busy = false;
+let creationBusy = false;
 let dirty = false;
 let llm = null;
 let activeFetch = null;
@@ -28,6 +31,7 @@ function canReplace() {
   return !dirty || window.confirm('有未保存的规格修改，是否放弃这些修改？');
 }
 function actions() {
+  const locked = busy || creationBusy;
   for (const name of [
     'create-button',
     'plan-button',
@@ -35,13 +39,16 @@ function actions() {
     'model-consent',
     'spec-editor',
   ])
-    $(name).disabled = busy;
+    $(name).disabled = locked;
   const cloud = $('provider-select').value === 'openai-compatible';
-  $('spec-button').disabled = busy || (cloud && (!llm?.configured || !$('model-consent').checked));
+  $('spec-button').disabled =
+    locked || (cloud && (!llm?.configured || !$('model-consent').checked));
   $('spec-button').textContent = cloud ? '使用我的模型生成规格' : '生成离线规格示例';
-  $('save-spec').disabled = busy || !dirty;
-  $('confirm-spec').disabled = busy || dirty || !selected?.spec || !!selected?.confirmedSpecHash;
-  $('test-model').disabled = busy || !llm?.configured || !$('model-consent').checked;
+  $('save-spec').disabled = locked || !dirty;
+  $('confirm-spec').disabled = locked || dirty || !selected?.spec || !!selected?.confirmedSpecHash;
+  $('test-model').disabled = locked || !llm?.configured || !$('model-consent').checked;
+  $('create-automatically').disabled = locked;
+  $('creation-continue').disabled = locked;
   $('cancel-model').hidden = !activeFetch;
 }
 function show(project) {
@@ -346,6 +353,7 @@ async function refreshProviderState() {
     : (llm?.configurationError ?? '尚未配置自定义模型，请在页面上方模型设置中保存并启用服务。');
   $('model-consent').checked = false;
   $('ai-asset-consent').checked = false;
+  document.dispatchEvent(new CustomEvent('provider-loaded'));
   actions();
 }
 async function initialize() {
@@ -438,12 +446,34 @@ async function refreshHistory(id) {
   }
 }
 
+initCreation({
+  api,
+  getProvider: () => llm,
+  getProject: () => selected,
+  isDirty: () => dirty,
+  show,
+  refresh,
+  feedback,
+  setRunning: (value) => {
+    creationBusy = value;
+    actions();
+  },
+});
+initProductVersions({
+  api,
+  getProject: () => selected,
+  isDirty: () => dirty,
+  isBusy: () => busy || creationBusy,
+  show,
+  refresh,
+  feedback,
+});
 initWorkshop({
   api,
   getProvider: () => llm,
   getProject: () => selected,
   isDirty: () => dirty,
-  isBusy: () => busy,
+  isBusy: () => busy || creationBusy,
   show,
   refresh,
   feedback,
@@ -502,7 +532,7 @@ initProjectHub({
   show,
   refresh,
   feedback,
-  isBusy: () => busy,
+  isBusy: () => busy || creationBusy,
   isDirty: () => dirty,
   generateProposals: () => {
     if (!selected || busy || !canReplace()) return;

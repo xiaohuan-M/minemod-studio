@@ -1,5 +1,13 @@
 # 模板编译与交付验证记录
 
+## 自动创作 · 0.6 · 2026-10-25
+
+`npm run test:creation-build` 实际运行“一句需求 → 规格 → 19 项贴图/模型自动生成绑定 → 工程 → Docker/Gradle → JAR → 完整版本”。模型输出是标注的本机测试服务，不是商业模型效果验证；JAR 来自真实编译。
+
+Fabric 1.21.1 沿用下文固定工具链与受限 runner，复制受信任缓存至独立数据目录。20 次测试模型调用；工程 SHA-256 `e9a42b5712e9fc21ace424e0fb5e9ca381de16427937b90ef825898eeda7d563`；JAR 24,493 字节，SHA-256 `a23a4b11c9f7cc5571a3d0f367ff34a6b9eb86189305de2f7901ab1a1910c7fe`。实际检查主类、实体 PNG、产物哈希及完整版本的工程/产物关联。未运行 Minecraft。
+
+独立 Chromium 检查使用真实本机兼容 HTTP 服务，完成一句话制作、MCADDON 下载、第二轮修改、完整版本恢复、刷新重开及 390px 布局。真实 API 和游戏仍按各自状态单列。
+
 日期：2026-10-22。验证平台：Linux，Docker 28.4.0。以下是编译证据，不代表 Minecraft 客户端游戏实测。
 
 固定版本见 `templates/fabric-1.21.1/manifest.json`：Minecraft 1.21.1、Fabric Loader 0.16.10、Fabric API 0.116.1+1.21.1、Yarn 1.21.1+build.3、Loom 1.8.13、Gradle 8.10.2、JDK 21。

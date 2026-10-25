@@ -1,4 +1,6 @@
 import { acquireDataLock } from './storage/data-lock.mjs';
+import { CreationManager } from './creation/manager.mjs';
+import { creationRoutes } from './creation/routes.mjs';
 import { randomUUID } from 'node:crypto';
 import { ProviderProfileStore } from './storage/provider-profile-store.mjs';
 import { providerFromProfile } from './providers/profile-runtime.mjs';
@@ -26,6 +28,8 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/creation.js', ['studio/creation.js', 'text/javascript; charset=utf-8']],
+  ['/studio/product-versions.js', ['studio/product-versions.js', 'text/javascript; charset=utf-8']],
   ['/studio/loot-editor.js', ['studio/loot-editor.js', 'text/javascript; charset=utf-8']],
   [
     '/studio/provider-settings.js',
@@ -100,6 +104,8 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
     throw error;
   }
   const active = new Map();
+  const creations = new CreationManager(dataDir, store, workshop);
+  workshop.creations = creations;
   const fallback = { text: llmProvider, image: imageProvider };
   function configureProviders(rotate = false) {
     const resolve = (kind) => {
@@ -114,7 +120,7 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
   configureProviders();
   const settingsRoute = providerSettingsRoutes({
     profiles,
-    isActive: () => active.size > 0,
+    isActive: () => active.size > 0 || creations.active.size > 0,
     onChanged: () => configureProviders(true),
     environment: {
       text: fallback.text?.info ?? { configured: false },
@@ -133,6 +139,8 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
       throw new AppError(400, 'CONSENT_REQUIRED', '请先核对当前服务商、模型和发送内容并明确确认。');
   }
   async function callModel(key, project, response, method = 'planSpec') {
+    if (creations.isActive(key) || active.size + creations.active.size >= 2)
+      throw new AppError(409, 'CREATION_ACTIVE', '请等待自动创作任务结束，或先取消该任务。');
     if (active.has(key))
       throw new AppError(409, 'PLANNING_ACTIVE', '该项目已有模型请求，请等待或取消。');
     if (active.size >= 2)
@@ -150,6 +158,13 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
       response.off('close', disconnect);
     }
   }
+  const creationRoute = creationRoutes({
+    creations,
+    store,
+    getProvider: () => llmProvider,
+    requireConsent,
+    modelActive: () => active.size > 0,
+  });
   const server = createServer(
     { requestTimeout: 15_000, headersTimeout: 10_000 },
     async (request, response) => {
@@ -170,6 +185,19 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           throw new AppError(403, 'ORIGIN_DENIED', '不允许跨站请求。');
         const url = new URL(request.url, origin);
         const pathname = url.pathname;
+        const projectWrite = pathname.match(/^\/api\/projects\/([^/]+)(?:\/|$)/);
+        if (
+          !['GET', 'HEAD'].includes(request.method) &&
+          projectWrite &&
+          creations.isActive(projectWrite[1])
+        )
+          throw new AppError(
+            409,
+            'CREATION_ACTIVE',
+            '该项目正在自动创作，请等待或先取消任务再手工编辑。',
+          );
+        if (await creationRoute({ request, response, url, json, body, fields, publicProject }))
+          return;
         if (await settingsRoute({ request, response, url, json, body, fields })) return;
         if (await workshop.route({ request, response, url, json, body, fields, publicProject }))
           return;
@@ -189,6 +217,8 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
           json(response, 200, imageProvider?.info ?? { id: 'image-compatible', configured: false });
         } else if (request.method === 'POST' && pathname === '/api/image-provider/generate') {
           const input = fields(await body(request), ['prompt', 'view', 'referenceId', 'consent']);
+          if (active.size + creations.active.size >= 2)
+            throw new AppError(429, 'PLANNING_LIMIT', '请等待当前创作请求结束。');
           if (!imageProvider?.info.configured)
             throw new AppError(409, 'IMAGE_NOT_CONFIGURED', '请在模型设置中启用独立图像服务。');
           if (input.consent !== imageProvider.info.configurationId)
@@ -485,10 +515,26 @@ export function makeServer({ dataDir, llmProvider = null, imageProvider = null }
     },
   );
   server.once('error', releaseLock);
-  server.on('close', () => {
-    for (const controller of active.values()) controller.abort();
-    void workshop.builds.close().finally(releaseLock);
-  });
+  const closeHttp = server.close.bind(server);
+  let closing = null;
+  server.close = (callback) => {
+    if (!closing) {
+      for (const controller of active.values()) controller.abort();
+      closing = (async () => {
+        await creations.close();
+        await workshop.builds.close();
+        await new Promise((resolve, reject) =>
+          closeHttp((error) => (error ? reject(error) : resolve())),
+        );
+      })().finally(releaseLock);
+    }
+    if (callback)
+      void closing.then(
+        () => callback(),
+        (error) => callback(error),
+      );
+    return server;
+  };
   server.workshop = workshop;
   return server;
 }
