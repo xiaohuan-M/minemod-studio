@@ -8,6 +8,8 @@ import { validateAnimation } from '../core/animation.mjs';
 import { ApiKnowledge } from './knowledge.mjs';
 import { codeContext } from '../engineering/code-changes.mjs';
 import { supportsGameTests } from '../engineering/game-tests.mjs';
+import { materialNeeded, materialPrompt, materialSignature } from './materials.mjs';
+import { assetOrigins } from '../core/asset-origins.mjs';
 
 const terminal = new Set(['passed', 'failed', 'cancelled', 'interrupted']);
 export const CREATION_LIMITS = Object.freeze({ maxCalls: 256, maxRepairs: 3 });
@@ -18,6 +20,7 @@ export function creationOptions(input) {
     models: input.models ?? true,
     code: input.code ?? true,
     gameTests: input.gameTests ?? false,
+    refreshMaterials: input.refreshMaterials ?? false,
     maxCalls: input.maxCalls ?? 48,
     maxRepairs: input.maxRepairs ?? 2,
     allowNetwork: input.allowNetwork ?? false,
@@ -25,7 +28,7 @@ export function creationOptions(input) {
   if (
     typeof options.instruction !== 'string' ||
     options.instruction.length > 4000 ||
-    ['textures', 'models', 'code', 'gameTests', 'allowNetwork'].some(
+    ['textures', 'models', 'code', 'gameTests', 'allowNetwork', 'refreshMaterials'].some(
       (k) => typeof options[k] !== 'boolean',
     ) ||
     !Number.isInteger(options.maxCalls) ||
@@ -321,7 +324,7 @@ export class CreationManager {
         );
         task.specComplete = true;
         task.codeComplete = false;
-        task.assetJobs = [];
+        task.assetJobs ??= [];
         task.snapshotHash = null;
         task.buildId = null;
         task.gameTestId = null;
@@ -533,6 +536,9 @@ export class CreationManager {
   async makeAssets(task, provider, signal) {
     const initial = this.current(task),
       bedrock = initial.target.edition === 'bedrock';
+    const before = task.beforeVersionId
+      ? this.versions.get(task.projectId, task.beforeVersionId).project.spec
+      : null;
     for (const group of ['items', 'blocks', 'entities'])
       for (const initialOwner of initial.spec[group] ?? []) {
         const kinds = [
@@ -548,7 +554,17 @@ export class CreationManager {
           const project = this.current(task),
             owner = project.spec[group].find((o) => o.id === initialOwner.id),
             field = kind + 'Asset';
-          if (owner[field]) continue;
+          const prior = (before?.[group] ?? []).find((o) => o.id === owner.id);
+          if (!materialNeeded(task, group, owner, prior, kind)) continue;
+          const base = owner[field] ? this.assets.get(owner[field]) : null;
+          const requestedKind =
+            kind === 'model' && group === 'entities' && bedrock ? 'animated_model' : kind;
+          let currentData = base?.data;
+          if (currentData && requestedKind === 'animated_model' && base.kind === 'model')
+            currentData = validateAnimation({
+              ...currentData,
+              clips: [{ name: 'idle', duration: 1, loop: true, tracks: [] }],
+            });
           signal.throwIfAborted();
           this.event(
             task,
@@ -564,26 +580,9 @@ export class CreationManager {
             provider,
             'planAsset',
             {
-              kind: kind === 'model' && group === 'entities' && bedrock ? 'animated_model' : kind,
-              prompt: (
-                initial.prompt +
-                '。' +
-                task.options.instruction +
-                '。为' +
-                group +
-                ' ' +
-                owner.id +
-                ' ' +
-                owner.displayName.zh_cn +
-                '制作' +
-                (kind === 'texture' ? '16×16 Minecraft 像素贴图' : 'Minecraft 立方体模型') +
-                '，风格保持一致。' +
-                (kind === 'model' && group === 'entities' && bedrock
-                  ? '使用父子骨骼与多立方体分组，并提供 ' +
-                    (owner.animationClip ?? 'walk') +
-                    ' 动画片段。'
-                  : '')
-              ).slice(0, 2000),
+              kind: requestedKind,
+              prompt: materialPrompt(task, initial, group, owner, kind),
+              ...(currentData ? { currentData } : {}),
             },
             signal,
           );
@@ -605,7 +604,11 @@ export class CreationManager {
             name: (owner.displayName.zh_cn + ' · 自动' + kind).slice(0, 80),
             data,
             source: ('LLM: ' + (result.source?.model ?? 'configured-provider')).slice(0, 200),
-            license: 'AI 生成；请核对服务商条款',
+            license: base?.license ?? 'AI 生成；请核对服务商条款',
+            derivedFrom: assetOrigins(
+              base,
+              kind === 'model' && owner.textureAsset ? this.assets.get(owner.textureAsset) : null,
+            ),
           });
           const current = this.current(task),
             spec = structuredClone(current.spec);
@@ -619,12 +622,56 @@ export class CreationManager {
             task,
             this.store.setSpec(current.id, spec, current.revision, current.specSource),
           );
-          task.assetJobs.push({ group, ownerId: owner.id, kind, assetId: asset.id });
+          task.assetJobs.push({
+            group,
+            ownerId: owner.id,
+            kind,
+            assetId: asset.id,
+            requestHash: materialSignature(owner, kind),
+          });
           this.event(task, 'assets', '素材已校验、保存并绑定。', {
             assetId: asset.id,
             ownerId: owner.id,
             kind,
           });
+          // A texture-only revision must also update standalone model exports. Keep
+          // geometry and clips immutable and avoid a second paid geometry request.
+          const bound = this.current(task).spec[group].find((o) => o.id === owner.id);
+          if (
+            kind === 'texture' &&
+            bound.modelAsset &&
+            !materialNeeded(task, group, bound, prior, 'model')
+          ) {
+            const old = this.assets.get(bound.modelAsset);
+            const composed = this.assets.create({
+              kind: old.kind,
+              name: (old.name + ' · 贴图同步').slice(0, 80),
+              data: { ...old.data, texture: asset.data },
+              source: 'MineMod Studio: texture composition',
+              license: old.license,
+              derivedFrom: assetOrigins(old, asset),
+            });
+            const latest = this.current(task),
+              next = structuredClone(latest.spec);
+            next[group].find((o) => o.id === owner.id).modelAsset = composed.id;
+            this.update(
+              task,
+              this.store.setSpec(latest.id, next, latest.revision, latest.specSource),
+            );
+            task.assetJobs.push({
+              group,
+              ownerId: owner.id,
+              kind: 'model',
+              assetId: composed.id,
+              requestHash: materialSignature(bound, 'model'),
+              composed: true,
+            });
+            this.event(task, 'assets', '已同步模型内置贴图，保留原有几何与动画。', {
+              assetId: composed.id,
+              ownerId: owner.id,
+              kind: 'model',
+            });
+          }
         }
       }
   }

@@ -5,6 +5,7 @@ import {
   bedrockAnimationResources,
 } from './core/animation.mjs';
 import { zipFiles } from './core/archive.mjs';
+import { assetOrigins } from './core/asset-origins.mjs';
 import { hasSkeleton } from './core/skeleton-exchange.mjs';
 import catalog from '../community/catalog.json' with { type: 'json' };
 import { sha256 } from './core/archive.mjs';
@@ -142,6 +143,7 @@ export function createAssetRoutes(assets) {
           source: asset.source,
           license: asset.license,
           data: pixelizeImage(asset.data, input.size, input.colors),
+          derivedFrom: assetOrigins(asset),
         }),
       );
       return true;
@@ -174,7 +176,11 @@ export function createAssetRoutes(assets) {
             'model.geo.json': JSON.stringify(data.geometry, null, 2),
             'model.animation.json': JSON.stringify(data.animations, null, 2),
             'texture.png': pngTexture(texture),
-            'SOURCE.json': JSON.stringify({ source: asset.source, license: asset.license }),
+            'SOURCE.json': JSON.stringify({
+              source: asset.source,
+              license: asset.license,
+              ...(asset.derivedFrom ? { derivedFrom: asset.derivedFrom } : {}),
+            }),
           }),
           'application/zip',
           'animation-' + asset.id + '.zip',

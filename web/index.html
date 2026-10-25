@@ -170,6 +170,12 @@
             <details id="creation-options" open>
               <summary>一句话自动制作</summary>
               <p id="creation-provider"></p>
+              <label
+                ><input
+                  id="creation-refresh-materials"
+                  type="checkbox"
+                />重新制作已有素材（增加模型调用；适合手动改完素材要求后继续制作）</label
+              >
               <label class="consent"
                 ><input
                   id="creation-textures"
@@ -499,6 +505,20 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                   </select></label
                 >
               </div>
+              <label
+                >贴图制作要求（可选）<textarea
+                  id="content-texture-prompt"
+                  maxlength="2000"
+                  placeholder="只描述这个物品或方块需要修改的颜色、图案"
+                ></textarea>
+              </label>
+              <label
+                >模型制作要求（可选）<textarea
+                  id="content-model-prompt"
+                  maxlength="2000"
+                  placeholder="描述形状和需要保留的部位"
+                ></textarea>
+              </label>
               <p id="block-model-note" class="target" hidden>
                 方块模型改变外观；碰撞与选区保持完整方块。
               </p>
@@ -634,6 +654,9 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                 </select></label
               >
             </div>
+            <label
+              >贴图制作要求（可选）<textarea id="entity-texture-prompt" maxlength="2000"></textarea>
+            </label>
             <div class="actions">
               <span id="entity-animation-fields"
                 ><label
@@ -641,9 +664,12 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
                     <option value="">原创默认模型与步行动画</option>
                   </select></label
                 ><label
-                  >动画片段名（空白为首片段）<input
-                    id="entity-clip"
-                    placeholder="walk" /></label></span
+                  >动画片段名（空白为首片段）<input id="entity-clip" placeholder="walk" /></label
+                ><label
+                  >模型与动作制作要求（可选）<textarea
+                    id="entity-model-prompt"
+                    maxlength="2000"
+                  ></textarea></label></span
               ><button id="entity-save" type="submit">写入实体草稿</button
               ><button id="entity-reset" type="button" class="secondary">清空实体表单</button>
             </div>

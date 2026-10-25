@@ -354,6 +354,9 @@ async function previewListing(item) {
 async function displayPreview() {
   const asset = previewPack.assets[Number($('preview-assets').value)];
   $('preview-attribution').textContent = '来源：' + asset.source + '\n许可：' + asset.license;
+  $('preview-attribution').textContent += (asset.derivedFrom ?? [])
+    .map((origin) => '\n原素材：' + origin.name + ' · ' + origin.source + ' · ' + origin.license)
+    .join('');
   const isModel = ['model', 'animated_model'].includes(asset.kind);
   $('market-canvas').hidden = !isModel;
   if (isModel) {

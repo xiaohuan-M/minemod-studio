@@ -117,6 +117,7 @@ export class ProjectBackup {
           data: a.data,
           source: a.source,
           license: a.license,
+          ...(a.derivedFrom ? { derivedFrom: a.derivedFrom } : {}),
         });
         if (checked.sha256 !== a.sha256) fail('资源哈希不匹配。');
         unlinkSync(stagedAssets.records.path(checked.id));
@@ -128,7 +129,10 @@ export class ProjectBackup {
         if (existsSync(this.assets.records.path(a.id))) {
           const existing = this.assets.get(a.id);
           if (
-            ['sha256', 'kind', 'name', 'source', 'license'].some((k) => existing[k] !== checked[k])
+            ['sha256', 'kind', 'name', 'source', 'license'].some(
+              (k) => existing[k] !== checked[k],
+            ) ||
+            JSON.stringify(existing.derivedFrom ?? []) !== JSON.stringify(checked.derivedFrom ?? [])
           )
             fail('本机已有同 ID 的不同资源；未覆盖本机数据。');
         }

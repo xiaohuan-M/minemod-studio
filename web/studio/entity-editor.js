@@ -18,6 +18,8 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     textureColor: 'entity-color',
     modelAsset: 'entity-model',
     animationClip: 'entity-clip',
+    texturePrompt: 'entity-texture-prompt',
+    modelPrompt: 'entity-model-prompt',
   };
   const reset = () => {
     editing = null;
@@ -91,9 +93,13 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
         textureColor: $('entity-color').value,
       };
     if ($('entity-texture').value) entity.textureAsset = $('entity-texture').value;
+    if ($('entity-texture-prompt').value.trim())
+      entity.texturePrompt = $('entity-texture-prompt').value.trim();
     if (getProject().target.edition === 'bedrock') {
       if ($('entity-model').value) entity.modelAsset = $('entity-model').value;
       if ($('entity-clip').value.trim()) entity.animationClip = $('entity-clip').value.trim();
+      if ($('entity-model-prompt').value.trim())
+        entity.modelPrompt = $('entity-model-prompt').value.trim();
     }
     spec.entities ??= [];
     if (editing === null) {

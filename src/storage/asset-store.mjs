@@ -7,6 +7,7 @@ import { validateAnimation } from '../core/animation.mjs';
 import { validateImage } from '../core/images.mjs';
 import { sha256 } from '../core/archive.mjs';
 import { AppError } from '../core/errors.mjs';
+import { normalizeOrigins } from '../core/asset-origins.mjs';
 export class AssetStore {
   constructor(dataDir) {
     this.records = new JsonDirectory(join(dataDir, 'assets'));
@@ -17,7 +18,7 @@ export class AssetStore {
       typeof input !== 'object' ||
       Array.isArray(input) ||
       Object.keys(input).some(
-        (k) => !['name', 'kind', 'data', 'source', 'license', 'format'].includes(k),
+        (k) => !['name', 'kind', 'data', 'source', 'license', 'format', 'derivedFrom'].includes(k),
       )
     )
       throw new AppError(400, 'INVALID_ASSET', '资源字段不正确。');
@@ -41,6 +42,7 @@ export class AssetStore {
             : input.format === 'bbmodel'
               ? importBlockbench(input.data)
               : validateModel(input.data);
+    const origins = normalizeOrigins(input.derivedFrom);
     const record = {
       id: randomUUID(),
       name: input.name.trim(),
@@ -50,6 +52,7 @@ export class AssetStore {
       license: input.license.trim(),
       createdAt: new Date().toISOString(),
       sha256: sha256(JSON.stringify(data)),
+      ...(origins ? { derivedFrom: origins } : {}),
     };
     return record;
   }
@@ -61,8 +64,8 @@ export class AssetStore {
   }
   exportPackage(ids = this.records.ids()) {
     const assets = ids.map((id) => {
-      const { name, kind, data, source, license } = this.get(id);
-      return { name, kind, data, source, license };
+      const { name, kind, data, source, license, derivedFrom } = this.get(id);
+      return { name, kind, data, source, license, ...(derivedFrom ? { derivedFrom } : {}) };
     });
     const payload = { format: 'minemod-assets', version: 1, assets };
     if (Buffer.byteLength(JSON.stringify(payload)) > 32 * 1024 * 1024)
@@ -99,6 +102,7 @@ export class AssetStore {
     const record = this.records.read(id);
     if (record.id !== id || sha256(JSON.stringify(record.data)) !== record.sha256)
       throw new AppError(500, 'ASSET_CORRUPT', '资源校验失败。');
+    if (record.derivedFrom) record.derivedFrom = normalizeOrigins(record.derivedFrom);
     record.data =
       record.kind === 'animated_model'
         ? validateAnimation(record.data)

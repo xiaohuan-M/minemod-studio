@@ -9,11 +9,114 @@ import { makeServer } from '../src/server.mjs';
 import { CreationManager } from '../src/creation/manager.mjs';
 import { ProjectStore } from '../src/storage/project-store.mjs';
 import { AppError } from '../src/core/errors.mjs';
-import { placeholderTexture } from '../src/core/assets.mjs';
+import { placeholderTexture, pngTexture, exportBlockbench } from '../src/core/assets.mjs';
 import { readZipEntry } from '../src/core/archive.mjs';
 import example from '../examples/project-spec.json' with { type: 'json' };
 import fullWorkshop from '../examples/full-workshop.json' with { type: 'json' };
 import rig from '../examples/rigged-guardian.json' with { type: 'json' };
+
+test('appearance revisions edit existing assets, keep unrelated bindings, compose texture-only changes and preserve old deliveries', async (t) => {
+  const provider = fixtureProvider(),
+    calls = [];
+  provider.planSpec = async (project) => {
+    const spec = structuredClone(project.spec ?? fullWorkshop);
+    spec.target = { ...project.target };
+    spec.items = spec.items.filter((i) => ['basic_item', 'food'].includes(i.kind));
+    if (project.instruction === 'redraw') {
+      spec.blocks[0].texturePrompt = '红色斑纹';
+      spec.blocks[0].modelPrompt = '增高到 12 像素';
+    }
+    if (project.instruction === 'blue') {
+      spec.blocks[0].texturePrompt = '蓝色斑纹';
+    }
+    if (project.instruction === 'rename') spec.blocks[0].displayName.zh_cn = '只改名称';
+    return { spec, source };
+  };
+  provider.planAsset = async (input) => {
+    calls.push(structuredClone(input));
+    return {
+      kind: input.kind,
+      data:
+        input.kind === 'texture'
+          ? placeholderTexture(
+              input.prompt.includes('蓝色斑纹')
+                ? '#0000ff'
+                : input.prompt.includes('红色斑纹')
+                  ? '#ff0000'
+                  : '#00ff00',
+            )
+          : {
+              elements: [
+                { from: [0, 0, 0], to: [8, input.prompt.includes('增高到 12') ? 12 : 8, 8] },
+              ],
+            },
+      source,
+    };
+  };
+  const { server, call } = await fixture(t, provider);
+  const response = await call('/api/creations', 'POST', {
+    prompt: '完整的工坊',
+    targetId: 'bedrock-1.21.60',
+    ...approved,
+    maxCalls: 64,
+  });
+  const { project, task: queued } = await response.json(),
+    first = await finished(server, queued.id);
+  assert.equal(first.status, 'passed', JSON.stringify(first.error));
+  const initial = server.workshop.creations.current(first),
+    oldArtifact = server.workshop.builds.artifact(first.buildId).bytes;
+  async function revise(instruction, extra = {}) {
+    calls.length = 0;
+    const p = server.workshop.creations.store.get(project.id);
+    const response = await call('/api/projects/' + p.id + '/creations', 'POST', {
+      revision: p.revision,
+      instruction,
+      ...approved,
+      maxCalls: 64,
+      ...extra,
+    });
+    assert.equal(response.status, 202, await response.clone().text());
+    const task = await finished(server, (await response.json()).id);
+    assert.equal(task.status, 'passed', JSON.stringify(task.error));
+    return { task, p: server.workshop.creations.current(task) };
+  }
+  const red = await revise('redraw');
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((c) => c.currentData));
+  assert.deepEqual(red.p.spec.items, initial.spec.items);
+  assert.deepEqual(red.p.spec.entities, initial.spec.entities);
+  const redBlock = red.p.spec.blocks[0],
+    redModel = server.workshop.assets.get(redBlock.modelAsset);
+  assert.equal(redModel.data.elements[0].to[1], 12);
+  assert.ok(redModel.derivedFrom.some((o) => o.id === initial.spec.blocks[0].modelAsset));
+  const blue = await revise('blue');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].kind, 'texture');
+  const blueBlock = blue.p.spec.blocks[0],
+    blueModel = server.workshop.assets.get(blueBlock.modelAsset),
+    blueTexture = server.workshop.assets.get(blueBlock.textureAsset);
+  assert.deepEqual(blueModel.data.elements, redModel.data.elements);
+  assert.deepEqual(blueModel.data.texture, blueTexture.data);
+  assert.ok(
+    exportBlockbench(blueModel.data).textures[0].source.endsWith(
+      pngTexture(blueTexture.data).toString('base64'),
+    ),
+  );
+  const pack = readZipEntry(
+    server.workshop.builds.artifact(blue.task.buildId).bytes,
+    'resource_pack.mcpack',
+  );
+  assert.deepEqual(
+    readZipEntry(pack, 'textures/blocks/full_workshop_glow_block.png'),
+    pngTexture(blueTexture.data),
+  );
+  await revise('rename');
+  assert.equal(calls.length, 0);
+  await revise('', { refreshMaterials: true });
+  assert.ok(calls.length > 2);
+  assert.ok(calls.every((c) => c.currentData));
+  assert.deepEqual(server.workshop.builds.artifact(first.buildId).bytes, oldArtifact);
+});
 
 const source = {
   provider: 'test-fixture',

@@ -9,6 +9,7 @@ const options = [
   'models',
   'code',
   'gameTests',
+  'refreshMaterials',
   'maxCalls',
   'maxRepairs',
   'allowNetwork',

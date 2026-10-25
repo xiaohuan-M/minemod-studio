@@ -299,13 +299,14 @@ public final class LightningWand extends Item {
   add(
     'ASSETS.json',
     json(
-      [...used.values()].map(({ id, name, kind, source, license, sha256: hash }) => ({
+      [...used.values()].map(({ id, name, kind, source, license, sha256: hash, derivedFrom }) => ({
         id,
         name,
         kind,
         source,
         license,
         sha256: hash,
+        ...(derivedFrom ? { derivedFrom } : {}),
       })),
     ),
   );

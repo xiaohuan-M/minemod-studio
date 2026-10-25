@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { JsonDirectory } from './json-directory.mjs';
 import { AppError } from '../core/errors.mjs';
 import { assetData } from '../core/asset-generation.mjs';
+import { assetOrigins } from '../core/asset-origins.mjs';
 
 export class AssetSessionStore {
   constructor(dataDir, assets) {
@@ -55,12 +56,14 @@ export class AssetSessionStore {
     const s = this.get(id);
     this.assertRevision(s, revision);
     if (result.kind !== s.kind) throw new AppError(422, 'ASSET_TYPE', '返回的素材种类与会话不同。');
+    const base = s.currentAssetId ? this.assets.get(s.currentAssetId) : null;
     const asset = this.assets.create({
       kind: s.kind,
       name: s.name,
       data: assetData(s.kind, result.data),
       source: ('LLM: ' + (result.source?.model ?? 'configured')).slice(0, 200),
-      license: 'AI 生成；请核对服务商条款',
+      license: base?.license ?? 'AI 生成；请核对服务商条款',
+      derivedFrom: assetOrigins(base),
     });
     return this.records.write(id, {
       ...s,

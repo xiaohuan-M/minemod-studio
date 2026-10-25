@@ -298,13 +298,14 @@ export function generateBedrock(input, assets = []) {
   json('TEMPLATE.json', template);
   json(
     'ASSETS.json',
-    [...used.values()].map(({ id, name, kind, source, license, sha256 }) => ({
+    [...used.values()].map(({ id, name, kind, source, license, sha256, derivedFrom }) => ({
       id,
       name,
       kind,
       source,
       license,
       sha256,
+      ...(derivedFrom ? { derivedFrom } : {}),
     })),
   );
   files['LICENSE'] = readFileSync(new URL('../../../LICENSE', import.meta.url));

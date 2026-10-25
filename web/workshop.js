@@ -123,6 +123,7 @@ export function initWorkshop({
     if (single) $('content-stack').value = '1';
     else if ($('content-stack').value === '1') $('content-stack').value = '64';
     $('content-model').disabled = getProject()?.target.edition === 'bedrock' && kind !== 'block';
+    $('content-model-prompt').disabled = $('content-model').disabled;
     $('block-model-note').hidden = kind !== 'block';
   }
   function resetContent() {
@@ -144,6 +145,8 @@ export function initWorkshop({
       ['content-color', item.textureColor ?? '#8e62cf'],
       ['content-texture', item.textureAsset ?? ''],
       ['content-model', item.modelAsset ?? ''],
+      ['content-texture-prompt', item.texturePrompt ?? ''],
+      ['content-model-prompt', item.modelPrompt ?? ''],
       ['food-nutrition', item.food?.nutrition ?? 5],
       ['food-saturation', item.food?.saturation ?? 0.6],
       ['tool-material', item.tool?.material ?? 'diamond'],
@@ -266,6 +269,10 @@ export function initWorkshop({
       if ($('content-texture').value) item.textureAsset = $('content-texture').value;
       if ($('content-model').value && !$('content-model').disabled)
         item.modelAsset = $('content-model').value;
+      if ($('content-texture-prompt').value.trim())
+        item.texturePrompt = $('content-texture-prompt').value.trim();
+      if (!$('content-model-prompt').disabled && $('content-model-prompt').value.trim())
+        item.modelPrompt = $('content-model-prompt').value.trim();
       if (kind === 'block')
         Object.assign(item, {
           hardness: Number($('block-hardness').value),
@@ -591,6 +598,12 @@ export function initWorkshop({
                 : asset.cubes + (asset.kind === 'animated_model' ? ' 个立方体骨骼' : ' 个立方体'),
             ),
             el('small', asset.source + ' · ' + asset.license),
+            ...(asset.derivedFrom ?? []).map((origin) =>
+              el(
+                'small',
+                '原素材：' + origin.name + ' · ' + origin.source + ' · ' + origin.license,
+              ),
+            ),
           );
           const edit = el('button', '载入编辑', 'secondary');
           edit.onclick = run(async () => {

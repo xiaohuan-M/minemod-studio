@@ -27,6 +27,9 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
     ...value.items.flatMap((item) => Object.values(item.displayName)),
     ...(value.blocks ?? []).flatMap((block) => Object.values(block.displayName)),
     ...(value.entities ?? []).flatMap((entity) => Object.values(entity.displayName)),
+    ...[...value.items, ...(value.blocks ?? []), ...(value.entities ?? [])].flatMap((owner) =>
+      [owner.texturePrompt, owner.modelPrompt].filter((v) => v !== undefined),
+    ),
     ...value.assumptions,
   ]) {
     if (!name.trim()) invalid('spec', '名称和假设不能只包含空白。');
@@ -35,7 +38,9 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
     invalid('spec.target', '没有匹配的版本、加载器和 Java 组合。');
   if (
     value.target.edition === 'bedrock' &&
-    value.items.some((item) => !['basic_item', 'food'].includes(item.kind) || item.modelAsset)
+    value.items.some(
+      (item) => !['basic_item', 'food'].includes(item.kind) || item.modelAsset || item.modelPrompt,
+    )
   )
     invalid(
       'spec.items',
@@ -65,7 +70,10 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
   const entityIds = new Set();
 
   for (const entity of value.entities ?? []) {
-    if (value.target.edition !== 'bedrock' && (entity.modelAsset || entity.animationClip))
+    if (
+      value.target.edition !== 'bedrock' &&
+      (entity.modelAsset || entity.animationClip || entity.modelPrompt)
+    )
       invalid('spec.entities', '自定义实体模型/动画当前只接入 Bedrock；Java 实体使用原版模型。');
     if (entityIds.has(entity.id) || itemIds.has(entity.id + '_spawn_egg'))
       invalid('spec.entities', '实体 ID 重复或刷怪蛋 ID 与物品冲突。');

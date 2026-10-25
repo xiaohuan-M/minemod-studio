@@ -42,6 +42,7 @@ export function initCreation({
       allowNetwork: $('creation-network').checked,
       textures: $('creation-textures').checked,
       models: $('creation-models').checked,
+      refreshMaterials: $('creation-refresh-materials').checked,
       code: $('creation-code').checked,
       gameTests: $('creation-game-tests').checked,
       maxCalls: Number($('creation-max-calls').value),

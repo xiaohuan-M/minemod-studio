@@ -178,6 +178,18 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 120
+          },
+          "texturePrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要绘制或修改此对象贴图时填写；只修改受影响对象，保留现有素材ID作为编辑基底。"
+          },
+          "modelPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要修改此对象几何或骨骼动作时填写；保留现有模型ID作为编辑基底，其他对象要求保持不变。"
           }
         }
       }
@@ -327,6 +339,18 @@
           },
           "modelAsset": {
             "$ref": "#/$defs/uuid"
+          },
+          "texturePrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要绘制或修改此对象贴图时填写；只修改受影响对象，保留现有素材ID作为编辑基底。"
+          },
+          "modelPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要修改此对象几何或骨骼动作时填写；保留现有模型ID作为编辑基底，其他对象要求保持不变。"
           }
         },
         "required": [
@@ -408,6 +432,18 @@
           },
           "loot": {
             "$ref": "#/$defs/loot"
+          },
+          "texturePrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要绘制或修改此对象贴图时填写；只修改受影响对象，保留现有素材ID作为编辑基底。"
+          },
+          "modelPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "自动创作需要修改此对象几何或骨骼动作时填写；保留现有模型ID作为编辑基底，其他对象要求保持不变。"
           }
         }
       }

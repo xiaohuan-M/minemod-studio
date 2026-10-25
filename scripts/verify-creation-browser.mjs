@@ -30,7 +30,10 @@ const upstream = createServer(async (request, response) => {
     content = structuredClone(input.currentSpec ?? example);
     content.target = input.target;
     content.displayName = input.name;
-    if (input.currentSpec && input.instruction) content.displayName = '继续完善的作品';
+    if (input.currentSpec && input.instruction) {
+      content.displayName = '继续完善的作品';
+      content.items[0].texturePrompt = '改成红色';
+    }
   }
   response.writeHead(200, { 'Content-Type': 'application/json' });
   response.end(
@@ -81,6 +84,7 @@ try {
     page.locator('#creation-downloads a').filter({ hasText: '下载作品' }).click(),
   ]);
   const artifact = readFileSync(await download.path());
+  const firstSpec = JSON.parse(await page.inputValue('#spec-editor'));
   readZipEntry(readZipEntry(artifact, 'behavior_pack.mcpack'), 'manifest.json');
   await page.locator('#product-versions > summary').click();
   await page
@@ -100,6 +104,10 @@ try {
   await page.waitForFunction(
     () => document.querySelectorAll('#product-versions-list .card').length >= 2,
   );
+  const revisedSpec = JSON.parse(await page.inputValue('#spec-editor'));
+  assert.notEqual(revisedSpec.items[0].textureAsset, firstSpec.items[0].textureAsset);
+  assert.equal(revisedSpec.items[0].texturePrompt, '改成红色');
+  assert.equal(await page.isChecked('#creation-refresh-materials'), false);
   const cards = page.locator('#product-versions-list .card');
   await cards
     .filter({ hasText: '自动创作完成 · 制作一颗可合成的晶体' })

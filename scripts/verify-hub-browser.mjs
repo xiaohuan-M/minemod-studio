@@ -107,6 +107,25 @@ try {
     'Hosted browser passed: invite registration, cross-device project, check-in, publish/review/import, mobile layout; no real model or WeChat call.',
   );
 } catch (error) {
+  for (const [index, context] of (browser?.contexts() ?? []).entries())
+    for (const p of context.pages()) {
+      console.error(
+        'Browser failure context',
+        index,
+        await p
+          .evaluate(() => ({
+            path: window.location.pathname,
+            feedback: document.querySelector('#feedback')?.textContent,
+            notice: document.querySelector('#notice')?.textContent,
+            title: document.querySelector('#project-title')?.textContent,
+            name: document.querySelector('#name')?.value,
+            prompt: document.querySelector('#prompt')?.value,
+            ready: document.readyState,
+          }))
+          .catch(() => null),
+      );
+      await p.screenshot({ path: '/tmp/minemod-hub-failure-' + index + '.png' }).catch(() => {});
+    }
   if (process.env.GITHUB_ACTIONS === 'true')
     console.error(
       '::error file=scripts/verify-hub-browser.mjs,title=Hosted browser verification::' +
