@@ -2,7 +2,7 @@
 
 **完全公开源码、自带 AI 服务、数据保存在自己电脑上的 Minecraft 创作工具。** 用自然语言或表单设计内容，制作贴图与模型，审查源码，编译 Java 模组或打包 Bedrock 附加包。代码采用 MIT 许可，无强制账号、积分、订阅或遥测。
 
-当前版本 **0.4.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
+当前版本 **0.5.0**。参考 [AutoMods 公开创作流程](https://automods.cn/#faq)，独立设计和实现；与其、Mojang、Microsoft 均无关联。[优化后的任务书](docs/product/DELIVERY-BRIEF.md) 和 [功能对照](docs/product/PARITY-MATRIX.md) 记录产品目标与实际差距。尚未覆盖参考站宣传的全部游戏版本或任意玩法，不宣称已经全面超越。
 
 ## 支持目标
 
@@ -20,7 +20,7 @@
 
 需要 **Node.js 24.5+**。选择一种方式：
 
-- **便携 ZIP**：解压 `minemod-studio-0.4.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
+- **便携 ZIP**：解压 `minemod-studio-0.5.0.zip`，运行 `start.cmd`（Windows）或 `./start.sh`（Linux/macOS）。已附运行依赖和许可证，无需先执行 npm install；Node 和 Docker 未内置。仓库 Actions 成功运行后可下载 `minemod-studio-portable` 构建附件。
 - **从源码启动**：
 
 ```sh
@@ -37,7 +37,7 @@ npm start
 ## 创作流程
 
 1. 新建项目，选择目标；载入功能示例，或让自己的模型提出方案、生成规格。
-2. 编辑物品/食物/工具/方块/生物和九宫格配方；选择原版材料，制作或导入素材。
+2. 编辑物品/食物/工具/方块/生物、九宫格配方和自定义掉落；选择原版材料，制作或导入素材。
 3. 在模型工坊编辑 UV、贴图、显示姿态；在动画工坊设置关键帧，绑定到 Bedrock 实体。
 4. 校验保存并确认规格，生成工程，检查源码和版本差异。此时即可导出完整源码。
 5. 批准工程快照后构建。Java 需要启动 Docker（Linux 容器），首次准备固定镜像并允许下载依赖；Bedrock 在本地直接打包。
@@ -65,6 +65,7 @@ MINEMOD_LLM_API_KEY=your-key
 
 - 多方案比较、持续创作记录、版本恢复、失败构建日志诊断、token 用量记录。
 - 物品/方块/生物卡片、九宫格配方、按目标版本校验原版物品 ID。
+- 方块/实体掉落编辑：指定物品、数量范围、独立概率、玩家击杀条件；支持恢复默认和明确不掉落。
 - 16/32/64 像素绘画、PNG、图片量化、图像生成/参考图编辑、文本或视觉辅助模型草稿。
 - 本地 WebGL 贴图预览、UV、手持/头戴/物品栏姿态、截图、静态与受限动画 bbmodel 互通。
 - 立方体根骨骼、线性关键帧、播放与片段管理；Bedrock 实体几何/动画/行为打包。

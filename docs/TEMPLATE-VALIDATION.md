@@ -81,3 +81,18 @@ Forge 使用独立官方 Gradle/JDK17 多架构镜像：`gradle:8.10.2-jdk17@sha
 新增独立原创实体模型、线性关键帧动画、实体行为与渲染控制器。包检查覆盖 client entity → geometry / animation / texture / render controller 的引用。浏览器实际完成方案与会话、UV/姿态、动画关键帧编辑、绑定实体、生成/批准、MCADDON 下载、完整项目备份恢复和窄屏布局。动画资源另经过独立 Bedrock ZIP 下载、嵌入 PNG 的 bbmodel HTTP 导入往返；不支持的骨骼层级/表达式明确拒绝。
 
 这些是结构与浏览器证据，没有运行 Minecraft Bedrock，也没有使用真实图像或视觉 API。
+
+## 自定义掉落 · 0.5 · 2026-10-25
+
+四个 Java 目标重新执行应用 HTTP → 工程 → Docker/Gradle → JAR → 交付包的完整检查。样例包含方块掉落本模组晶体、数量范围，以及实体概率掉落和玩家击杀条件。测试实际读取 JAR 中对应版本目录的掉落表，检查物品、数量函数和条件；不是只检查生成器字符串。
+
+| 目标 | 工程 SHA-256 | JAR SHA-256 | 大小 |
+| --- | --- | --- | --- |
+| Fabric 1.21.1 | `fd8c90f320750cec650bf8383c3572001bfc432fe156983a9e43a15903ec29e9` | `7e7f19d64a81a24f94cbbcff16925f0f2f677a96efc055fcd18296caf0afd707` | 23678 bytes |
+| Fabric 1.20.1 | `98c3f26a905b7f92b5c71c7c8f8b4142c6b98b1aa27aaecc2a7d71e57799d889` | `86fc696d4bf039f9c97d25327f63f94f379fba3da92b1867481904a3e81461c6` | 23563 bytes |
+| Forge 1.20.1 | `e122a9640c7a829da3a0c457a3df40e3051a0c126a2ca1955cfec353cd0134f7` | `87dbb5b99e63b70c7848240c6f1dd4cec4523cffb682a552b71c503a254fd977` | 25530 bytes |
+| NeoForge 1.21.1 | `396269416bbd0f41c04055ed803f7cbf4e51e0d49b340f2d7f697cbd8b10178c` | `138b1b67519bf15117507ad5bcb4418691dafaa7fca4c8572fc5cb1a9eec399a` | 24253 bytes |
+
+工具链与镜像沿用上文固定版本；本次使用独立数据目录并复制既有受信任 Gradle 缓存，不作为冷缓存测试。四目标均验证取消后旧成功产物保留。Bedrock 由五目标资源回归检查包中掉落表与组件引用，缺少引用文件必须拒绝打包。
+
+Chromium 实际编辑实体及方块掉落，再修改生命/硬度，确认掉落未丢失；完成 MCADDON 下载和完整项目备份恢复。默认掉落、空掉落与显式配置分别覆盖。Gradle 不验证游戏加载掉落表后的实际行为；所有记录的 `gameTested` 仍为 false。

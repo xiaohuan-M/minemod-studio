@@ -25,6 +25,14 @@
 
 目标组合由 `/api/targets` 注册表确定：Fabric 1.20.1/Java17、Fabric 1.21.1/Java21、Forge 1.20.1/Java17、NeoForge 1.21.1/Java21、Bedrock 1.21.60/java0。Bedrock 的 java=0 表示不适用，支持物品/食物/方块/配方/实体与立方体动画，不支持工具/法杖/Java 物品模型。
 
-Java 目标可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，掉落表默认为空；其原型的 AI、繁殖、日晒等行为保留。引用贴图必须为 64×64，遵循对应原版模型的归一化 UV。不是自定义骨骼模型协议。
+Java 目标可配置最多 8 个 `entities`：id、双语 displayName、archetype=zombie|cow、health=1–200、movementSpeed=0.01–1、attackDamage=0–30（cow 必须为 0），可选 textureColor、textureAsset。实体 ID 不重复，其自动生成的 `<id>_spawn_egg` 不能与物品 ID 冲突。实体不自动加入自然生成，未配置 loot 时掉落表为空；其原型的 AI、繁殖、日晒等行为保留。引用贴图必须为 64×64，遵循对应原版模型的归一化 UV。不是自定义骨骼模型协议。
 
 Bedrock 同样接受最多 8 个实体的基础字段，提供简单敌对/被动 AI，不继承完整原版 Java 行为。可选 modelAsset 引用 model/animated_model、animationClip 选择动画片段，贴图允许 16/32/64。默认使用原创立方体角色与 walk 动画；walk 随移动播放，其他选中片段持续播放。模型引用、片段和素材类型在工程生成时校验；Java 不接受这些自定义实体绑定。实体默认不加入自然生成。
+
+## 自定义掉落 · 0.5
+
+blocks/entities 可选 `loot` 数组，每个对象最多 8 条。每条必填 item（原版或已声明本模组物品/方块 ID）、min/max（整数 1–64，min ≤ max）、chance（0–1）；实体可选 playerOnly:boolean。方块不能包含 playerOnly。本模组物品单条 max 不能超过堆叠上限。所有引用按目标版本检查，不支持引用其他模组或未声明刷怪蛋。
+
+每条是独立一次概率判定，可同时掉落；不会自动增加默认条目。省略 loot 保留默认行为：方块掉落自身，实体不掉落；loot=[] 表示明确不掉落。新字段不在读取时自动填充，旧规格哈希保持稳定。Java 使用 block/entity loot table，1.20.1 为 loot_tables、1.21.1 为 loot_table；Bedrock 写入独立 loot_tables 并由 block/entity 组件引用。玩家击杀不包含“玩家或宠物”的扩展条件。
+
+Java 方块保留 survives_explosion，数量使用 set_count/uniform；Bedrock 使用对应的无命名空间函数与条件。时运、抢夺、精准采集、经验、装备继承和自然生成不在本次能力范围。

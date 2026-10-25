@@ -1,3 +1,4 @@
+import { javaLoot } from '../loot.mjs';
 import { generateEntities } from './fabric-entities.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -190,16 +191,7 @@ jar { from('LICENSE') { rename { 'LICENSE_${ns}' } } }
       textures: { all: ns + ':block/' + block.id },
     });
     resource(`assets/${ns}/models/item/${block.id}.json`, { parent: ns + ':block/' + block.id });
-    resource(`data/${ns}/loot_table/blocks/${block.id}.json`, {
-      type: 'minecraft:block',
-      pools: [
-        {
-          rolls: 1,
-          entries: [{ type: 'minecraft:item', name: ns + ':' + block.id }],
-          conditions: [{ condition: 'minecraft:survives_explosion' }],
-        },
-      ],
-    });
+    resource(`data/${ns}/loot_table/blocks/${block.id}.json`, javaLoot(spec, block, 'block'));
   }
   const entities = generateEntities(spec, { add, resource, getAsset, packageName, zh, en, legacy });
   statements.push(...entities.statements);

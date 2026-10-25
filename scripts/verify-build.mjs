@@ -108,6 +108,22 @@ try {
   readZipEntry(jar, 'studio/minemod/generated/m_full_workshop/GeneratedClient.class');
   readZipEntry(jar, 'assets/full_workshop/textures/entity/crystal_guard.png');
   readZipEntry(jar, 'assets/full_workshop/models/item/moss_cow_spawn_egg.json');
+  const lootDirectory = spec.target.minecraft === '1.20.1' ? 'loot_tables' : 'loot_table';
+  const blockLoot = JSON.parse(
+    readZipEntry(jar, `data/full_workshop/${lootDirectory}/blocks/glow_block.json`),
+  );
+  const entityLoot = JSON.parse(
+    readZipEntry(jar, `data/full_workshop/${lootDirectory}/entities/crystal_guard.json`),
+  );
+  assert.equal(blockLoot.pools[0].entries[0].name, 'full_workshop:crystal');
+  assert.deepEqual(blockLoot.pools[0].entries[0].functions[0].count, {
+    type: 'minecraft:uniform',
+    min: 1,
+    max: 3,
+  });
+  assert.ok(
+    entityLoot.pools[0].conditions.some((c) => c.condition === 'minecraft:killed_by_player'),
+  );
   assert.deepEqual(
     readZipEntry(jar, 'assets/full_workshop/textures/item/crystal.png'),
     Buffer.from(await (await call('/api/assets/' + texture.id + '/png')).arrayBuffer()),

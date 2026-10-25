@@ -10,7 +10,7 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.4</span>
+      <a class="brand" href="/">▦ MineMod Studio</a><span class="badge">OPEN SOURCE · 0.5</span>
     </header>
     <main>
       <section class="intro">
@@ -562,6 +562,54 @@ MINEMOD_LLM_API_KEY=your-api-key</pre>
               >
             </div>
             <div id="image-library" class="inventory"></div>
+          </details>
+          <details id="loot-editor">
+            <summary>掉落编辑器 · 方块与生物</summary>
+            <label for="loot-owner">选择方块或实体</label
+            ><select id="loot-owner"></select>
+            <p id="loot-state"></p>
+            <p>
+              可使用下方物品建议，或输入 minecraft:diamond 等当前版本原版 ID。每个对象最多 8
+              条独立掉落；Java 方块保留爆炸存活条件。暂不支持时运、抢夺或精准采集。
+            </p>
+            <form id="loot-entry-form">
+              <label for="loot-item">掉落物品</label
+              ><input id="loot-item" list="ingredients" maxlength="113" required />
+              <div class="workspace">
+                <div>
+                  <label for="loot-min">最小数量</label
+                  ><input id="loot-min" type="number" min="1" max="64" value="1" required />
+                </div>
+                <div>
+                  <label for="loot-max">最大数量</label
+                  ><input id="loot-max" type="number" min="1" max="64" value="1" required />
+                </div>
+              </div>
+              <label for="loot-chance">概率（%）</label
+              ><input
+                id="loot-chance"
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value="100"
+                required
+              />
+              <label class="consent"
+                ><input id="loot-player-only" type="checkbox" />要求玩家击杀（仅实体）</label
+              >
+              <div class="actions">
+                <button id="loot-entry-save" type="submit">添加掉落条目</button
+                ><button id="loot-entry-reset" type="button" class="secondary">
+                  取消编辑 / 新条目
+                </button>
+              </div>
+            </form>
+            <ul id="loot-list" class="history-list"></ul>
+            <div class="actions">
+              <button id="loot-default" type="button" class="secondary">恢复默认掉落</button
+              ><button id="loot-none" type="button" class="secondary">设置不掉落</button>
+            </div>
           </details>
           <details id="entity-editor">
             <summary>实体工坊 · 原版行为模板</summary>

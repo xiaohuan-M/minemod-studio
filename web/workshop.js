@@ -1,5 +1,6 @@
 import { initAnimationEditor } from './studio/animation-editor.js';
 import { initEntityEditor } from './studio/entity-editor.js';
+import { initLootEditor } from './studio/loot-editor.js';
 import { initImageStudio } from './studio/image-studio.js';
 import { initModelEditor } from './studio/model-editor.js';
 const $ = (id) => document.getElementById(id);
@@ -282,6 +283,12 @@ export function initWorkshop({
       const target = kind === 'block' ? (spec.blocks ??= []) : spec.items;
       if (editing) {
         const source = editing.kind === 'block' ? spec.blocks : spec.items;
+        if (
+          kind === 'block' &&
+          editing.kind === 'block' &&
+          source[editing.index].loot !== undefined
+        )
+          item.loot = source[editing.index].loot;
         if (source === target) source[editing.index] = item;
         else {
           source.splice(editing.index, 1);
@@ -656,6 +663,7 @@ export function initWorkshop({
     })
     .catch((e) => feedback(e.message, true));
   initEntityEditor({ readSpec, stage, run, getProject });
+  initLootEditor({ readSpec, stage, run });
   // Immutable source snapshots and explicit build permission.
   async function loadWorkspace(hash, epoch = requestEpoch) {
     const id = getProject()?.id;

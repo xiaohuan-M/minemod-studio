@@ -87,6 +87,7 @@ try {
     '/model-preview.js',
     '/studio/animation-editor.js',
     '/studio/provider-settings.js',
+    '/studio/loot-editor.js',
     '/vendor/three.js',
     '/vendor/three.core.js',
     '/vendor/OrbitControls.js',

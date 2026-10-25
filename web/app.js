@@ -469,11 +469,27 @@ api('/api/targets')
     $('target-select').value = 'fabric-1.21.1';
     const describe = () => {
       const target = targets.find((t) => t.id === $('target-select').value);
+      const featureLabels = {
+        items: '物品',
+        food: '食物',
+        tools: '工具',
+        lightning_wand: '法杖',
+        blocks: '方块',
+        recipes: '配方',
+        custom_loot: '自定义掉落',
+        textures: '贴图',
+        static_models: '静态模型',
+        vanilla_entity_archetypes: '实体原型',
+        entities: '实体',
+        cube_animation: '立方体动画',
+      };
       $('target-features').textContent =
         labels[target.validation] +
-        (target.target.edition === 'bedrock'
-          ? ' · 普通物品、食物、方块、配方、贴图'
-          : ' · 物品、食物、工具、法杖、方块、配方、贴图、静态模型');
+        ' · ' +
+        target.features
+          .map((feature) => featureLabels[feature])
+          .filter(Boolean)
+          .join('、');
     };
     $('target-select').onchange = describe;
     describe();

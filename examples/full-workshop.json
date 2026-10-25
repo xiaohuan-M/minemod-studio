@@ -141,8 +141,8 @@
     }
   ],
   "assumptions": [
-    "普通物品及合成规格，不含武器攻击或右键行为。",
-    "规格验证不等于 Fabric 编译或游戏实测；原版物品引用尚未核对注册表。"
+    "完整内容示例包含工具、法杖、方块、实体及自定义掉落；各目标按能力筛选。",
+    "原版物品引用按目标注册表校验；编译与包检查不等于游戏实测。"
   ],
   "blocks": [
     {
@@ -153,7 +153,15 @@
       },
       "hardness": 2,
       "resistance": 6,
-      "luminance": 15
+      "luminance": 15,
+      "loot": [
+        {
+          "item": "full_workshop:crystal",
+          "min": 1,
+          "max": 3,
+          "chance": 1
+        }
+      ]
     }
   ],
   "entities": [
@@ -167,7 +175,16 @@
       "health": 40,
       "movementSpeed": 0.23,
       "attackDamage": 5,
-      "textureColor": "#9564c8"
+      "textureColor": "#9564c8",
+      "loot": [
+        {
+          "item": "full_workshop:crystal",
+          "min": 2,
+          "max": 4,
+          "chance": 0.75,
+          "playerOnly": true
+        }
+      ]
     },
     {
       "id": "moss_cow",
@@ -179,7 +196,15 @@
       "health": 20,
       "movementSpeed": 0.2,
       "attackDamage": 0,
-      "textureColor": "#65875b"
+      "textureColor": "#65875b",
+      "loot": [
+        {
+          "item": "minecraft:leather",
+          "min": 1,
+          "max": 2,
+          "chance": 0.5
+        }
+      ]
     }
   ]
 }

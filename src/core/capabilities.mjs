@@ -9,6 +9,7 @@ export function capabilities() {
       projectStorage: true,
       demoPlanning: true,
       modSpec: true,
+      customLoot: true,
       specReview: true,
       specExport: true,
       specHistory: true,

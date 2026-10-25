@@ -1,10 +1,10 @@
-# HTTP API · 0.4
+# HTTP API · 0.5
 
 Base URL：`http://127.0.0.1:4310`。端口可配置。仅本机单用户开发服务，非公共服务 API；没有远程认证或权限管理，不支持反向代理。JSON 请求上限 24 KiB；创建时名称 1–80 字符、需求 1–4000 字符（按 JavaScript string.length）。字段会去除两端空白。
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| GET | `/api/health` | `{ok:true,version:"0.4.0",stage:"multi-target-workshop-preview"}` |
+| GET | `/api/health` | `{ok:true,version:"0.5.0",stage:"multi-target-workshop-preview"}` |
 | GET | `/api/capabilities` | 阶段、候选目标、mock provider 与已实现能力 |
 | GET | `/api/projects` | `{projects:[Project]}`，updatedAt 倒序 |
 | POST | `/api/projects` | `{name,prompt,targetId?}` → 201，返回 Project |
@@ -194,3 +194,7 @@ Bedrock 实体可引用 modelAsset（model 或 animated_model）和 animationCli
 所有写操作都需当前设置 revision，与项目 revision 独立。409 SETTINGS_CHANGED 表示其他页面已修改；409 PROVIDER_REQUEST_ACTIVE 表示模型请求运行中；409 PROFILE_IN_USE 表示不可删除启用项；422 INVALID_PROVIDER_PROFILE / PROFILE_LIMIT / PROFILE_NOT_FOUND 表示数据或选择不正确。所有成功设置修改都更新调用配置标识，旧 consent 返回 400。更改/保存不会调用服务，也不覆盖 .env。
 
 设置为本机私有文件，重启保留；不在项目/资源备份、源码或发行包中。首次输入密钥经本机 HTTP 提交，后续 GET 从不回传；此服务仍仅允许回环使用，不能直接作为公开站点后端。
+
+## 掉落编辑 · 0.5
+
+沿用 PUT spec、确认、工程生成和构建接口，无独立可执行脚本接口。blocks/entities 新增可选 loot 字段，约束见 MODSPEC.md。非法引用/概率/数量/方块击杀条件返回 422 INVALID_SPEC，字段路径定位至具体掉落条目。完整功能示例含方块晶体掉落、守卫玩家击杀概率掉落与牛皮掉落；目标能力列表增加 custom_loot。

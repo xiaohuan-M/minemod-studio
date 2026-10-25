@@ -99,7 +99,10 @@ export function initEntityEditor({ readSpec, stage, run, getProject }) {
     if (editing === null) {
       if (spec.entities.length >= 8) throw new Error('每个规格最多 8 种实体。');
       spec.entities.push(entity);
-    } else spec.entities[editing] = entity;
+    } else {
+      if (spec.entities[editing].loot !== undefined) entity.loot = spec.entities[editing].loot;
+      spec.entities[editing] = entity;
+    }
     stage(spec);
     reset();
   });

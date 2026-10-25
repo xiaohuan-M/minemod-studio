@@ -108,6 +108,20 @@ export function validateModSpec(value, { checkVanilla = true } = {}) {
       Object.values(recipe.key).forEach((ref) => reference(ref, path + '.key'));
     } else recipe.ingredients.forEach((ref) => reference(ref, path + '.ingredients'));
   }
+  for (const group of ['blocks', 'entities']) {
+    for (const [index, owner] of (value[group] ?? []).entries()) {
+      for (const [entry, drop] of (owner.loot ?? []).entries()) {
+        const path = `spec.${group}[${index}].loot[${entry}]`;
+        reference(drop.item, path + '.item');
+        if (drop.min > drop.max) invalid(path, '最小掉落数量不能超过最大数量。');
+        if (group === 'blocks' && drop.playerOnly !== undefined)
+          invalid(path, '玩家击杀条件仅适用于实体。');
+        const local = value.items.find((i) => value.modId + ':' + i.id === drop.item);
+        if (local && drop.max > local.maxStackSize)
+          invalid(path, '单条掉落数量不能超过本模组物品的堆叠上限。');
+      }
+    }
+  }
   return structuredClone(value);
 }
 

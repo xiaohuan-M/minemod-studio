@@ -26,6 +26,7 @@ const VENDORS = new Map([
 
 const MAX_BODY = 24 * 1024;
 const ASSETS = new Map([
+  ['/studio/loot-editor.js', ['studio/loot-editor.js', 'text/javascript; charset=utf-8']],
   [
     '/studio/provider-settings.js',
     ['studio/provider-settings.js', 'text/javascript; charset=utf-8'],

@@ -2,7 +2,7 @@
 
 ## 当前任务边界
 
-- MineMod Studio 0.4 是开源本地网页工坊：Fabric 1.20.1/1.21.1、Forge 1.20.1、NeoForge 1.21.1，以及 Bedrock 1.21.60。
+- MineMod Studio 0.5 是开源本地网页工坊：Fabric 1.20.1/1.21.1、Forge 1.20.1、NeoForge 1.21.1，以及 Bedrock 1.21.60。
 - 先读 README.md、docs/ARCHITECTURE.md、docs/DEVELOPMENT.md 和涉及的接口文档。
 - 四个 Java 完整样例已真实编译；Bedrock 完成包/引用与浏览器检查。真实 API 按要求跳过，游戏实测未完成，不宣称全版本兼容或完整参考产品功能已经实现。
 

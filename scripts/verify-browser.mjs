@@ -50,6 +50,7 @@ try {
   await page.fill('#name', '浏览器附加包');
   await page.fill('#prompt', '食物和发光方块');
   await page.selectOption('#target-select', 'bedrock-1.21.60');
+  assert.match(await page.locator('#target-features').textContent(), /自定义掉落/);
   await page.click('#create-button');
   await page.locator('#project-title').filter({ hasText: '浏览器附加包' }).waitFor();
   await page.selectOption('#provider-select', 'openai-compatible');
@@ -136,6 +137,37 @@ try {
   await page.selectOption('#entity-model', { label: '浏览器关键帧动画' });
   await page.fill('#entity-clip', 'walk');
   await page.click('#entity-save');
+  await page.locator('#loot-editor > summary').click();
+  await page.selectOption('#loot-owner', 'entities:animated_actor');
+  await page.fill('#loot-item', 'minecraft:diamond');
+  await page.fill('#loot-min', '1');
+  await page.fill('#loot-max', '2');
+  await page.fill('#loot-chance', '25');
+  await page.check('#loot-player-only');
+  await page.click('#loot-entry-save');
+  const actor = page.locator('#entity-list article').filter({ hasText: '动画角色' });
+  await actor.getByRole('button', { name: '编辑实体' }).click();
+  await page.fill('#entity-health', '30');
+  await page.click('#entity-save');
+  let edited = JSON.parse(await page.inputValue('#spec-editor'));
+  assert.deepEqual(edited.entities.find((e) => e.id === 'animated_actor').loot, [
+    { item: 'minecraft:diamond', min: 1, max: 2, chance: 0.25, playerOnly: true },
+  ]);
+  await page.selectOption('#loot-owner', 'blocks:glow_block');
+  await page.click('#loot-none');
+  assert.deepEqual(JSON.parse(await page.inputValue('#spec-editor')).blocks[0].loot, []);
+  await page.click('#loot-default');
+  assert.equal(
+    Object.hasOwn(JSON.parse(await page.inputValue('#spec-editor')).blocks[0], 'loot'),
+    false,
+  );
+  await page.fill('#loot-item', 'minecraft:diamond');
+  await page.fill('#loot-max', '3');
+  await page.click('#loot-entry-save');
+  await page.locator('#inventory button').filter({ hasText: 'glow_block' }).click();
+  await page.fill('#block-hardness', '4');
+  await page.click('#content-save');
+  assert.equal(JSON.parse(await page.inputValue('#spec-editor')).blocks[0].loot[0].max, 3);
   await page.click('#save-spec');
   await page.waitForFunction(() => !document.querySelector('#confirm-spec').disabled);
   await page.click('#confirm-spec');
@@ -176,6 +208,9 @@ try {
     projectId,
   );
   assert.equal(await page.locator('.conversation-entry').count(), 1);
+  edited = JSON.parse(await page.inputValue('#spec-editor'));
+  assert.equal(edited.blocks[0].loot[0].max, 3);
+  assert.equal(edited.entities.find((e) => e.id === 'animated_actor').loot[0].chance, 0.25);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(100);
   assert.equal(
@@ -208,7 +243,7 @@ try {
   assert.deepEqual(fallbackErrors, []);
   await fallback.close();
   console.log(
-    'Browser passed: provider settings and consent reset, proposals/conversation, targets, WebGL/UV, animated entities, MCADDON, secret-free backups, mobile layout and editing without WebGL.',
+    'Browser passed: provider settings, proposals/conversation, target capabilities, WebGL/UV, animated entities, custom loot retained through editing and backup, MCADDON, mobile and no-WebGL editing.',
   );
 } finally {
   await browser?.close();

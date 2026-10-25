@@ -1,3 +1,4 @@
+import { javaLoot } from '../loot.mjs';
 import { pngTexture, placeholderTexture } from '../../core/assets.mjs';
 import { AppError } from '../../core/errors.mjs';
 /** Vanilla archetypes retain their native animation and behavior; only supported attributes are exposed. */
@@ -53,10 +54,7 @@ export function generateEntities(spec, { add, resource, getAsset, packageName, z
       };
     }
     add(`src/main/resources/assets/${ns}/textures/entity/${entity.id}.png`, pngTexture(texture));
-    resource(`data/${ns}/loot_table/entities/${entity.id}.json`, {
-      type: 'minecraft:entity',
-      pools: [],
-    });
+    resource(`data/${ns}/loot_table/entities/${entity.id}.json`, javaLoot(spec, entity, 'entity'));
     renderers.push(`net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry.register(GeneratedMod.${field}, context -> new net.minecraft.client.render.entity.${zombie ? 'ZombieEntityRenderer' : 'CowEntityRenderer'}(context) {
       @Override public Identifier getTexture(net.minecraft.entity.${zombie ? 'mob' : 'passive'}.${type} entity) { return Identifier.of(GeneratedMod.MOD_ID, "textures/entity/${entity.id}.png"); }
     });`);

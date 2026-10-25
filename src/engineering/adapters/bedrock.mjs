@@ -1,3 +1,4 @@
+import { bedrockLoot } from '../loot.mjs';
 import {
   defaultEntityAnimation,
   validateAnimation,
@@ -112,9 +113,7 @@ export function generateBedrock(input, assets = []) {
         },
       },
     });
-    json(`behavior_pack/loot_tables/blocks/${block.id}.json`, {
-      pools: [{ rolls: 1, entries: [{ type: 'item', name: id, weight: 1 }] }],
-    });
+    json(`behavior_pack/loot_tables/blocks/${block.id}.json`, bedrockLoot(spec, block, 'block'));
     localize('tile.' + id + '.name', block.displayName);
   }
   for (const entity of spec.entities ?? []) {
@@ -151,6 +150,10 @@ export function generateBedrock(input, assets = []) {
     );
     json('resource_pack/models/entity/' + entity.id + '.geo.json', generated.geometry);
     json('resource_pack/animations/' + entity.id + '.animation.json', generated.animations);
+    json(
+      'behavior_pack/loot_tables/entities/' + entity.id + '.json',
+      bedrockLoot(spec, entity, 'entity'),
+    );
     json('behavior_pack/entities/' + entity.id + '.json', {
       format_version: '1.21.60',
       'minecraft:entity': {
@@ -164,6 +167,7 @@ export function generateBedrock(input, assets = []) {
           'minecraft:type_family': {
             family: zombie ? ['monster', 'minemod'] : ['animal', 'minemod'],
           },
+          'minecraft:loot': { table: 'loot_tables/entities/' + entity.id + '.json' },
           'minecraft:health': { value: entity.health, max: entity.health },
           'minecraft:movement': { value: entity.movementSpeed },
           'minecraft:collision_box': { width: zombie ? 0.6 : 0.9, height: zombie ? 1.9 : 1.4 },
@@ -297,6 +301,14 @@ export function packageBedrock(snapshot) {
     return JSON.parse(bytes);
   };
   const textures = new Set([...all.keys()].filter((path) => path.endsWith('.png')));
+  for (const [path, bytes] of all) {
+    const entity = path.startsWith('behavior_pack/entities/');
+    if ((!entity && !path.startsWith('behavior_pack/blocks/')) || !path.endsWith('.json')) continue;
+    const components =
+      JSON.parse(bytes)[entity ? 'minecraft:entity' : 'minecraft:block']?.components;
+    const loot = components?.['minecraft:loot'];
+    if (loot) parse('behavior_pack/' + (entity ? loot.table : loot));
+  }
   const geometryIds = new Set(),
     animationIds = new Set();
   for (const [path, bytes] of all) {
